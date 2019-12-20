@@ -1,12 +1,13 @@
 namespace Lapine.Protocol {
     using System;
     using System.Buffers;
+    using Bogus;
     using Xunit;
 
-    public class ProtocolVersionTests {
+    public class ProtocolVersionTests : Faker {
         [Fact]
         public void SerializedSizeIsThreeBytes() {
-            var value  = ProtocolVersion.Default;
+            var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
             var buffer = new ArrayBufferWriter<Byte>(3);
 
             value.Serialize(buffer);
@@ -15,12 +16,14 @@ namespace Lapine.Protocol {
         }
 
         [Fact]
-        public void DeseralizedValueIsIdentical() {
+        public void SerializationIsSymmetric() {
+            var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
             var buffer = new ArrayBufferWriter<Byte>(3);
-            ProtocolVersion.Default.Serialize(buffer);
-            ProtocolVersion.Deserialize(buffer.WrittenMemory.Span, out var deserialized);
 
-            Assert.Equal(expected: ProtocolVersion.Default, actual: deserialized);
+            value.Serialize(buffer);
+            ProtocolVersion.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+
+            Assert.Equal(expected: value, actual: deserialized);
         }
     }
 }

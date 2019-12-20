@@ -32,11 +32,18 @@ namespace Lapine.Protocol {
             writer.Advance(3);
         }
 
-        public static void Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result) {
-            if (buffer.Length < 3)
-                throw new ArgumentException(nameof(buffer));
-
-            result = new ProtocolVersion(in buffer[0], in buffer[1], in buffer[2]);
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result, out ReadOnlySpan<Byte> remaining) {
+            if (buffer.ReadUInt8(out var major, out remaining) &&
+                remaining.ReadUInt8(out var minor, out remaining) &&
+                remaining.ReadUInt8(out var revision, out remaining))
+            {
+                result = new ProtocolVersion(in major, in minor, in revision);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }

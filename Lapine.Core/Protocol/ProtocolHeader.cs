@@ -1,4 +1,5 @@
-namespace Lapine.Protocol {
+namespace Lapine.Protocol
+{
     using System;
     using System.Buffers;
 
@@ -13,14 +14,19 @@ namespace Lapine.Protocol {
         static public ProtocolHeader Default =>
             new ProtocolHeader("AMQP", 0, ProtocolVersion.Default);
 
-        public ProtocolHeader(in String protocol, in Byte protocolId, in ProtocolVersion version) {
+        public ProtocolHeader(in ReadOnlySpan<Char> protocol, in Byte protocolId, in ProtocolVersion version) {
             if (protocol.Length != 4)
                 throw new ArgumentException(nameof(protocol), "value must be exactly four characters long");
 
-            _protocol   = BitConverter.ToUInt32(ASCII.GetBytes(protocol), 0);
+            _protocol   = BitConverter.ToUInt32(ASCII.GetBytes(protocol.ToArray()));
             _protocolId = protocolId;
             _version    = version;
         }
+
+        public ReadOnlySpan<Char> Protocol =>
+            ASCII.GetString(BitConverter.GetBytes(_protocol)).AsSpan();
+        public Byte ProtocolId => _protocolId;
+        public ProtocolVersion Version => _version;
 
         public void Serialize(IBufferWriter<Byte> writer) {
             if (writer is null)
@@ -29,21 +35,24 @@ namespace Lapine.Protocol {
             var span = writer.GetSpan(sizeHint: 5);
 
             WriteUInt32LittleEndian(destination: span, value: _protocol);
-            span[5] = _protocolId;
+            span[4] = _protocolId;
             writer.Advance(5);
 
             _version.Serialize(writer);
         }
 
-        public static void Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result) {
-            if (buffer.Length < 8)
-                throw new ArgumentException(nameof(buffer));
-
-            var protocol = ASCII.GetString(buffer.Slice(0, 4));
-
-            ProtocolVersion.Deserialize(buffer.Slice(5, 3), out var version);
-
-            result = new ProtocolHeader(in protocol, in buffer[5], in version);
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result, out ReadOnlySpan<Byte> remaining) {
+            if (buffer.ReadChars(4, out var protocol, out remaining) &&
+                remaining.ReadUInt8(out var protocolId, out remaining) &&
+                ProtocolVersion.Deserialize(remaining, out var version, out remaining))
+            {
+                result = new ProtocolHeader(protocol, protocolId, version);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }

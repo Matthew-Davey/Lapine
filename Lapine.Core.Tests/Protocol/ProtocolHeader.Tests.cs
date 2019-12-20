@@ -1,12 +1,13 @@
 namespace Lapine.Protocol {
     using System;
     using System.Buffers;
+    using Bogus;
     using Xunit;
 
-    public class ProtocolHeaderTests {
+    public class ProtocolHeaderTests : Faker {
         [Fact]
         public void SerializedSizeIsEightBytes() {
-            var value  = ProtocolHeader.Default;
+            var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
             var buffer = new ArrayBufferWriter<Byte>(8);
 
             value.Serialize(buffer);
@@ -15,12 +16,14 @@ namespace Lapine.Protocol {
         }
 
         [Fact]
-        public void DeseralizedValueIsIdentical() {
+        public void SerializationIsSymmetric() {
             var buffer = new ArrayBufferWriter<Byte>(8);
-            ProtocolHeader.Default.Serialize(buffer);
-            ProtocolHeader.Deserialize(buffer.WrittenMemory.Span, out var deserialized);
+            var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
 
-            Assert.Equal(expected: ProtocolHeader.Default, actual: deserialized);
+            value.Serialize(buffer);
+            ProtocolHeader.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+
+            Assert.Equal(expected: value, actual: deserialized);
         }
     }
 }

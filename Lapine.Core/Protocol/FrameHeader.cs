@@ -30,12 +30,18 @@ namespace Lapine.Protocol {
             writer.Advance(7);
         }
 
-        public static void Deserialize(in ReadOnlySpan<Byte> buffer, out FrameHeader result) {
-            var type    = (FrameType)buffer[0];
-            var channel = ReadUInt16BigEndian(buffer.Slice(1, 2));
-            var size    = ReadUInt32BigEndian(buffer.Slice(3, 4));
-
-            result = new FrameHeader(type, channel, size);
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out FrameHeader result, out ReadOnlySpan<Byte> remaining) {
+            if (buffer.ReadUInt8(out var type, out remaining) &&
+                remaining.ReadUInt16BE(out var channel, out remaining) &&
+                remaining.ReadUInt32BE(out var size, out remaining))
+            {
+                result = new FrameHeader((FrameType)type, channel, size);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }
