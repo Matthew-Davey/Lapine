@@ -34,8 +34,9 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
-                // TODO: case protocol header = server reject
+                // TODO: case ProtocolHeader = server reject
                 case ConnectionStart message: {
+                    // TODO: Verify protocol version compatibility...
                     _availableAuthMechanisms.AddRange(message.Mechanisms);
                     _availableLocales.AddRange(message.Locales);
                     // TODO: Send ConnectionStartOk...

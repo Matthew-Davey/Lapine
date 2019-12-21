@@ -26,9 +26,35 @@ namespace Lapine
                 return false;
             }
 
-            result    = buffer.Slice(0, (Int32)number);
+            result  = buffer.Slice(0, (Int32)number);
             surplus = buffer.Slice((Int32)number);
             return true;
+        }
+
+        static public Boolean ReadLongString(in this ReadOnlySpan<Byte> buffer, out String result, out ReadOnlySpan<Byte> surplus) {
+            if (ReadUInt32BE(in buffer, out var length, out surplus) &&
+                ReadBytes(in surplus, length, out var bytes, out surplus))
+            {
+                result = UTF8.GetString(bytes);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
+        static public Boolean ReadShortString(in this ReadOnlySpan<Byte> buffer, out String result, out ReadOnlySpan<Byte> surplus) {
+            if (ReadUInt8(in buffer, out var length, out surplus) &&
+                ReadBytes(in surplus, length, out var bytes, out surplus))
+            {
+                result = UTF8.GetString(bytes);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
 
         static public Boolean ReadUInt8(in this ReadOnlySpan<Byte> buffer, out Byte result, out ReadOnlySpan<Byte> surplus) {
@@ -79,6 +105,24 @@ namespace Lapine
             return true;
         }
 
+        static public IBufferWriter<Byte> WriteBytes(this IBufferWriter<Byte> writer, in ReadOnlySpan<Byte> value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(value.Length);
+            value.CopyTo(buffer);
+            writer.Advance(value.Length);
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteLongString(this IBufferWriter<Byte> writer, String value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            return writer.WriteUInt32BE((UInt32)value.Length)
+                .WriteBytes(UTF8.GetBytes(value));
+        }
+
         static public IBufferWriter<Byte> WriteSerializable(this IBufferWriter<Byte> writer, ISerializable value) {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
@@ -87,6 +131,17 @@ namespace Lapine
                 throw new ArgumentNullException(nameof(value));
 
             return value.Serialize(writer);
+        }
+
+        static public IBufferWriter<Byte> WriteShortString(this IBufferWriter<Byte> writer, String value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (value.Length > Byte.MaxValue)
+                throw new ArgumentException("Value is too long to be encoded as a short string", nameof(value));
+
+            return writer.WriteUInt8((Byte)value.Length)
+                .WriteBytes(UTF8.GetBytes(value));
         }
 
         static public IBufferWriter<Byte> WriteUInt8(this IBufferWriter<Byte> writer, in Byte value) {
