@@ -5,7 +5,7 @@ namespace Lapine.Protocol
 
     using static System.Text.Encoding;
 
-    public readonly struct ProtocolHeader {
+    public readonly struct ProtocolHeader : ISerializable {
         readonly UInt32 _protocol;
         readonly Byte _protocolId;
         readonly ProtocolVersion _version;
@@ -27,12 +27,10 @@ namespace Lapine.Protocol
         public Byte ProtocolId => _protocolId;
         public ProtocolVersion Version => _version;
 
-        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) {
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt32LE(_protocol)
-                .WriteUInt8(_protocolId);
-
-            return _version.Serialize(writer);
-        }
+                .WriteUInt8(_protocolId)
+                .WriteSerializable(_version);
 
         public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result, out ReadOnlySpan<Byte> remaining) {
             if (buffer.ReadChars(4, out var protocol, out remaining) &&

@@ -79,6 +79,16 @@ namespace Lapine
             return true;
         }
 
+        static public IBufferWriter<Byte> WriteSerializable(this IBufferWriter<Byte> writer, ISerializable value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+
+            return value.Serialize(writer);
+        }
+
         static public IBufferWriter<Byte> WriteUInt8(this IBufferWriter<Byte> writer, in Byte value) {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));

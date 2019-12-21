@@ -2,7 +2,7 @@ namespace Lapine.Protocol {
     using System;
     using System.Buffers;
 
-    public readonly struct FrameHeader {
+    public readonly struct FrameHeader : ISerializable {
         readonly FrameType _type;
         readonly UInt16 _channel;
         readonly UInt32 _size;
