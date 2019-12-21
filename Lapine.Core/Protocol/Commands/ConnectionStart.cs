@@ -3,6 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Collections.Generic;
 
+    using static System.String;
+
     public sealed class ConnectionStart : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0A);
 
@@ -38,23 +40,44 @@ namespace Lapine.Protocol.Commands {
             writer.WriteUInt8(Version.Major)
                 .WriteUInt8(Version.Minor)
                 .WriteLongString(ServerProperties)
-                .WriteLongString(String.Join(' ', Mechanisms))
-                .WriteLongString(String.Join(' ', Locales));
+                .WriteLongString(Join(' ', Mechanisms))
+                .WriteLongString(Join(' ', Locales));
     }
 
-    public sealed class ConnectionStartOk : ICommand {
+    public sealed class ConnectionStartOk : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0B);
 
-        public IDictionary<String, Object> PeerProperties { get; }
+        public String PeerProperties { get; } // TODO: Decode property table
         public String Mechanism { get; }
         public String Response { get; }
         public String Locale { get; }
 
-        public ConnectionStartOk(IDictionary<String, Object> peerProperties, String mechanism, String response, String locale) {
+        public ConnectionStartOk(String peerProperties, String mechanism, String response, String locale) {
             PeerProperties = peerProperties ?? throw new ArgumentNullException(nameof(peerProperties));
             Mechanism      = mechanism ?? throw new ArgumentNullException(nameof(mechanism));
             Response       = response ?? throw new ArgumentNullException(nameof(response));
             Locale         = locale ?? throw new ArgumentNullException(nameof(locale));
+        }
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteLongString(PeerProperties)
+                .WriteShortString(Mechanism)
+                .WriteLongString(Response)
+                .WriteShortString(Locale);
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionStartOk result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadLongString(out var peerProperties, out surplus) &&
+                surplus.ReadShortString(out var mechanism, out surplus) &&
+                surplus.ReadLongString(out var response, out surplus) &&
+                surplus.ReadShortString(out var locale, out surplus))
+            {
+                result = new ConnectionStartOk(peerProperties, mechanism, response, locale);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }
