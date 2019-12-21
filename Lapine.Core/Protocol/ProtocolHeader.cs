@@ -3,7 +3,6 @@ namespace Lapine.Protocol
     using System;
     using System.Buffers;
 
-    using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
 
     public readonly struct ProtocolHeader {
@@ -28,17 +27,11 @@ namespace Lapine.Protocol
         public Byte ProtocolId => _protocolId;
         public ProtocolVersion Version => _version;
 
-        public void Serialize(IBufferWriter<Byte> writer) {
-            if (writer is null)
-                throw new ArgumentNullException(nameof(writer));
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) {
+            writer.WriteUInt32LE(_protocol)
+                .WriteUInt8(_protocolId);
 
-            var span = writer.GetSpan(sizeHint: 5);
-
-            WriteUInt32LittleEndian(destination: span, value: _protocol);
-            span[4] = _protocolId;
-            writer.Advance(5);
-
-            _version.Serialize(writer);
+            return _version.Serialize(writer);
         }
 
         public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result, out ReadOnlySpan<Byte> remaining) {

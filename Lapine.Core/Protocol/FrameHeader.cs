@@ -2,8 +2,6 @@ namespace Lapine.Protocol {
     using System;
     using System.Buffers;
 
-    using static System.Buffers.Binary.BinaryPrimitives;
-
     public readonly struct FrameHeader {
         readonly FrameType _type;
         readonly UInt16 _channel;
@@ -19,16 +17,10 @@ namespace Lapine.Protocol {
         public UInt16 Channel => _channel;
         public UInt32 Size => _size;
 
-        public void Serialize(IBufferWriter<Byte> writer) {
-            var buffer = writer.GetSpan(sizeHint: 7);
-
-            buffer[0] = (Byte)_type;
-
-            WriteUInt16BigEndian(buffer.Slice(1, 2), _channel);
-            WriteUInt32BigEndian(buffer.Slice(3, 4), _size);
-
-            writer.Advance(7);
-        }
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteUInt8((Byte)_type)
+                .WriteUInt16BE(_channel)
+                .WriteUInt32BE(_size);
 
         public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out FrameHeader result, out ReadOnlySpan<Byte> remaining) {
             if (buffer.ReadUInt8(out var type, out remaining) &&

@@ -20,17 +20,10 @@ namespace Lapine.Protocol {
         public Byte Minor => _minor;
         public Byte Revision => _revision;
 
-        public void Serialize(IBufferWriter<Byte> writer) {
-            if (writer is null)
-                throw new ArgumentNullException(nameof(writer));
-
-            var span = writer.GetSpan(sizeHint: 3);
-            span[0] = _major;
-            span[1] = _minor;
-            span[2] = _revision;
-
-            writer.Advance(3);
-        }
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteUInt8(_major)
+                .WriteUInt8(_minor)
+                .WriteUInt8(_revision);
 
         public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result, out ReadOnlySpan<Byte> remaining) {
             if (buffer.ReadUInt8(out var major, out remaining) &&

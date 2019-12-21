@@ -1,6 +1,7 @@
 namespace Lapine
 {
     using System;
+    using System.Buffers;
 
     using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
@@ -66,7 +67,7 @@ namespace Lapine
             return true;
         }
 
-        static Boolean ReadUInt64BE(in this ReadOnlySpan<Byte> buffer, out UInt64 result, out ReadOnlySpan<Byte> remaining) {
+        static public Boolean ReadUInt64BE(in this ReadOnlySpan<Byte> buffer, out UInt64 result, out ReadOnlySpan<Byte> remaining) {
             if (buffer.Length < sizeof(UInt64)) {
                 result    = default;
                 remaining = default;
@@ -76,6 +77,56 @@ namespace Lapine
             result    = ReadUInt64BigEndian(buffer);
             remaining = buffer.Slice(sizeof(UInt64));
             return true;
+        }
+
+        static public IBufferWriter<Byte> WriteUInt8(this IBufferWriter<Byte> writer, in Byte value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Byte));
+            buffer[0] = value;
+            writer.Advance(sizeof(Byte));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteUInt16BE(this IBufferWriter<Byte> writer, in UInt16 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(UInt16));
+            WriteUInt16BigEndian(buffer, value);
+            writer.Advance(sizeof(UInt16));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteUInt32BE(this IBufferWriter<Byte> writer, in UInt32 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(UInt32));
+            WriteUInt32BigEndian(buffer, value);
+            writer.Advance(sizeof(UInt32));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteUInt32LE(this IBufferWriter<Byte> writer, in UInt32 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(UInt32));
+            WriteUInt32LittleEndian(buffer, value);
+            writer.Advance(sizeof(UInt32));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteUInt64BE(this IBufferWriter<Byte> writer, in UInt64 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(UInt64));
+            WriteUInt64BigEndian(buffer, value);
+            writer.Advance(sizeof(UInt64));
+            return writer;
         }
     }
 }
