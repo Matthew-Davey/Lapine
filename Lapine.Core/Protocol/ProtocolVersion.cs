@@ -25,10 +25,10 @@ namespace Lapine.Protocol {
                 .WriteUInt8(_minor)
                 .WriteUInt8(_revision);
 
-        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result, out ReadOnlySpan<Byte> remaining) {
-            if (buffer.ReadUInt8(out var major, out remaining) &&
-                remaining.ReadUInt8(out var minor, out remaining) &&
-                remaining.ReadUInt8(out var revision, out remaining))
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadUInt8(out var major, out surplus) &&
+                surplus.ReadUInt8(out var minor, out surplus) &&
+                surplus.ReadUInt8(out var revision, out surplus))
             {
                 result = new ProtocolVersion(in major, in minor, in revision);
                 return true;

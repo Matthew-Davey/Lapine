@@ -32,10 +32,10 @@ namespace Lapine.Protocol
                 .WriteUInt8(_protocolId)
                 .WriteSerializable(_version);
 
-        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result, out ReadOnlySpan<Byte> remaining) {
-            if (buffer.ReadChars(4, out var protocol, out remaining) &&
-                remaining.ReadUInt8(out var protocolId, out remaining) &&
-                ProtocolVersion.Deserialize(remaining, out var version, out remaining))
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolHeader result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadChars(4, out var protocol, out surplus) &&
+                surplus.ReadUInt8(out var protocolId, out surplus) &&
+                ProtocolVersion.Deserialize(surplus, out var version, out surplus))
             {
                 result = new ProtocolHeader(protocol, protocolId, version);
                 return true;

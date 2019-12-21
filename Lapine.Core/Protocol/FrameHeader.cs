@@ -22,10 +22,10 @@ namespace Lapine.Protocol {
                 .WriteUInt16BE(_channel)
                 .WriteUInt32BE(_size);
 
-        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out FrameHeader result, out ReadOnlySpan<Byte> remaining) {
-            if (buffer.ReadUInt8(out var type, out remaining) &&
-                remaining.ReadUInt16BE(out var channel, out remaining) &&
-                remaining.ReadUInt32BE(out var size, out remaining))
+        public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out FrameHeader result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadUInt8(out var type, out surplus) &&
+                surplus.ReadUInt16BE(out var channel, out surplus) &&
+                surplus.ReadUInt32BE(out var size, out surplus))
             {
                 result = new FrameHeader((FrameType)type, channel, size);
                 return true;
