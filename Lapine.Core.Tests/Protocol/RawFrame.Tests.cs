@@ -7,7 +7,7 @@ namespace Lapine.Protocol {
     public class RawFrameTests : Faker {
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>(8);
+            var buffer = new ArrayBufferWriter<Byte>();
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
             value.Serialize(buffer);

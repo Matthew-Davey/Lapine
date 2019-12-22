@@ -1,23 +1,30 @@
 namespace Lapine.Agents {
     using System;
+    using System.Buffers;
     using System.Net.Sockets;
+    using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
+    using Lapine.Protocol;
     using Proto;
-    using Proto.Schedulers.SimpleScheduler;
 
     using static Proto.Actor;
 
     public class SocketAgent : IActor {
         readonly Behavior _behaviour;
-        readonly TcpClient _socket;
-        ISimpleScheduler _pollScheduler;
+        readonly Socket _socket;
+        readonly Memory<Byte> _frameBuffer;
+        readonly CancellationTokenSource _cancellationTokenSource;
+        readonly Thread _pollThread;
+        UInt16 _frameBufferSize = 0;
 
         public SocketAgent() {
-            _behaviour     = new Behavior(Disconnected);
-            _socket        = new TcpClient();
-            _pollScheduler = new SimpleScheduler();
+            _behaviour               = new Behavior(Disconnected);
+            _socket                  = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            _frameBuffer             = new Byte[1024 * 1024 * 8];
+            _cancellationTokenSource = new CancellationTokenSource();
+            _pollThread              = new Thread(PollThreadMain);
         }
 
         public Task ReceiveAsync(IContext context) =>
@@ -27,9 +34,7 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case SocketConnect message: {
                     _socket.Connect(message.IpAddress, message.Port);
-
-                    _pollScheduler = new SimpleScheduler(context);
-                    _pollScheduler.ScheduleTellOnce(delay: TimeSpan.Zero, target: context.Self, message: new SocketPoll());
+                    _pollThread.Start(_cancellationTokenSource.Token);
 
                     _behaviour.Become(Connected);
                     return Done;
@@ -40,31 +45,15 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case SocketPoll message: {
-                    switch (_socket.Available) {
-                        case 0: {
-                            // There was no data available - back off polling for 50 millis...
-                            _pollScheduler.ScheduleTellOnce(delay: TimeSpan.FromMilliseconds(50), target: context.Self, message);
-                            break;
-                        }
-                        case var available: {
-                            var buffer = new Byte[available].AsSpan();
-                            var bytesReceived = _socket.GetStream().Read(buffer);
-
-                            Actor.EventStream.Publish(new SocketDataReceived(buffer.Slice(0, bytesReceived).ToArray()));
-
-                            // Data was received - poll again immediately...
-                            _pollScheduler.ScheduleTellOnce(delay: TimeSpan.Zero, target: context.Self, message);
-                            break;
-                        }
-                    }
-                    return Done;
-                }
                 case SocketTransmit message: {
-                    _socket.GetStream().Write(message.Buffer, 0, message.Buffer.Length);
+                    var buffer = new ArrayBufferWriter<Byte>(512); // TODO: MIN FRAME SIZE?
+                    message.Item.Serialize(buffer);
+                    _socket.Send(buffer.WrittenSpan);
                     return Done;
                 }
-                case Proto.Stopping _: {
+                case Stopping _: {
+                    _cancellationTokenSource.Cancel();
+                    _pollThread.Join();
                     _socket.Close();
                     _behaviour.Become(Stopped);
                     return Done;
@@ -74,5 +63,35 @@ namespace Lapine.Agents {
         }
 
         Task Stopped(IContext _) => Done;
+
+        void PollThreadMain(Object state) {
+            var cancellationToken = (CancellationToken)state;
+
+            try
+            {
+                while (cancellationToken.IsCancellationRequested == false) {
+                    var bytesReceived = _socket.Receive(_frameBuffer.Slice(_frameBufferSize).Span);
+
+                    if (bytesReceived > 0) {
+                        _frameBufferSize += (UInt16)bytesReceived;
+
+                        while (RawFrame.Deserialize(_frameBuffer.Span.Slice(0, _frameBufferSize), out var frame, out var surplus)) {
+                            Actor.EventStream.Publish(new FrameReceived(frame));
+
+                            var consumed = _frameBufferSize - surplus.Length;
+                            _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
+                            _frameBufferSize -= (UInt16)consumed;
+                        }
+                    }
+                }
+            }
+            catch (SocketException) {
+                // TODO: Publish a disconnected event, or just let the actor die?
+                // Or both?
+            }
+            catch (OperationCanceledException) {
+                // Let the thread terminate...
+            }
+        }
     }
 }
