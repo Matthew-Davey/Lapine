@@ -67,15 +67,14 @@ namespace Lapine.Agents {
         void PollThreadMain(Object state) {
             var cancellationToken = (CancellationToken)state;
 
-            try
-            {
+            try {
                 while (cancellationToken.IsCancellationRequested == false) {
                     var bytesReceived = _socket.Receive(_frameBuffer.Slice(_frameBufferSize).Span);
 
                     if (bytesReceived > 0) {
                         _frameBufferSize += (UInt16)bytesReceived;
 
-                        while (RawFrame.Deserialize(_frameBuffer.Span.Slice(0, _frameBufferSize), out var frame, out var surplus)) {
+                        while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
                             Actor.EventStream.Publish(new FrameReceived(frame));
 
                             var consumed = _frameBufferSize - surplus.Length;

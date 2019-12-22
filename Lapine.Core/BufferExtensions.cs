@@ -44,6 +44,19 @@ namespace Lapine
             }
         }
 
+        static public Boolean ReadMethodHeader(in this ReadOnlySpan<Byte> buffer, out (UInt16 ClassId, UInt16 MethodId) result, out ReadOnlySpan<Byte> surplus) {
+            if (ReadUInt16BE(in buffer, out var classId, out surplus) &&
+                ReadUInt16BE(in surplus, out var methodId, out surplus))
+            {
+                result = (classId, methodId);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
         static public Boolean ReadShortString(in this ReadOnlySpan<Byte> buffer, out String result, out ReadOnlySpan<Byte> surplus) {
             if (ReadUInt8(in buffer, out var length, out surplus) &&
                 ReadBytes(in surplus, length, out var bytes, out surplus))

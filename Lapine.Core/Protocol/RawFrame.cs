@@ -1,6 +1,7 @@
 namespace Lapine.Protocol {
     using System;
     using System.Buffers;
+    using Lapine.Protocol.Commands;
 
     public readonly struct RawFrame : ISerializable {
         public const Byte FrameTerminator = 0xCE;
@@ -22,6 +23,17 @@ namespace Lapine.Protocol {
         public UInt16 Channel => _channel;
         public UInt32 Size => (UInt32)_payload.Length;
         public ReadOnlyMemory<Byte> Payload => _payload;
+
+        static public RawFrame Wrap<T>(in UInt16 channel, in T command) where T : ICommand, ISerializable {
+            var payloadWriter = new ArrayBufferWriter<Byte>();
+            payloadWriter
+                .WriteUInt16BE(command.CommandId.ClassId)
+                .WriteUInt16BE(command.CommandId.MethodId)
+                .WriteSerializable(command);
+            var payload = payloadWriter.WrittenMemory;
+
+            return new RawFrame(FrameType.Method, in channel, in payload);
+        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt8((Byte)Type)

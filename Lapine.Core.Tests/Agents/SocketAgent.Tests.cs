@@ -11,6 +11,7 @@ namespace Lapine.Agents {
     using Proto;
     using Xunit;
 
+    [Collection("Agents")]
     public class SocketAgentTests : Faker, IDisposable {
         readonly RootContext _context;
         readonly PID _subject;
