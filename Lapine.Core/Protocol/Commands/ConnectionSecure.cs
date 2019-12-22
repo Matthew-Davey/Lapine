@@ -25,12 +25,26 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionSecureOk : ICommand {
+    public sealed class ConnectionSecureOk : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x15);
 
         public String Response { get; }
 
         public ConnectionSecureOk(String response) =>
             Response = response ?? throw new ArgumentNullException(nameof(response));
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteLongString(Response);
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionSecureOk result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadLongString(out var response, out surplus)) {
+                result = new ConnectionSecureOk(response);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
     }
 }
