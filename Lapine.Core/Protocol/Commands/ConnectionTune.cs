@@ -35,17 +35,36 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionTuneOk : ICommand {
+    public sealed class ConnectionTuneOk : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1F);
 
         public UInt16 ChannelMax { get; }
         public UInt32 FrameMax { get; }
         public UInt16 Heartbeat { get; }
 
-        public ConnectionTuneOk(UInt16 channelMax, UInt32 frameMax, UInt16 heartbeat) {
+        public ConnectionTuneOk(in UInt16 channelMax, in UInt32 frameMax, in UInt16 heartbeat) {
             ChannelMax = channelMax;
             FrameMax   = frameMax;
             Heartbeat  = heartbeat;
+        }
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteUInt16BE(ChannelMax)
+                .WriteUInt32BE(FrameMax)
+                .WriteUInt16BE(Heartbeat);
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionTuneOk result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadUInt16BE(out var channelMax, out surplus) &&
+                surplus.ReadUInt32BE(out var frameMax, out surplus) &&
+                surplus.ReadUInt16BE(out var heartbeat, out surplus))
+            {
+                result = new ConnectionTuneOk(in channelMax, in frameMax, in heartbeat);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }
