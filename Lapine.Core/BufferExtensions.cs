@@ -68,18 +68,43 @@ namespace Lapine
             }
         }
 
+        static public Boolean ReadFieldArray(in this ReadOnlySpan<Byte> buffer, out IList<Object> result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadInt32BE(out var arrayLength, out surplus) &&
+                surplus.ReadBytes((UInt32)arrayLength, out var arrayBytes, out surplus))
+            {
+                var fieldArray = new List<Object>();
+
+                while (arrayBytes.Length > 0) {
+                    if (arrayBytes.ReadFieldValue(out var fieldValue, out arrayBytes)) {
+                        fieldArray.Add(fieldValue);
+                        continue;
+                    }
+                    else {
+                        result = default;
+                        return false;
+                    }
+                }
+
+                result = fieldArray;
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
         static public Boolean ReadFieldTable(in this ReadOnlySpan<Byte> buffer, out IReadOnlyDictionary<String, Object> result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt32BE(out var tableLength, out surplus) &&
                 surplus.ReadBytes(tableLength, out var tableBytes, out surplus))
             {
                 var fields = new Dictionary<String, Object>();
-                var tableSurplus = tableBytes;
 
-                while (tableSurplus.Length > 0) {
-                    if (tableSurplus.ReadShortString(out var fieldName, out tableSurplus) &&
-                        tableSurplus.ReadFieldValue(out var value, out tableSurplus))
+                while (tableBytes.Length > 0) {
+                    if (tableBytes.ReadShortString(out var fieldName, out tableBytes) &&
+                        tableBytes.ReadFieldValue(out var fieldValue, out tableBytes))
                     {
-                        fields.Add(fieldName, value);
+                        fields.Add(fieldName, fieldValue);
                         continue;
                     }
                     else {
@@ -406,45 +431,64 @@ namespace Lapine
         static public IBufferWriter<Byte> WriteDouble(this IBufferWriter<Byte> writer, in Double value) =>
             writer.WriteBytes(BitConverter.GetBytes(value));
 
-        static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IReadOnlyDictionary<String, Object> table) {
+        static public IBufferWriter<Byte> WriteFieldArray(this IBufferWriter<Byte> writer, IList<Object> fieldArray) {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
 
-            if (table is null)
-                throw new ArgumentNullException(nameof(table));
+            if (fieldArray is null)
+                throw new ArgumentNullException(nameof(fieldArray));
 
-            var buffer = new ArrayBufferWriter<Byte>();
+            var arrayBuffer = new ArrayBufferWriter<Byte>();
 
-            table.Aggregate(seed: buffer as IBufferWriter<Byte>, (writer, field) => {
-                writer = writer.WriteShortString(field.Key);
+            fieldArray.Aggregate(seed: arrayBuffer as IBufferWriter<Byte>, (arrayBuffer, value) =>
+                arrayBuffer.WriteFieldValue(value)
+            );
 
-                return field.Value switch {
-                    Boolean        value => writer.WriteChar('t').WriteBoolean(value),
-                    SByte          value => writer.WriteChar('b').WriteInt8(value),
-                    Byte           value => writer.WriteChar('B').WriteUInt8(value),
-                    Int16          value => writer.WriteChar('U').WriteInt16BE(value),
-                    UInt16         value => writer.WriteChar('u').WriteUInt16BE(value),
-                    Int32          value => writer.WriteChar('I').WriteInt32BE(value),
-                    UInt32         value => writer.WriteChar('i').WriteUInt32BE(value),
-                    Int64          value => writer.WriteChar('L').WriteInt64BE(value),
-                    UInt64         value => writer.WriteChar('l').WriteUInt64BE(value),
-                    Single         value => writer.WriteChar('f').WriteSingle(value),
-                    Double         value => writer.WriteChar('d').WriteDouble(value),
-                    //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
-                    String         value when value.Length < 256 => writer.WriteChar('s').WriteShortString(value),
-                    String         value when value.Length > 255 => writer.WriteChar('S').WriteLongString(value),
-                    //Object[]       value => writer.WriteChar('A').WriteFieldArray(value), // TODO: encode and write field-array
-                    DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
-                    DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),
-                    IReadOnlyDictionary<String, Object> value => writer.WriteChar('F').WriteFieldTable(value),
-                    null                 => writer.WriteChar('V'),
-                    _ => writer
-                };
-            });
-
-            return writer.WriteUInt32BE((UInt32)buffer.WrittenMemory.Length)
-                .WriteBytes(buffer.WrittenMemory.Span);
+            return writer.WriteInt32BE((Int32)arrayBuffer.WrittenMemory.Length)
+                .WriteBytes(arrayBuffer.WrittenMemory.Span);
         }
+
+        static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IReadOnlyDictionary<String, Object> fieldTable) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (fieldTable is null)
+                throw new ArgumentNullException(nameof(fieldTable));
+
+            var tablebuffer = new ArrayBufferWriter<Byte>();
+
+            fieldTable.Aggregate(seed: tablebuffer as IBufferWriter<Byte>, (tablebuffer, field) =>
+                tablebuffer.WriteShortString(field.Key)
+                    .WriteFieldValue(field.Value)
+            );
+
+            return writer.WriteUInt32BE((UInt32)tablebuffer.WrittenMemory.Length)
+                .WriteBytes(tablebuffer.WrittenMemory.Span);
+        }
+
+        static public IBufferWriter<Byte> WriteFieldValue(this IBufferWriter<Byte> writer, in Object field) =>
+            field switch {
+                Boolean        value => writer.WriteChar('t').WriteBoolean(value),
+                SByte          value => writer.WriteChar('b').WriteInt8(value),
+                Byte           value => writer.WriteChar('B').WriteUInt8(value),
+                Int16          value => writer.WriteChar('U').WriteInt16BE(value),
+                UInt16         value => writer.WriteChar('u').WriteUInt16BE(value),
+                Int32          value => writer.WriteChar('I').WriteInt32BE(value),
+                UInt32         value => writer.WriteChar('i').WriteUInt32BE(value),
+                Int64          value => writer.WriteChar('L').WriteInt64BE(value),
+                UInt64         value => writer.WriteChar('l').WriteUInt64BE(value),
+                Single         value => writer.WriteChar('f').WriteSingle(value),
+                Double         value => writer.WriteChar('d').WriteDouble(value),
+                //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
+                String         value when value.Length < 256 => writer.WriteChar('s').WriteShortString(value),
+                String         value when value.Length > 255 => writer.WriteChar('S').WriteLongString(value),
+                //Object[]       value => writer.WriteChar('A').WriteFieldArray(value), // TODO: encode and write field-array
+                DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
+                DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),
+                IReadOnlyDictionary<String, Object> value => writer.WriteChar('F').WriteFieldTable(value),
+                //null                 => writer.WriteChar('V'), // TODO: what does 'V' mean?
+                _ => writer // TODO: unsupported data type present in table...
+        };
 
         static public IBufferWriter<Byte> WriteInt8(this IBufferWriter<Byte> writer, in SByte value) {
             if (writer is null)
