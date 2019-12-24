@@ -20,6 +20,13 @@ namespace Lapine.Protocol.Commands {
             Locales          = locales ?? throw new ArgumentNullException(nameof(locales));
         }
 
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer.WriteUInt8(Version.Major)
+                .WriteUInt8(Version.Minor)
+                .WriteFieldTable(ServerProperties)
+                .WriteLongString(Join(' ', Mechanisms))
+                .WriteLongString(Join(' ', Locales));
+
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionStart result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt8(out var major, out surplus) &&
                 surplus.ReadUInt8(out var minor, out surplus) &&
@@ -35,13 +42,6 @@ namespace Lapine.Protocol.Commands {
                 return false;
             }
         }
-
-        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteUInt8(Version.Major)
-                .WriteUInt8(Version.Minor)
-                .WriteFieldTable(ServerProperties)
-                .WriteLongString(Join(' ', Mechanisms))
-                .WriteLongString(Join(' ', Locales));
     }
 
     public sealed class ConnectionStartOk : ICommand, ISerializable {
