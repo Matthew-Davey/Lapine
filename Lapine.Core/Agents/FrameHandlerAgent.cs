@@ -51,6 +51,30 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x0A, 0x14): { // ConnectionSecure
+                        if (ConnectionSecure.Deserialize(in surplus, out var command, out surplus)) {
+                            Actor.EventStream.Publish(command);
+                        }
+                        break;
+                    }
+                    case (0x0A, 0x1E): { // ConnectionTune
+                        if (ConnectionTune.Deserialize(in surplus, out var command, out surplus)) {
+                            Actor.EventStream.Publish(command);
+                        }
+                        break;
+                    }
+                    case (0x0A, 0x29): { // ConnectionOpenOk
+                        if (ConnectionOpenOk.Deserialize(in surplus, out var command, out surplus)) {
+                            Actor.EventStream.Publish(command);
+                        }
+                        break;
+                    }
+                    case (0x0A, 0x33): { // ConnectionCloseOk
+                        if (ConnectionCloseOk.Deserialize(in surplus, out var command, out surplus)) {
+                            Actor.EventStream.Publish(command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
