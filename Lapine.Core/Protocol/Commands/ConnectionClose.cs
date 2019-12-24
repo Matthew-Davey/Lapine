@@ -37,7 +37,15 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionCloseOk : ICommand {
+    public sealed class ConnectionCloseOk : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x33);
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionCloseOk result, out ReadOnlySpan<Byte> surplus) {
+            surplus = buffer;
+            result  = new ConnectionCloseOk();
+            return true;
+        }
     }
 }
