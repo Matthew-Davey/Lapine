@@ -1,12 +1,13 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
     using Bogus;
     using Xunit;
 
     public class ConnectionStartOkTests : Faker {
         ConnectionStartOk RandomSubject => new ConnectionStartOk(
-            peerProperties: Random.String2(minLength: 1, maxLength: Int16.MaxValue),
+            peerProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
             mechanism     : Random.AlphaNumeric(Random.Number(4, 24)),
             response      : Random.AlphaNumeric(Random.Number(4, Int16.MaxValue)),
             locale        : Random.RandomLocale());

@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
     using System.Linq;
     using Bogus;
     using Xunit;
@@ -8,7 +9,7 @@ namespace Lapine.Protocol.Commands {
     public class ConnectionStartTests : Faker {
         ConnectionStart RandomSubject => new ConnectionStart(
             version         : (Random.Byte(), Random.Byte()),
-            serverProperties: Random.String2(minLength: 1, maxLength: Int16.MaxValue),
+            serverProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
             mechanisms      : Make(Random.Number(1, 8), () => Random.AlphaNumeric(Random.Number(4, 24))).ToArray(),
             locales         : Make(Random.Number(1, 8), () => Random.RandomLocale()).ToArray());
 

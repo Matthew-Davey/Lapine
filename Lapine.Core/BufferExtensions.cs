@@ -2,20 +2,22 @@ namespace Lapine
 {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
+    using System.Linq;
 
     using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
 
     public static class BufferExtensions {
-        static public Boolean ReadChars(in this ReadOnlySpan<Byte> buffer, in UInt16 number, out ReadOnlySpan<Char> result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.Length < number) {
+        static public Boolean ReadBoolean(in this ReadOnlySpan<Byte> buffer, out Boolean result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < 1) {
                 result  = default;
                 surplus = default;
                 return false;
             }
 
-            result  = ASCII.GetString(buffer.Slice(0, number)).AsSpan();
-            surplus = buffer.Slice(number);
+            result  = buffer[0] > 0;
+            surplus = buffer.Slice(1);
             return true;
         }
 
@@ -28,6 +30,248 @@ namespace Lapine
 
             result  = buffer.Slice(0, (Int32)number);
             surplus = buffer.Slice((Int32)number);
+            return true;
+        }
+
+        static public Boolean ReadChar(in this ReadOnlySpan<Byte> buffer, out Char result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < 1) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result  = (Char)buffer[0];
+            surplus = buffer.Slice(1);
+            return true;
+        }
+
+        static public Boolean ReadChars(in this ReadOnlySpan<Byte> buffer, in UInt16 number, out ReadOnlySpan<Char> result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < number) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result  = ASCII.GetString(buffer.Slice(0, number)).AsSpan();
+            surplus = buffer.Slice(number);
+            return true;
+        }
+
+        static public Boolean ReadDouble(in this ReadOnlySpan<Byte> buffer, out Double result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadBytes(sizeof(Double), out var rawBytes, out surplus)) {
+                result = BitConverter.ToDouble(rawBytes);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
+        static public Boolean ReadFieldTable(in this ReadOnlySpan<Byte> buffer, out IReadOnlyDictionary<String, Object> result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadUInt32BE(out var tableLength, out surplus) &&
+                surplus.ReadBytes(tableLength, out var tableBytes, out surplus))
+            {
+                var fields = new Dictionary<String, Object>();
+                var tableSurplus = tableBytes;
+
+                while (tableSurplus.Length > 0) {
+                    if (tableSurplus.ReadShortString(out var fieldName, out tableSurplus) &&
+                        tableSurplus.ReadFieldValue(out var value, out tableSurplus))
+                    {
+                        fields.Add(fieldName, value);
+                        continue;
+                    }
+                    else {
+                        result = default;
+                        return false;
+                    }
+                }
+
+                result = fields;
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
+        static public Boolean ReadFieldValue(in this ReadOnlySpan<Byte> buffer, out Object result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadChar(out var fieldType, out surplus) == false) {
+                result = default;
+                return false;
+            }
+
+            switch (fieldType) {
+                case 't': { // boolean
+                    if (surplus.ReadBoolean(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'b': { // short-short-int
+                    if (surplus.ReadInt8(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'B': { // short-short-uint
+                    if (surplus.ReadUInt8(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'U': { // short-int
+                    if (surplus.ReadInt16BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'u': { // short-uint
+                    if (surplus.ReadUInt16BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'I': { // long-int
+                    if (surplus.ReadInt32BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'i': { // long-uint
+                    if (surplus.ReadUInt32BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'L': { // long-long-int
+                    if (surplus.ReadInt64BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'l': { // long-long-uint
+                    if (surplus.ReadUInt32BE(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'f': { // float
+                    if (surplus.ReadSingle(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'd': { // double
+                    if (surplus.ReadDouble(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'D': { // decimal-value
+                    result = default(Decimal); // TODO: read and decode decimal-value
+                    surplus = surplus.Slice(5);
+                    return true;
+                }
+                case 's': { // short-string
+                    if (surplus.ReadShortString(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'S': { // long-string
+                    if (surplus.ReadLongString(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+                case 'A' : { // field-array
+                    break; // TODO: read and decode field-array
+                }
+                case 'T': { // timestamp
+                    if (surplus.ReadUInt64BE(out var value, out surplus)) {
+                        result = DateTimeOffset.FromUnixTimeSeconds((Int64)value);
+                        return true;
+                    }
+                    break;
+                }
+                case 'V': { // no-field
+                    result = null;
+                    return true;
+                }
+                case 'F': { // field-table
+                    if (surplus.ReadFieldTable(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
+                }
+            }
+
+            result = default;
+            return false;
+        }
+
+        static public Boolean ReadInt8(in this ReadOnlySpan<Byte> buffer, out SByte result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < 1) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result = (SByte)buffer[0];
+            surplus = buffer.Slice(1);
+            return true;
+        }
+
+        static public Boolean ReadInt16BE(in this ReadOnlySpan<Byte> buffer, out Int16 result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < sizeof(Int16)) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result  = ReadInt16BigEndian(buffer);
+            surplus = buffer.Slice(sizeof(Int16));
+            return true;
+        }
+
+        static public Boolean ReadInt32BE(in this ReadOnlySpan<Byte> buffer, out Int32 result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < sizeof(Int32)) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result  = ReadInt32BigEndian(buffer);
+            surplus = buffer.Slice(sizeof(Int32));
+            return true;
+        }
+
+        static public Boolean ReadInt64BE(in this ReadOnlySpan<Byte> buffer, out Int64 result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < sizeof(Int64)) {
+                result  = default;
+                surplus = default;
+                return false;
+            }
+
+            result  = ReadInt64BigEndian(buffer);
+            surplus = buffer.Slice(sizeof(Int64));
             return true;
         }
 
@@ -62,6 +306,17 @@ namespace Lapine
                 ReadBytes(in surplus, length, out var bytes, out surplus))
             {
                 result = UTF8.GetString(bytes);
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
+        }
+
+        static public Boolean ReadSingle(in this ReadOnlySpan<Byte> buffer, out Single result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.ReadBytes(sizeof(Single), out var rawBytes, out surplus)) {
+                result = BitConverter.ToSingle(rawBytes);
                 return true;
             }
             else {
@@ -118,6 +373,16 @@ namespace Lapine
             return true;
         }
 
+        static public IBufferWriter<Byte> WriteBoolean(this IBufferWriter<Byte> writer, in Boolean value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(1);
+            buffer[0] = value ? (Byte)1 : (Byte)0;
+            writer.Advance(1);
+            return writer;
+        }
+
         static public IBufferWriter<Byte> WriteBytes(this IBufferWriter<Byte> writer, in ReadOnlySpan<Byte> value) {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
@@ -125,6 +390,99 @@ namespace Lapine
             var buffer = writer.GetSpan(value.Length);
             value.CopyTo(buffer);
             writer.Advance(value.Length);
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteChar(this IBufferWriter<Byte> writer, in Char value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(1);
+            buffer[0] = (Byte)value;
+            writer.Advance(1);
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteDouble(this IBufferWriter<Byte> writer, in Double value) =>
+            writer.WriteBytes(BitConverter.GetBytes(value));
+
+        static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IReadOnlyDictionary<String, Object> table) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (table is null)
+                throw new ArgumentNullException(nameof(table));
+
+            var buffer = new ArrayBufferWriter<Byte>();
+
+            table.Aggregate(seed: buffer as IBufferWriter<Byte>, (writer, field) => {
+                writer = writer.WriteShortString(field.Key);
+
+                return field.Value switch {
+                    Boolean        value => writer.WriteChar('t').WriteBoolean(value),
+                    SByte          value => writer.WriteChar('b').WriteInt8(value),
+                    Byte           value => writer.WriteChar('B').WriteUInt8(value),
+                    Int16          value => writer.WriteChar('U').WriteInt16BE(value),
+                    UInt16         value => writer.WriteChar('u').WriteUInt16BE(value),
+                    Int32          value => writer.WriteChar('I').WriteInt32BE(value),
+                    UInt32         value => writer.WriteChar('i').WriteUInt32BE(value),
+                    Int64          value => writer.WriteChar('L').WriteInt64BE(value),
+                    UInt64         value => writer.WriteChar('l').WriteUInt64BE(value),
+                    Single         value => writer.WriteChar('f').WriteSingle(value),
+                    Double         value => writer.WriteChar('d').WriteDouble(value),
+                    //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
+                    String         value when value.Length < 256 => writer.WriteChar('s').WriteShortString(value),
+                    String         value when value.Length > 255 => writer.WriteChar('S').WriteLongString(value),
+                    //Object[]       value => writer.WriteChar('A').WriteFieldArray(value), // TODO: encode and write field-array
+                    DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
+                    DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),
+                    IReadOnlyDictionary<String, Object> value => writer.WriteChar('F').WriteFieldTable(value),
+                    null                 => writer.WriteChar('V'),
+                    _ => writer
+                };
+            });
+
+            return writer.WriteUInt32BE((UInt32)buffer.WrittenMemory.Length)
+                .WriteBytes(buffer.WrittenMemory.Span);
+        }
+
+        static public IBufferWriter<Byte> WriteInt8(this IBufferWriter<Byte> writer, in SByte value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(1);
+            buffer[0] = (Byte)value;
+            writer.Advance(1);
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteInt16BE(this IBufferWriter<Byte> writer, in Int16 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Int16));
+            WriteInt16BigEndian(buffer, value);
+            writer.Advance(sizeof(Int16));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteInt32BE(this IBufferWriter<Byte> writer, in Int32 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Int32));
+            WriteInt32BigEndian(buffer, value);
+            writer.Advance(sizeof(Int32));
+            return writer;
+        }
+
+        static public IBufferWriter<Byte> WriteInt64BE(this IBufferWriter<Byte> writer, in Int64 value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Int64));
+            WriteInt64BigEndian(buffer, value);
+            writer.Advance(sizeof(Int64));
             return writer;
         }
 
@@ -156,6 +514,9 @@ namespace Lapine
             return writer.WriteUInt8((Byte)value.Length)
                 .WriteBytes(UTF8.GetBytes(value));
         }
+
+        static public IBufferWriter<Byte> WriteSingle(this IBufferWriter<Byte> writer, in Single value) =>
+            writer.WriteBytes(BitConverter.GetBytes(value));
 
         static public IBufferWriter<Byte> WriteUInt8(this IBufferWriter<Byte> writer, in Byte value) {
             if (writer is null)

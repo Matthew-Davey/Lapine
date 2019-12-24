@@ -1,5 +1,6 @@
 namespace Lapine.Agents {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
     using Lapine.Agents.Events;
@@ -30,7 +31,10 @@ namespace Lapine.Agents {
 
             var command = new ConnectionStart(
                 version: (0, 9),
-                serverProperties: "\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.8.1",
+                serverProperties: new Dictionary<String, Object> {
+                    ["product"] = "RabbitMQ",
+                    ["version"] = "3.8.1"
+                },
                 mechanisms: new [] { "PLAIN", "AMQPLAIN" },
                 locales: new [] { "en_US" }
             );
@@ -40,7 +44,7 @@ namespace Lapine.Agents {
             if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.Equal(expected: command.Locales.ToArray(), actual: receivedCommand.Locales.ToArray());
                 Assert.Equal(expected: command.Mechanisms.ToArray(), actual: receivedCommand.Mechanisms.ToArray());
-                Assert.Equal(expected: command.ServerProperties, actual: receivedCommand.ServerProperties);
+                Assert.Equal(expected: command.ServerProperties.ToArray(), actual: receivedCommand.ServerProperties.ToArray());
                 Assert.Equal(expected: command.Version, actual: receivedCommand.Version);
             }
             else {
