@@ -1,8 +1,18 @@
 namespace Lapine.Protocol.Commands {
     using System;
+    using System.Buffers;
 
-    public sealed class ChannelOpen : ICommand {
+    public sealed class ChannelOpen : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0A);
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer;
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ChannelOpen result, out ReadOnlySpan<Byte> surplus) {
+            surplus = buffer;
+            result = new ChannelOpen();
+            return true;
+        }
     }
 
     public sealed class ChannelOpenOk : ICommand {
