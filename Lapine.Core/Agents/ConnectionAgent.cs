@@ -5,13 +5,13 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    public class HandshakeAgent : IActor {
+    public class ConnectionAgent : IActor {
         readonly Behavior _behaviour;
         readonly ISet<String> _availableAuthMechanisms;
         readonly ISet<String> _availableLocales;
         readonly String _virtualHost;
 
-        public HandshakeAgent(String virtualHost) {
+        public ConnectionAgent(String virtualHost) {
             _behaviour               = new Behavior(AwaitStart);
             _availableAuthMechanisms = new HashSet<String>();
             _availableLocales        = new HashSet<String>();
