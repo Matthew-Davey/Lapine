@@ -44,7 +44,16 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ExchangeDeclareOk : ICommand {
+    public sealed class ExchangeDeclareOk : ICommand, ISerializable {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0B);
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+            writer;
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDeclareOk result, out ReadOnlySpan<Byte> surplus) {
+            surplus = buffer;
+            result = new ExchangeDeclareOk();
+            return true;
+        }
     }
 }
