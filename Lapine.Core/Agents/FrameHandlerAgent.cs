@@ -90,6 +90,18 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x14, 0x14): { // ChannelFlow
+                        if (ChannelFlow.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
+                    case (0x14, 0x15): { // ChannelFlowOk
+                        if (ChannelFlowOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;

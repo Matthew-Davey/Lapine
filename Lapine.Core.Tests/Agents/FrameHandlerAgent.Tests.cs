@@ -167,5 +167,41 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesChannelFlowMethodFrame() {
+            var inbound = new ChannelFlow(
+                active: Random.Bool()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ChannelFlow;
+
+                Assert.Equal(expected: inbound.Active, actual: outbound.Active);
+            }
+            else {
+                // No `ChannelFlow` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
+
+        [Fact]
+        public void HandlesChannelFlowOkMethodFrame() {
+            var inbound = new ChannelFlowOk(
+                active: Random.Bool()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ChannelFlowOk;
+
+                Assert.Equal(expected: inbound.Active, actual: outbound.Active);
+            }
+            else {
+                // No `ChannelFlowOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }
