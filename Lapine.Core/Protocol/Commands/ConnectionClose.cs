@@ -21,7 +21,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteUInt16BE(FailingMethod.ClassId)
                 .WriteUInt16BE(FailingMethod.MethodId);
 
-        static public Boolean Deserialize(ReadOnlySpan<Byte> buffer, out ConnectionClose result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionClose result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var replyCode, out surplus) &&
                 surplus.ReadShortString(out var replyText, out surplus) &&
                 surplus.ReadUInt16BE(out var failingClassId, out surplus) &&

@@ -121,6 +121,28 @@ namespace Lapine.Agents {
         }
 
         [Fact]
+        public void HandlesConnectionCloseMethodFrame() {
+            var inbound = new ConnectionClose(
+                replyCode    : Random.UShort(),
+                replyText    : Random.Word(),
+                failingMethod: (Random.UShort(), Random.UShort())
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ConnectionClose;
+
+                Assert.Equal(expected: inbound.FailingMethod, actual: outbound.FailingMethod);
+                Assert.Equal(expected: inbound.ReplyCode, actual: outbound.ReplyCode);
+                Assert.Equal(expected: inbound.ReplyText, actual: outbound.ReplyText);
+            }
+            else {
+                // No `ConnectionClose` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
+
+        [Fact]
         public void HandlesConnectionCloseOkMethodFrame() {
             _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new ConnectionCloseOk())));
 

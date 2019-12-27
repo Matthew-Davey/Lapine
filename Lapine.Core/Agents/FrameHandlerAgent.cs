@@ -72,6 +72,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x0A, 0x32): { // ConnectionClose
+                        if (ConnectionClose.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                     case (0x0A, 0x33): { // ConnectionCloseOk
                         if (ConnectionCloseOk.Deserialize(in surplus, out var command, out surplus)) {
                             context.Send(_listener, command);
