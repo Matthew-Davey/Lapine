@@ -8,29 +8,42 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Bogus;
     using Proto;
+    using Proto.Mailbox;
     using Xunit;
 
     [Collection("Agents")]
     public class FrameHandlerAgentTests : Faker {
         readonly RootContext _context;
+        readonly ManualResetEventSlim _messageReceivedSignal;
+        readonly PID _listener;
         readonly PID _subject;
 
+        Object _outboundMessage;
+
         public FrameHandlerAgentTests() {
-            _context = new RootContext();
-            _subject = _context.Spawn(Props.FromProducer(() => new FrameHandlerAgent()));
+            _context               = new RootContext();
+            _messageReceivedSignal = new ManualResetEventSlim();
+
+            _listener = _context.Spawn(
+                Props.FromFunc(context => {
+                    switch (context.Message) {
+                        case SystemMessage _: {
+                            return Actor.Done;
+                        }
+                        default: {
+                            _outboundMessage = context.Message;
+                            _messageReceivedSignal.Set();
+                            return Actor.Done;
+                        }
+                    }
+                })
+            );
+            _subject = _context.Spawn(Props.FromProducer(() => new FrameHandlerAgent(_listener)));
         }
 
         [Fact]
         public void HandlesConnectionStartMethodFrame() {
-            var receivedCommand = default(ConnectionStart);
-            var receivedEvent = new ManualResetEventSlim();
-
-            var subscription = Actor.EventStream.Subscribe<ConnectionStart>(message => {
-                receivedCommand = message;
-                receivedEvent.Set();
-            });
-
-            var command = new ConnectionStart(
+            var inbound = new ConnectionStart(
                 version: (0, 9),
                 serverProperties: new Dictionary<String, Object> {
                     ["product"] = "RabbitMQ",
@@ -40,13 +53,15 @@ namespace Lapine.Agents {
                 locales: new [] { "en_US" }
             );
 
-            Actor.EventStream.Publish(new FrameReceived(RawFrame.Wrap(channel: 0, command)));
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
 
-            if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                Assert.Equal(expected: command.Locales.ToArray(), actual: receivedCommand.Locales.ToArray());
-                Assert.Equal(expected: command.Mechanisms.ToArray(), actual: receivedCommand.Mechanisms.ToArray());
-                Assert.Equal(expected: command.ServerProperties.ToArray(), actual: receivedCommand.ServerProperties.ToArray());
-                Assert.Equal(expected: command.Version, actual: receivedCommand.Version);
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ConnectionStart;
+
+                Assert.Equal(expected: inbound.Locales.ToArray(), actual: outbound.Locales.ToArray());
+                Assert.Equal(expected: inbound.Mechanisms.ToArray(), actual: outbound.Mechanisms.ToArray());
+                Assert.Equal(expected: inbound.ServerProperties.ToArray(), actual: outbound.ServerProperties.ToArray());
+                Assert.Equal(expected: inbound.Version, actual: outbound.Version);
             }
             else {
                 // No `ConnectionStart` command was handled within 100 millis...
@@ -56,20 +71,13 @@ namespace Lapine.Agents {
 
         [Fact]
         public void HandlesConnectionSecureMethodFrame() {
-            var receivedCommand = default(ConnectionSecure);
-            var receivedEvent = new ManualResetEventSlim();
+            var inbound = new ConnectionSecure(challenge: Random.Hash());
 
-            var subscription = Actor.EventStream.Subscribe<ConnectionSecure>(message => {
-                receivedCommand = message;
-                receivedEvent.Set();
-            });
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
 
-            var command = new ConnectionSecure(challenge: Random.Hash());
-
-            Actor.EventStream.Publish(new FrameReceived(RawFrame.Wrap(channel: 0, command)));
-
-            if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                Assert.Equal(expected: command.Challenge, actual: receivedCommand.Challenge);
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ConnectionSecure;
+                Assert.Equal(expected: inbound.Challenge, actual: outbound.Challenge);
             }
             else {
                 // No `ConnectionSecure` command was handled within 100 millis...
@@ -79,26 +87,19 @@ namespace Lapine.Agents {
 
         [Fact]
         public void HandlesConnectionTuneMethodFrame() {
-            var receivedCommand = default(ConnectionTune);
-            var receivedEvent = new ManualResetEventSlim();
-
-            var subscription = Actor.EventStream.Subscribe<ConnectionTune>(message => {
-                receivedCommand = message;
-                receivedEvent.Set();
-            });
-
-            var command = new ConnectionTune(
+            var inbound = new ConnectionTune(
                 channelMax: Random.UShort(),
                 frameMax  : Random.UInt(),
                 heartbeat : Random.UShort()
             );
 
-            Actor.EventStream.Publish(new FrameReceived(RawFrame.Wrap(channel: 0, command)));
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
 
-            if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                Assert.Equal(expected: command.ChannelMax, actual: receivedCommand.ChannelMax);
-                Assert.Equal(expected: command.FrameMax, actual: receivedCommand.FrameMax);
-                Assert.Equal(expected: command.Heartbeat, actual: receivedCommand.Heartbeat);
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ConnectionTune;
+                Assert.Equal(expected: inbound.ChannelMax, actual: outbound.ChannelMax);
+                Assert.Equal(expected: inbound.FrameMax, actual: outbound.FrameMax);
+                Assert.Equal(expected: inbound.Heartbeat, actual: outbound.Heartbeat);
             }
             else {
                 // No `ConnectionTune` command was handled within 100 millis...
@@ -108,13 +109,10 @@ namespace Lapine.Agents {
 
         [Fact]
         public void HandlesConnectionOpenOkMethodFrame() {
-            var receivedEvent = new ManualResetEventSlim();
-            var subscription  = Actor.EventStream.Subscribe<ConnectionOpenOk>(_ => receivedEvent.Set());
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new ConnectionOpenOk())));
 
-            Actor.EventStream.Publish(new FrameReceived(RawFrame.Wrap(channel: 0, new ConnectionOpenOk())));
-
-            if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                Assert.True(receivedEvent.IsSet);
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                Assert.True(_messageReceivedSignal.IsSet);
             }
             else {
                 // No `ConnectionOpenOk` command was handled within 100 millis...
@@ -124,13 +122,10 @@ namespace Lapine.Agents {
 
         [Fact]
         public void HandlesConnectionCloseOkMethodFrame() {
-            var receivedEvent = new ManualResetEventSlim();
-            var subscription = Actor.EventStream.Subscribe<ConnectionCloseOk>(_ => receivedEvent.Set());
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new ConnectionCloseOk())));
 
-            Actor.EventStream.Publish(new FrameReceived(RawFrame.Wrap(channel: 0, new ConnectionCloseOk())));
-
-            if (receivedEvent.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                Assert.True(receivedEvent.IsSet);
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                Assert.True(_messageReceivedSignal.IsSet);
             }
             else {
                 // No `ConnectionCloseOk` command was handled within 100 millis...

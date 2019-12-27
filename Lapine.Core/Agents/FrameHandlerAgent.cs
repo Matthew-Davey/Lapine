@@ -1,4 +1,5 @@
 namespace Lapine.Agents {
+    using System;
     using System.Threading.Tasks;
     using Lapine.Agents.Events;
     using Lapine.Protocol;
@@ -8,10 +9,13 @@ namespace Lapine.Agents {
     using static Proto.Actor;
 
     public class FrameHandlerAgent : IActor {
+        readonly PID _listener;
         readonly Behavior _behaviour;
 
-        public FrameHandlerAgent() =>
+        public FrameHandlerAgent(PID listener) {
+            _listener = listener ?? throw new ArgumentNullException(nameof(listener));
             _behaviour = new Behavior(Unstarted);
+        }
 
         public Task ReceiveAsync(IContext context) =>
             _behaviour.ReceiveAsync(context);
@@ -19,7 +23,6 @@ namespace Lapine.Agents {
         Task Unstarted(IContext context) {
             switch (context.Message) {
                 case Started _: {
-                    Actor.EventStream.Subscribe<FrameReceived>(message => context.Send(context.Self, message));
                     _behaviour.Become(Started);
                     return Done;
                 }
@@ -31,10 +34,10 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case FrameReceived message: {
                     return message.Frame.Type switch {
-                        FrameType.Method    => HandleMethodFrame(message.Frame),
-                        FrameType.Header    => HandleHeaderFrame(message.Frame),
-                        FrameType.Body      => HandleBodyFrame(message.Frame),
-                        FrameType.Heartbeat => HandleHeartbeatFrame(message.Frame),
+                        FrameType.Method    => HandleMethodFrame(in context, message.Frame),
+                        FrameType.Header    => HandleHeaderFrame(in context, message.Frame),
+                        FrameType.Body      => HandleBodyFrame(in context, message.Frame),
+                        FrameType.Heartbeat => HandleHeartbeatFrame(in context, message.Frame),
                         _                   => Done
                     };
                 }
@@ -42,36 +45,36 @@ namespace Lapine.Agents {
             return Done;
         }
 
-        Task HandleMethodFrame(in RawFrame frame) {
+        Task HandleMethodFrame(in IContext context, in RawFrame frame) {
             if (frame.Payload.Span.ReadMethodHeader(out var methodHeader, out var surplus)) {
                 switch (methodHeader) {
                     case (0x0A, 0x0A): { // ConnectionStart
                         if (ConnectionStart.Deserialize(in surplus, out var command, out surplus)) {
-                            Actor.EventStream.Publish(command);
+                            context.Send(_listener, command);
                         }
                         break;
                     }
                     case (0x0A, 0x14): { // ConnectionSecure
                         if (ConnectionSecure.Deserialize(in surplus, out var command, out surplus)) {
-                            Actor.EventStream.Publish(command);
+                            context.Send(_listener, command);
                         }
                         break;
                     }
                     case (0x0A, 0x1E): { // ConnectionTune
                         if (ConnectionTune.Deserialize(in surplus, out var command, out surplus)) {
-                            Actor.EventStream.Publish(command);
+                            context.Send(_listener, command);
                         }
                         break;
                     }
                     case (0x0A, 0x29): { // ConnectionOpenOk
                         if (ConnectionOpenOk.Deserialize(in surplus, out var command, out surplus)) {
-                            Actor.EventStream.Publish(command);
+                            context.Send(_listener, command);
                         }
                         break;
                     }
                     case (0x0A, 0x33): { // ConnectionCloseOk
                         if (ConnectionCloseOk.Deserialize(in surplus, out var command, out surplus)) {
-                            Actor.EventStream.Publish(command);
+                            context.Send(_listener, command);
                         }
                         break;
                     }
@@ -80,17 +83,17 @@ namespace Lapine.Agents {
             return Done;
         }
 
-        Task HandleHeaderFrame(in RawFrame frame) {
+        Task HandleHeaderFrame(in IContext context, in RawFrame frame) {
             // TODO: Handle header frame...
             return Done;
         }
 
-        Task HandleBodyFrame(in RawFrame frame) {
+        Task HandleBodyFrame(in IContext context, in RawFrame frame) {
             // TODO: Handle body frame...
             return Done;
         }
 
-        Task HandleHeartbeatFrame(in RawFrame frame) {
+        Task HandleHeartbeatFrame(in IContext context, in RawFrame frame) {
             // TODO: Handle heartbeat frame...
             return Done;
         }
