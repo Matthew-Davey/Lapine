@@ -203,5 +203,40 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesChannelCloseMethodFrame() {
+            var inbound = new ChannelClose(
+                replyCode    : Random.UShort(),
+                replyText    : Random.Word(),
+                failingMethod: (Random.UShort(), Random.UShort())
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as ChannelClose;
+
+                Assert.Equal(expected: inbound.FailingMethod, actual: outbound.FailingMethod);
+                Assert.Equal(expected: inbound.ReplyCode, actual: outbound.ReplyCode);
+                Assert.Equal(expected: inbound.ReplyText, actual: outbound.ReplyText);
+            }
+            else {
+                // No `ChannelClose` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
+
+        [Fact]
+        public void HandlesChannelCloseOkMethodFrame() {
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new ChannelCloseOk())));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                Assert.True(_messageReceivedSignal.IsSet);
+            }
+            else {
+                // No `ChannelCloseOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }

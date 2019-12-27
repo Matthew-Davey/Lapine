@@ -102,6 +102,18 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x14, 0x28): { // ChannelClose
+                        if (ChannelClose.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
+                    case (0x14, 0x29): { // ChannelCloseOk
+                        if (ChannelCloseOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
