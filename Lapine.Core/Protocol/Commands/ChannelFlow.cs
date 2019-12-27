@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ChannelFlow : ICommand, ISerializable {
+    public sealed class ChannelFlow : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x14);
 
         public Boolean Active { get; }
@@ -25,7 +25,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ChannelFlowOk : ICommand, ISerializable {
+    public sealed class ChannelFlowOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x15);
 
         public Boolean Active { get; }

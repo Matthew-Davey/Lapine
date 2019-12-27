@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicAck : ICommand, ISerializable {
+    public sealed class BasicAck : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x50);
 
         public UInt64 DeliveryTag { get; }

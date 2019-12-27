@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Collections.Generic;
 
-    public sealed class ExchangeDeclare : ICommand, ISerializable {
+    public sealed class ExchangeDeclare : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0A);
 
         public String ExchangeName { get; }
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ExchangeDeclareOk : ICommand, ISerializable {
+    public sealed class ExchangeDeclareOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

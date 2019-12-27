@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicReject : ICommand, ISerializable {
+    public sealed class BasicReject : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x5A);
 
         public UInt64 DeliveryTag { get; }

@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicQos : ICommand, ISerializable {
+    public sealed class BasicQos : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x0A);
 
         public UInt32 PrefetchSize { get; }
@@ -35,7 +35,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class BasicQosOk : ICommand, ISerializable {
+    public sealed class BasicQosOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

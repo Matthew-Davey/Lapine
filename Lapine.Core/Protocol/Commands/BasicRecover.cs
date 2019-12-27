@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicRecover : ICommand, ISerializable {
+    public sealed class BasicRecover : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x6E);
 
         public Boolean ReQueue { get; }
@@ -25,7 +25,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class BasicRecoverOk : ICommand, ISerializable {
+    public sealed class BasicRecoverOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x6F);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

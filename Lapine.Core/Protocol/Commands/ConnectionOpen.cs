@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ConnectionOpen : ICommand, ISerializable {
+    public sealed class ConnectionOpen : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x28);
 
         public String VirtualHost { get; }
@@ -25,7 +25,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionOpenOk : ICommand, ISerializable {
+    public sealed class ConnectionOpenOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x29);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

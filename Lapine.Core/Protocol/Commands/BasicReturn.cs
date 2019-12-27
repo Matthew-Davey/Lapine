@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicReturn : ICommand, ISerializable {
+    public sealed class BasicReturn : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x32);
 
         public UInt16 ReplyCode { get; }

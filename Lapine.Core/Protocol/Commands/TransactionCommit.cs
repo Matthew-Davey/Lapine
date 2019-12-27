@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class TransactionCommit : ICommand, ISerializable {
+    public sealed class TransactionCommit : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x5A, 0x14);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
@@ -14,7 +14,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class TransactionCommitOk : ICommand, ISerializable {
+    public sealed class TransactionCommitOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x5A, 0x15);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

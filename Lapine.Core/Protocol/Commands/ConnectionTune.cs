@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ConnectionTune : ICommand, ISerializable {
+    public sealed class ConnectionTune : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1E);
 
         public UInt16 ChannelMax { get; }
@@ -35,7 +35,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionTuneOk : ICommand, ISerializable {
+    public sealed class ConnectionTuneOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1F);
 
         public UInt16 ChannelMax { get; }
