@@ -9,6 +9,27 @@ namespace Lapine
     using static System.Text.Encoding;
 
     public static class BufferExtensions {
+        static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, out Boolean[] result, out ReadOnlySpan<Byte> surplus) {
+            if (buffer.Length < 1) {
+                result = default;
+                surplus = default;
+                return false;
+            }
+
+            result = new Boolean[8];
+
+            var bits = buffer[0];
+            var mask = 0x01;
+
+            for (var i = 0; i < 8; i++) {
+                result[i] = (bits & mask) != 0;
+                mask = mask << 1;
+            }
+
+            surplus = buffer.Slice(1);
+            return true;
+        }
+
         static public Boolean ReadBoolean(in this ReadOnlySpan<Byte> buffer, out Boolean result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.Length < 1) {
                 result  = default;
@@ -396,6 +417,34 @@ namespace Lapine
             result  = ReadUInt64BigEndian(buffer);
             surplus = buffer.Slice(sizeof(UInt64));
             return true;
+        }
+
+        static public IBufferWriter<Byte> WriteBits(this IBufferWriter<Byte> writer, params Boolean[] values) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (values is null)
+                throw new ArgumentNullException(nameof(values));
+
+            if (values.Length < 2)
+                throw new ArgumentException("Must have at least 2 bits to pack");
+
+            if (values.Length > 8)
+                throw new ArgumentException("Cannot pack more than 8 bits");
+
+            var result = (Byte)0;
+            var mask = (Byte)1;
+
+            for (var i = 0; i < values.Length; i++) {
+                if (values[i])
+                    result = (Byte)(result | mask);
+                mask = (Byte)(mask << 1);
+            }
+
+            var buffer = writer.GetSpan(1);
+            buffer[0] = result;
+            writer.Advance(1);
+            return writer;
         }
 
         static public IBufferWriter<Byte> WriteBoolean(this IBufferWriter<Byte> writer, in Boolean value) {
