@@ -264,5 +264,27 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesQueueDeclareOkMethodFrame() {
+            var inbound = new QueueDeclareOk(
+                queueName    : Random.Word(),
+                messageCount : Random.UInt(),
+                consumerCount: Random.UInt()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as QueueDeclareOk;
+
+                Assert.Equal(expected: inbound.ConsumerCount, actual: outbound.ConsumerCount);
+                Assert.Equal(expected: inbound.MessageCount, actual: outbound.MessageCount);
+                Assert.Equal(expected: inbound.QueueName, actual: outbound.QueueName);
+            }
+            else {
+                // No `QueueDeclareOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }
