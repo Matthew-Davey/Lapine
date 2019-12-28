@@ -299,5 +299,36 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesQueueUnbindOkMethodFrame() {
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new QueueUnbindOk())));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                Assert.True(_messageReceivedSignal.IsSet);
+            }
+            else {
+                // No `QueueUnbindOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
+
+        [Fact]
+        public void HandlesQueuePurgeOkMethodFrame() {
+            var inbound = new QueuePurgeOk(
+                messageCount: Random.UInt()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as QueuePurgeOk;
+
+                Assert.Equal(expected: inbound.MessageCount, actual: outbound.MessageCount);
+            }
+            else {
+                // No `QueuePurgeOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }

@@ -138,6 +138,18 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x32, 0x33): { // QueueUnbindOk
+                        if (QueueUnbindOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
+                    case (0x32, 0x1F): { // QueuePurgeOk
+                        if (QueuePurgeOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
