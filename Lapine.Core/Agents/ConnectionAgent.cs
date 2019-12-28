@@ -1,21 +1,21 @@
 namespace Lapine.Agents {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
+    using Lapine.Agents.Events;
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Proto.Actor;
+
     public class ConnectionAgent : IActor {
         readonly Behavior _behaviour;
-        readonly ISet<String> _availableAuthMechanisms;
-        readonly ISet<String> _availableLocales;
         readonly String _virtualHost;
 
         public ConnectionAgent(String virtualHost) {
-            _behaviour               = new Behavior(AwaitStart);
-            _availableAuthMechanisms = new HashSet<String>();
-            _availableLocales        = new HashSet<String>();
-            _virtualHost             = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
+            _behaviour   = new Behavior(AwaitStart);
+            _virtualHost = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
         }
 
         public Task ReceiveAsync(IContext context) =>
@@ -24,60 +24,75 @@ namespace Lapine.Agents {
         Task AwaitStart(IContext context) {
             switch (context.Message) {
                 case Started _: {
-                    // TODO: Send protocol header...
                     _behaviour.Become(AwaitConnectionStart);
-                    return Actor.Done;
+                    return Done;
                 }
-                default: return Actor.Done;
+                default: return Done;
             }
         }
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
-                // TODO: case ProtocolHeader = server reject
                 case ConnectionStart message: {
                     // TODO: Verify protocol version compatibility...
-                    _availableAuthMechanisms.AddRange(message.Mechanisms);
-                    _availableLocales.AddRange(message.Locales);
-                    // TODO: Send ConnectionStartOk...
-                    _behaviour.Become(AwaitAuthentication);
-                    return Actor.Done;
+                    context.Send(context.Parent, new ConnectionStartOk(
+                        peerProperties: new Dictionary<String, Object>(), // TODO: populate peer properties
+                        mechanism     : message.Mechanisms.First(), // TODO: select best auth mechanism
+                        response      : String.Empty,
+                        locale        : message.Locales.First() // TODO: select best locale
+                    ));
+                    _behaviour.Become(AwaitConnectionSecure);
+                    return Done;
                 }
-                default: return Actor.Done;
+                default: return Done;
             }
         }
 
-        Task AwaitAuthentication(IContext context) {
+        Task AwaitConnectionSecure(IContext context) {
             switch (context.Message) {
                 case ConnectionSecure message: {
-                    // TODO: Send ConnectionSecureOk...
-                    _behaviour.Become(AwaitTune);
-                    return Actor.Done;
+                    context.Send(context.Parent, new ConnectionSecureOk(
+                        response: "guest\0guest\0" // TODO: derive proper auth response
+                    ));
+                    _behaviour.Become(AwaitConnectionTune);
+                    return Done;
                 }
-                default: return Actor.Done;
+                default: return Done;
             }
         }
 
-        Task AwaitTune(IContext context) {
+        Task AwaitConnectionTune(IContext context) {
             switch (context.Message) {
-                // TODO: case ConnectionSecure = auth failure...
-                case ConnectionTune message: {
-                    // TODO: Send ConnectionTuneOk...
-                    // TODO: Send ConnectionOpen...
-                    _behaviour.Become(AwaitConnectionOpen);
-                    return Actor.Done;
+                case ConnectionSecure _: {
+                    context.Send(context.Parent, new AuthenticationFailed());
+                    context.Self.Stop();
+                    return Done;
                 }
-                default: return Actor.Done;
+                case ConnectionTune message: {
+                    // TODO: negotiate tuning params
+                    context.Send(context.Parent, new ConnectionTuneOk(
+                        channelMax: message.ChannelMax,
+                        frameMax  : message.FrameMax,
+                        heartbeat : message.Heartbeat
+                    ));
+                    context.Send(context.Parent, new ConnectionOpen(
+                        virtualHost: _virtualHost
+                    ));
+                    _behaviour.Become(AwaitConnectionOpenOk);
+                    return Done;
+                }
+                default: return Done;
             }
         }
 
-        Task AwaitConnectionOpen(IContext context) {
+        Task AwaitConnectionOpenOk(IContext context) {
             switch (context.Message) {
                 case ConnectionOpenOk message: {
-                    // TODO: complete handshake...
-                    return Actor.Done;
+                    context.Send(context.Parent, new HandshakeCompleted());
+                    context.Self.Stop();
+                    return Done;
                 }
-                default: return Actor.Done;
+                default: return Done;
             }
         }
     }
