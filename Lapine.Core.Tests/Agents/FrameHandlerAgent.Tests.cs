@@ -421,5 +421,29 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesBasicDeliverMethodFrame() {
+            var inbound = new BasicDeliver(
+                consumerTag : Random.Word(),
+                deliveryTag : Random.ULong(),
+                redelivered : Random.Bool(),
+                exchangeName: Random.Word()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as BasicDeliver;
+
+                Assert.Equal(expected: inbound.ConsumerTag, actual: outbound.ConsumerTag);
+                Assert.Equal(expected: inbound.DeliveryTag, actual: outbound.DeliveryTag);
+                Assert.Equal(expected: inbound.ExchangeName, actual: outbound.ExchangeName);
+                Assert.Equal(expected: inbound.Redelivered, actual: outbound.Redelivered);
+            }
+            else {
+                // No `BasicDeliver` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }
