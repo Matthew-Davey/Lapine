@@ -379,5 +379,23 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesBasicCancelOkMethodFrame() {
+            var inbound = new BasicCancelOk(
+                consumerTag: Random.Word()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as BasicCancelOk;
+
+                Assert.Equal(expected: inbound.ConsumerTag, actual: outbound.ConsumerTag);
+            }
+            else {
+                // No `BasicCancelOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }

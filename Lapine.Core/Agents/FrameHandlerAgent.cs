@@ -168,6 +168,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x3C, 0x1F): { // BasicCancelOk
+                        if (BasicCancelOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
