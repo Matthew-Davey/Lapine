@@ -40,16 +40,18 @@ namespace Lapine.Agents {
                     _socket.Connect(message.IpAddress, message.Port);
 
                     // Spawn channel zero...
-                    var channel0 = context.Spawn(
+                    _channels.Add(0, context.Spawn(
                         Props.FromProducer(() => new ChannelAgent())
                              .WithChildSupervisorStrategy(new AlwaysRestartStrategy())
                              .WithSenderMiddleware(FramingMiddleware.WrapCommands(channel: 0))
                              .WithReceiveMiddleware(FramingMiddleware.UnwrapFrames(channel: 0))
-                    );
-                    _channels.Add(0, channel0);
+                    ));
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
+
+                    // Transmit protocol header to start handshake process...
+                    context.Send(context.Self, ProtocolHeader.Default);
                     return Done;
                 }
                 default: return Done;
