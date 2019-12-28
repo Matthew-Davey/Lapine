@@ -150,6 +150,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x32, 0x29): { // QueueDeleteOk
+                        if (QueueDeleteOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
