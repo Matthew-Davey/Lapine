@@ -132,6 +132,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x32, 0x15): { // QueueBindOk
+                        if (QueueBindOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
