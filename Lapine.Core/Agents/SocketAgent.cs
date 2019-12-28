@@ -7,6 +7,7 @@ namespace Lapine.Agents {
     using System.Threading.Tasks;
     using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
+    using Lapine.Agents.Middleware;
     using Lapine.Protocol;
     using Proto;
 
@@ -40,8 +41,10 @@ namespace Lapine.Agents {
 
                     // Spawn channel zero...
                     var channel0 = context.Spawn(
-                        Props.FromProducer(() => new ChannelAgent(0))
+                        Props.FromProducer(() => new ChannelAgent())
                              .WithChildSupervisorStrategy(new AlwaysRestartStrategy())
+                             .WithSenderMiddleware(FramingMiddleware.WrapCommands(channel: 0))
+                             .WithReceiveMiddleware(FramingMiddleware.UnwrapFrames(channel: 0))
                     );
                     _channels.Add(0, channel0);
 
