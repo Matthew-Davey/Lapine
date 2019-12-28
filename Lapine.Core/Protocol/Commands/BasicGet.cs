@@ -31,18 +31,6 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class BasicGetEmpty : ICommand {
-        public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x48);
-
-        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
-
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicGetEmpty result, out ReadOnlySpan<Byte> surplus) {
-            surplus = buffer;
-            result  = new BasicGetEmpty();
-            return true;
-        }
-    }
-
     public sealed class BasicGetOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x47);
 
@@ -81,6 +69,18 @@ namespace Lapine.Protocol.Commands {
                 result = default;
                 return false;
             }
+        }
+    }
+
+    public sealed class BasicGetEmpty : ICommand {
+        public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x48);
+
+        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
+
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicGetEmpty result, out ReadOnlySpan<Byte> surplus) {
+            surplus = buffer;
+            result  = new BasicGetEmpty();
+            return true;
         }
     }
 }
