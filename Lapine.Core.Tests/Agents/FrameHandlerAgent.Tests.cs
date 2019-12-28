@@ -523,5 +523,18 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesTransactionRollbackOkMethodFrame() {
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, new TransactionRollbackOk())));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                Assert.True(_messageReceivedSignal.IsSet);
+            }
+            else {
+                // No `TransactionRollbackOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }
