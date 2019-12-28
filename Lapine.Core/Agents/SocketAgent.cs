@@ -1,6 +1,7 @@
 namespace Lapine.Agents {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
     using System.Net.Sockets;
     using System.Threading;
     using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace Lapine.Agents {
         readonly Memory<Byte> _frameBuffer;
         readonly CancellationTokenSource _cancellationTokenSource;
         readonly Thread _pollThread;
+        readonly IDictionary<UInt16, PID> _channels;
         UInt16 _frameBufferSize = 0;
 
         public SocketAgent() {
@@ -25,6 +27,7 @@ namespace Lapine.Agents {
             _frameBuffer             = new Byte[1024 * 1024 * 8];
             _cancellationTokenSource = new CancellationTokenSource();
             _pollThread              = new Thread(PollThreadMain);
+            _channels                = new Dictionary<UInt16, PID>();
         }
 
         public Task ReceiveAsync(IContext context) =>
@@ -34,8 +37,15 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case SocketConnect message: {
                     _socket.Connect(message.IpAddress, message.Port);
-                    _pollThread.Start(_cancellationTokenSource.Token);
 
+                    // Spawn channel zero...
+                    var channel0 = context.Spawn(
+                        Props.FromProducer(() => new ChannelAgent(0))
+                             .WithChildSupervisorStrategy(new AlwaysRestartStrategy())
+                    );
+                    _channels.Add(0, channel0);
+
+                    _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
                     return Done;
                 }
@@ -46,6 +56,7 @@ namespace Lapine.Agents {
         Task Connected(IContext context) {
             switch (context.Message) {
                 case SocketTransmit message: {
+                    // TODO: Use buffer pool...
                     var buffer = new ArrayBufferWriter<Byte>(512); // TODO: MIN FRAME SIZE?
                     message.Item.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);
@@ -65,7 +76,7 @@ namespace Lapine.Agents {
         Task Stopped(IContext _) => Done;
 
         void PollThreadMain(Object state) {
-            var cancellationToken = (CancellationToken)state;
+            var (cancellationToken, context) = ((CancellationToken, IContext))state;
 
             try {
                 while (cancellationToken.IsCancellationRequested == false) {
@@ -75,7 +86,9 @@ namespace Lapine.Agents {
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
-                            Actor.EventStream.Publish(new FrameReceived(frame));
+                            if (_channels.ContainsKey(frame.Channel)) {
+                                context.Send(_channels[frame.Channel], new FrameReceived(frame));
+                            }
 
                             var consumed = _frameBufferSize - surplus.Length;
                             _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
