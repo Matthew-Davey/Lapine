@@ -120,6 +120,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x28, 0x15): { // ExchangeDeletedOk
+                        if (ExchangeDeleteOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
