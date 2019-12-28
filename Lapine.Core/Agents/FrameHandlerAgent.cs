@@ -162,6 +162,12 @@ namespace Lapine.Agents {
                         }
                         break;
                     }
+                    case (0x3C, 0x15): { // BasicConsumeOk
+                        if (BasicConsumeOk.Deserialize(in surplus, out var command, out surplus)) {
+                            context.Send(_listener, command);
+                        }
+                        break;
+                    }
                 }
             }
             return Done;
