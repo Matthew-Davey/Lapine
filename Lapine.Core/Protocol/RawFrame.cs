@@ -24,6 +24,8 @@ namespace Lapine.Protocol {
         public UInt32 Size => (UInt32)_payload.Length;
         public ReadOnlyMemory<Byte> Payload => _payload;
 
+        public UInt32 SerializedSize => 7 + Size + 1; // header + payload + frame-terminator...
+
         static public RawFrame Wrap(in UInt16 channel, in ICommand command) {
             var payloadWriter = new ArrayBufferWriter<Byte>();
             payloadWriter

@@ -55,10 +55,15 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case SocketTransmit message: {
-                    // TODO: Use buffer pool...
-                    var buffer = new ArrayBufferWriter<Byte>(512); // TODO: MIN FRAME SIZE?
-                    message.Item.Serialize(buffer);
+                case ProtocolHeader header: {
+                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: 8);
+                    header.Serialize(buffer);
+                    _socket.Send(buffer.WrittenSpan);
+                    return Done;
+                }
+                case RawFrame frame: {
+                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
+                    frame.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);
                     return Done;
                 }

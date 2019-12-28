@@ -32,17 +32,15 @@ namespace Lapine.Agents {
 
         [Fact]
         public void TransmitsData() {
-            var message = ProtocolHeader.Default;
-
             _context.Send(_subject, new SocketConnect(IPAddress.Loopback, 5678));
-            _context.Send(_subject, new SocketTransmit(message));
+            _context.Send(_subject, ProtocolHeader.Default);
 
             var socket = _listener.AcceptSocket();
             var buffer = new Byte[8];
             socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
             ProtocolHeader.Deserialize(buffer, out var result, out var _);
 
-            Assert.Equal(expected: message, actual: result);
+            Assert.Equal(expected: ProtocolHeader.Default, actual: result);
         }
 
         public void Dispose() {
