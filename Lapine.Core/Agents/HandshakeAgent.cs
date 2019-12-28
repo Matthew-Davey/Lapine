@@ -9,11 +9,11 @@ namespace Lapine.Agents {
 
     using static Proto.Actor;
 
-    public class ConnectionAgent : IActor {
+    public class HandshakeAgent : IActor {
         readonly Behavior _behaviour;
         readonly String _virtualHost;
 
-        public ConnectionAgent(String virtualHost) {
+        public HandshakeAgent(String virtualHost) {
             _behaviour   = new Behavior(AwaitStart);
             _virtualHost = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
         }
