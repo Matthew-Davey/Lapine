@@ -445,5 +445,31 @@ namespace Lapine.Agents {
                 throw new TimeoutException("Timeout occurred before command was handled");
             }
         }
+
+        [Fact]
+        public void HandlesBasicGetOkMethodFrame() {
+            var inbound = new BasicGetOk(
+                deliveryTag : Random.ULong(),
+                redelivered : Random.Bool(),
+                exchangeName: Random.Word(),
+                routingKey  : Random.Word(),
+                messageCount: Random.UInt()
+            );
+            _context.Send(_subject, new FrameReceived(RawFrame.Wrap(channel: 0, inbound)));
+
+            if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
+                var outbound = _outboundMessage as BasicGetOk;
+
+                Assert.Equal(expected: inbound.DeliveryTag, actual: outbound.DeliveryTag);
+                Assert.Equal(expected: inbound.ExchangeName, actual: outbound.ExchangeName);
+                Assert.Equal(expected: inbound.MessageCount, actual: outbound.MessageCount);
+                Assert.Equal(expected: inbound.Redelivered, actual: outbound.Redelivered);
+                Assert.Equal(expected: inbound.RoutingKey, actual: outbound.RoutingKey);
+            }
+            else {
+                // No `BasicGetOk` command was handled within 100 millis...
+                throw new TimeoutException("Timeout occurred before command was handled");
+            }
+        }
     }
 }
