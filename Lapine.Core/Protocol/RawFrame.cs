@@ -24,7 +24,7 @@ namespace Lapine.Protocol {
         public UInt32 Size => (UInt32)_payload.Length;
         public ReadOnlyMemory<Byte> Payload => _payload;
 
-        static public RawFrame Wrap<T>(in UInt16 channel, in T command) where T : ICommand, ISerializable {
+        static public RawFrame Wrap(in UInt16 channel, in ICommand command) {
             var payloadWriter = new ArrayBufferWriter<Byte>();
             payloadWriter
                 .WriteUInt16BE(command.CommandId.ClassId)
