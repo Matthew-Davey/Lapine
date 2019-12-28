@@ -6,7 +6,6 @@ namespace Lapine.Agents {
     using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Agents.Commands;
-    using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
     using Proto;
@@ -97,7 +96,7 @@ namespace Lapine.Agents {
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
                             if (_channels.ContainsKey(frame.Channel)) {
-                                context.Send(_channels[frame.Channel], new FrameReceived(frame));
+                                context.Send(_channels[frame.Channel], frame);
                             }
 
                             var consumed = _frameBufferSize - surplus.Length;
