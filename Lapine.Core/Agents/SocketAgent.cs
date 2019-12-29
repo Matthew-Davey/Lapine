@@ -50,8 +50,8 @@ namespace Lapine.Agents {
                     // Spawn channel zero...
                     _channels.Add(0, context.SpawnNamed(
                         Props.FromProducer(() => new ChannelAgent())
-                            .WithSenderMiddleware(FramingMiddleware.WrapCommands(channel: 0))
-                            .WithReceiveMiddleware(FramingMiddleware.UnwrapFrames(channel: 0))
+                            .WithSenderMiddleware(FramingMiddleware.WrapCommandsFor(target: context.Self, channel: 0))
+                            .WithReceiveMiddleware(FramingMiddleware.UnwrapMethodFrames())
                             .WithContextDecorator(context => new LoggingContextDecorator(context)),
                         "chan0"
                     ));
