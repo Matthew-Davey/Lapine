@@ -37,22 +37,9 @@ namespace Lapine.Agents {
                     // TODO: Verify protocol version compatibility...
                     context.Send(context.Parent, new ConnectionStartOk(
                         peerProperties: new Dictionary<String, Object>(), // TODO: populate peer properties
-                        mechanism     : message.Mechanisms.First(), // TODO: select best auth mechanism
-                        response      : String.Empty,
-                        locale        : message.Locales.First() // TODO: select best locale
-                    ));
-                    _behaviour.Become(AwaitConnectionSecure);
-                    return Done;
-                }
-                default: return Done;
-            }
-        }
-
-        Task AwaitConnectionSecure(IContext context) {
-            switch (context.Message) {
-                case ConnectionSecure message: {
-                    context.Send(context.Parent, new ConnectionSecureOk(
-                        response: "guest\0guest\0" // TODO: derive proper auth response
+                        mechanism     : "PLAIN",
+                        response      : "\0guest\0guest",
+                        locale        : "en_US"
                     ));
                     _behaviour.Become(AwaitConnectionTune);
                     return Done;
@@ -89,7 +76,6 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case ConnectionOpenOk message: {
                     context.Send(context.Parent, new HandshakeCompleted());
-                    context.Self.Stop();
                     return Done;
                 }
                 default: return Done;
