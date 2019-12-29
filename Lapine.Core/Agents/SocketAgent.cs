@@ -11,6 +11,7 @@ namespace Lapine.Agents {
     using Microsoft.Extensions.Logging;
     using Proto;
 
+    using static Lapine.Log;
     using static Proto.Actor;
 
     public class SocketAgent : IActor {
@@ -24,7 +25,7 @@ namespace Lapine.Agents {
         UInt16 _frameBufferSize = 0;
 
         public SocketAgent() {
-            _log                     = Lapine.Log.CreateLogger(GetType());
+            _log                     = CreateLogger(GetType());
             _behaviour               = new Behavior(Disconnected);
             _socket                  = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _frameBuffer             = new Byte[1024 * 1024 * 8];
@@ -39,9 +40,11 @@ namespace Lapine.Agents {
         Task Disconnected(IContext context) {
             switch (context.Message) {
                 case SocketConnect message: {
-                    _socket.Connect(message.IpAddress, message.Port);
+                    _log.LogInformation("Attempting to connect to {endpoint}:{port}", message.Endpoint.Address, message.Endpoint.Port);
 
-                    _log.LogInformation("Connection estabished to {endpoint}:{port}", message.IpAddress, message.Port);
+                    _socket.Connect(message.Endpoint);
+
+                    _log.LogInformation("Connection estabished");
 
                     // Spawn channel zero...
                     _channels.Add(0, context.SpawnNamed(

@@ -24,7 +24,7 @@ namespace Lapine.Agents {
 
         [Fact]
         public void EstablishesConnection() {
-            _context.Send(_subject, new SocketConnect(IPAddress.Loopback, 5678));
+            _context.Send(_subject, new SocketConnect(new IPEndPoint(IPAddress.Loopback, 5678)));
 
             var socket = _listener.AcceptSocket();
             Assert.True(socket.Connected);
@@ -32,7 +32,7 @@ namespace Lapine.Agents {
 
         [Fact]
         public void TransmitsData() {
-            _context.Send(_subject, new SocketConnect(IPAddress.Loopback, 5678));
+            _context.Send(_subject, new SocketConnect(new IPEndPoint(IPAddress.Loopback, 5678)));
             _context.Send(_subject, ProtocolHeader.Default);
 
             var socket = _listener.AcceptSocket();
