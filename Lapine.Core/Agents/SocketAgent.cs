@@ -6,6 +6,7 @@ namespace Lapine.Agents {
     using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Agents.Commands;
+    using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
     using Microsoft.Extensions.Logging;
@@ -57,6 +58,8 @@ namespace Lapine.Agents {
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
+
+                    context.Send(context.Parent, new SocketConnected());
 
                     // Transmit protocol header to start handshake process...
                     _log.LogDebug("Sending protocol header");
