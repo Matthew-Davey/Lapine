@@ -583,7 +583,7 @@ namespace Lapine
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
 
-            return writer.WriteUInt32BE((UInt32)value.Length)
+            return writer.WriteUInt32BE((UInt32)UTF8.GetByteCount(value))
                 .WriteBytes(UTF8.GetBytes(value));
         }
 
@@ -604,7 +604,7 @@ namespace Lapine
             if (value.Length > Byte.MaxValue)
                 throw new ArgumentException("Value is too long to be encoded as a short string", nameof(value));
 
-            return writer.WriteUInt8((Byte)value.Length)
+            return writer.WriteUInt8((Byte)UTF8.GetByteCount(value))
                 .WriteBytes(UTF8.GetBytes(value));
         }
 
