@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Lapine.Core.Tests/Lapine.Core.Tests.csproj",
+                "${workspaceFolder}/Lapine.Workbench/Lapine.Workbench.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/Lapine.Core.Tests/Lapine.Core.Tests.csproj",
+                "${workspaceFolder}/Lapine.Workbench/Lapine.Workbench.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -32,7 +32,7 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/Lapine.Core.Tests/Lapine.Core.Tests.csproj",
+                "${workspaceFolder}/Lapine.Workbench/Lapine.Workbench.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
