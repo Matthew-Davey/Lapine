@@ -15,42 +15,42 @@ namespace Lapine.Agents.Middleware {
         }
 
         public override void Forward(PID target) {
-            _log.Log(_level, "Agent {agent} forwarding message to {target}", Self, target);
+            _log.Log(_level, "Agent {agent} forwarding `{messageType}` to {target}", Self.ToShortString(), Message.GetType(), target.ToShortString());
             base.Forward(target);
         }
 
         public override Task Receive(MessageEnvelope envelope) {
-            _log.Log(_level, "Agent {agent} receiving message envelope from {sender} with message of type '{messageType}'", Self, envelope.Sender, envelope.Message.GetType());
+            _log.Log(_level, "Agent {agent} receiving `{messageType}`", Self.ToShortString(), envelope.Message.GetType());
             return base.Receive(envelope);
         }
 
         public override void Request(PID target, Object message) {
-            _log.Log(_level, "Agent {agent} sending request message of type '{messageType}' to {target}", Self, message.GetType(), target);
+            _log.Log(_level, "Agent {agent} sending request message `{messageType}` to {target}", Self.ToShortString(), message.GetType(), target.ToShortString());
             base.Request(target, message);
         }
 
         public override void Respond(Object message) {
-            _log.Log(_level, "Agent {agent} responding to request message with reply of type '{messageType}'", Self, message.GetType());
+            _log.Log(_level, "Agent {agent} responding to request message with reply `{messageType}`", Self.ToShortString(), message.GetType());
             base.Respond(message);
         }
 
         public override void Send(PID target, Object message) {
-            _log.Log(_level, "Agent {agent} sending message '{message}' to {target}", Self, message, target);
+            _log.Log(_level, "Agent {agent} sending `{messageType}` to {target}", Self.ToShortString(), message.GetType(), target.ToShortString());
             base.Send(target, message);
         }
 
         public override PID Spawn(Props props) {
-            _log.Log(_level, "Agent {agent} spawning child agent", Self);
+            _log.Log(_level, "Agent {agent} spawning child agent", Self.ToShortString());
             return base.Spawn(props);
         }
 
         public override PID SpawnNamed(Props props, String name) {
-            _log.Log(_level, "Agent {agent} spawning child agent with name '{child}'", Self, name);
+            _log.Log(_level, "Agent {agent} spawning child agent with name `{child}`", Self.ToShortString(), name);
             return base.SpawnNamed(props, name);
         }
 
         public override PID SpawnPrefix(Props props, String prefix) {
-            _log.Log(_level, "Agent {agent} spawning child agent with prefix '{prefix}'", Self, prefix);
+            _log.Log(_level, "Agent {agent} spawning child agent with prefix `{prefix}`", Self.ToShortString(), prefix);
             return base.SpawnPrefix(props, prefix);
         }
     }
