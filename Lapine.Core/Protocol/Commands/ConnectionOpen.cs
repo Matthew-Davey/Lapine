@@ -11,10 +11,15 @@ namespace Lapine.Protocol.Commands {
             VirtualHost = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteShortString(VirtualHost);
+            writer.WriteShortString(VirtualHost)
+                .WriteShortString(String.Empty) // Deprecated 'capabilities' field...
+                .WriteBoolean(false); // Deprecated 'insist' field...
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionOpen result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var vhost, out surplus)) {
+            if (buffer.ReadShortString(out var vhost, out surplus) &&
+                surplus.ReadShortString(out var reserved1, out surplus) &&
+                surplus.ReadBoolean(out var reserved2, out surplus))
+            {
                 result = new ConnectionOpen(vhost);
                 return true;
             }
