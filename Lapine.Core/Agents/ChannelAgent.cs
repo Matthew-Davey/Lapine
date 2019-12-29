@@ -56,30 +56,15 @@ namespace Lapine.Agents {
 
         Task AwaitHandshake(IContext context) {
             switch (context.Message) {
-                case ConnectionStartOk _: {
-                    context.Forward(context.Parent);
-                    return Done;
-                }
-                case ConnectionSecure _: {
-                    context.Forward(_handshakeAgent);
-                    return Done;
-                }
-                case ConnectionSecureOk _: {
-                    context.Forward(context.Parent);
-                    return Done;
-                }
-                case ConnectionTune _: {
-                    context.Forward(_handshakeAgent);
-                    return Done;
-                }
-                case ConnectionTuneOk _: {
-                    context.Forward(context.Parent);
-                    return Done;
-                }
+                case ConnectionStartOk _:
+                case ConnectionSecureOk _:
+                case ConnectionTuneOk _:
                 case ConnectionOpen _: {
                     context.Forward(context.Parent);
                     return Done;
                 }
+                case ConnectionSecure _:
+                case ConnectionTune _:
                 case ConnectionOpenOk _: {
                     context.Forward(_handshakeAgent);
                     return Done;
