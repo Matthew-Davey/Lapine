@@ -8,11 +8,13 @@ namespace Lapine.Agents {
     using Lapine.Agents.Commands;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
+    using Microsoft.Extensions.Logging;
     using Proto;
 
     using static Proto.Actor;
 
     public class SocketAgent : IActor {
+        readonly ILogger _log;
         readonly Behavior _behaviour;
         readonly Socket _socket;
         readonly Memory<Byte> _frameBuffer;
@@ -22,6 +24,7 @@ namespace Lapine.Agents {
         UInt16 _frameBufferSize = 0;
 
         public SocketAgent() {
+            _log                     = Lapine.Log.CreateLogger(GetType());
             _behaviour               = new Behavior(Disconnected);
             _socket                  = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _frameBuffer             = new Byte[1024 * 1024 * 8];
@@ -38,19 +41,26 @@ namespace Lapine.Agents {
                 case SocketConnect message: {
                     _socket.Connect(message.IpAddress, message.Port);
 
+                    _log.LogInformation("Connection estabished to {endpoint}:{port}", message.IpAddress, message.Port);
+
                     // Spawn channel zero...
-                    _channels.Add(0, context.Spawn(
+                    _channels.Add(0, context.SpawnNamed(
                         Props.FromProducer(() => new ChannelAgent())
-                             .WithChildSupervisorStrategy(new AlwaysRestartStrategy())
-                             .WithSenderMiddleware(FramingMiddleware.WrapCommands(channel: 0))
-                             .WithReceiveMiddleware(FramingMiddleware.UnwrapFrames(channel: 0))
+                            .WithSenderMiddleware(FramingMiddleware.WrapCommands(channel: 0))
+                            .WithReceiveMiddleware(FramingMiddleware.UnwrapFrames(channel: 0))
+                            .WithContextDecorator(context => new LoggingContextDecorator(context)),
+                        "chan0"
                     ));
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
 
                     // Transmit protocol header to start handshake process...
-                    context.Send(context.Self, ProtocolHeader.Default);
+                    _log.LogDebug("Sending protocol header");
+                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: 8);
+                    ProtocolHeader.Default.Serialize(buffer);
+                    _socket.Send(buffer.WrittenSpan);
+                    _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
                     return Done;
                 }
                 default: return Done;
@@ -59,16 +69,11 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case ProtocolHeader header: {
-                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: 8);
-                    header.Serialize(buffer);
-                    _socket.Send(buffer.WrittenSpan);
-                    return Done;
-                }
                 case RawFrame frame: {
                     var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
                     frame.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);
+                    _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
                     return Done;
                 }
                 case Stopping _: {
@@ -92,6 +97,8 @@ namespace Lapine.Agents {
                     var bytesReceived = _socket.Receive(_frameBuffer.Slice(_frameBufferSize).Span);
 
                     if (bytesReceived > 0) {
+                        _log.LogDebug("Received {bytes} bytes", bytesReceived);
+
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
