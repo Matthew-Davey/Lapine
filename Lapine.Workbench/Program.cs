@@ -14,7 +14,6 @@
                 config.AddConsole();
                 config.SetMinimumLevel(LogLevel.Debug);
             });
-            Proto.Log.SetLoggerFactory(Lapine.Log.LoggerFactory);
 
             var resetEvent = new ManualResetEventSlim();
 
@@ -24,13 +23,19 @@
             };
 
             var context = new RootContext();
-            var socketAgent = context.SpawnNamed(
-                Props.FromProducer(() => new SocketAgent())
-                    .WithContextDecorator(context => new LoggingContextDecorator(context)),
-                "socket"
+            var connectionConfiguration = new ConnectionConfiguration(
+                endpoints:                 new [] { new IPEndPoint(IPAddress.Loopback, 6572), new IPEndPoint(IPAddress.Loopback, 5672) },
+                endpointSelectionStrategy: new InOrderEndpointSelectionStrategy()
             );
 
-            context.Send(socketAgent, new SocketConnect(IPAddress.Loopback, 5672));
+            var client = context.SpawnNamed(
+                name: "amqp-client",
+                props: Props.FromProducer(() => new AmqpClientAgent(connectionConfiguration))
+                    .WithChildSupervisorStrategy(new AllForOneStrategy((pid, reason) => SupervisorDirective.Stop, 1, TimeSpan.FromSeconds(1)))
+                    .WithContextDecorator(LoggingContextDecorator.Create)
+            );
+
+            context.Send(client, new Connect());
 
             resetEvent.Wait();
         }

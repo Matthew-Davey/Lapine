@@ -14,6 +14,9 @@ namespace Lapine.Agents.Middleware {
             _level = level;
         }
 
+        static public ActorContextDecorator Create(IContext context) =>
+            new LoggingContextDecorator(context);
+
         public override void Forward(PID target) {
             _log.Log(_level, "Agent {agent} forwarding `{messageType}` to {target}", Self.ToShortString(), Message.GetType(), target.ToShortString());
             base.Forward(target);
