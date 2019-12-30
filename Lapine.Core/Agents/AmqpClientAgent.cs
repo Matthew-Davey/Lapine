@@ -5,8 +5,10 @@ namespace Lapine.Agents {
     using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
+    using Lapine.Protocol;
     using Proto;
 
+    using static Lapine.Direction;
     using static Proto.Actor;
 
     public class AmqpClientAgent : IActor {
@@ -59,6 +61,8 @@ namespace Lapine.Agents {
                     break;
                 }
                 case SocketConnected _: {
+                    SpawnChannelRouter(context);
+                    SpawnChannelZero(context);
                     _behaviour.Become(Connected);
                     break;
                 }
@@ -68,6 +72,14 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
+                case (Inbound, RawFrame frame): {
+                    context.Forward(_state.ChannelRouter);
+                    break;
+                }
+                case (Outbound, RawFrame frame): {
+                    context.Forward(_state.SocketAgent);
+                    break;
+                }
                 // If the socket agent terminates whilst we're in the connected state, it indicates that we've lost the connection.
                 // Restart the socket agent, and try connecting again...
                 case Terminated message when message.Who == _state.SocketAgent: {
@@ -86,6 +98,26 @@ namespace Lapine.Agents {
                 props: Props.FromProducer(() => new SocketAgent())
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
+        }
+
+        void SpawnChannelRouter(IContext context) {
+            _state.ChannelRouter = context.SpawnNamed(
+                name: "channel-router",
+                props: Props.FromProducer(() => new ChannelRouterAgent())
+                    .WithContextDecorator(LoggingContextDecorator.Create)
+            );
+        }
+
+        void SpawnChannelZero(IContext context) {
+            _state.Channel0 = context.SpawnNamed(
+                name: "channel-0",
+                props: Props.FromProducer(() => new ChannelAgent())
+                    .WithContextDecorator(LoggingContextDecorator.Create)
+                    .WithReceiveMiddleware(FramingMiddleware.UnwrapMethodFrames())
+                    .WithSenderMiddleware(FramingMiddleware.WrapCommandsFor(context.Self, 0))
+            );
+
+            context.Send(_state.ChannelRouter, ((UInt16)0, (PID)_state.Channel0));
         }
 
         void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {
