@@ -5,6 +5,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
+    using static Lapine.Agents.Commands;
     using static Lapine.Direction;
     using static Proto.Actor;
 
@@ -16,9 +17,9 @@ namespace Lapine.Agents {
 
         public Task ReceiveAsync(IContext context) {
             switch (context.Message) {
-                case (UInt16 channel, PID pid): {
-                    if (_channels.ContainsKey(channel) == false) {
-                        _channels.Add(channel, pid);
+                case (AddChannel, UInt16 channelId, PID channel): {
+                    if (_channels.ContainsKey(channelId) == false) {
+                        _channels.Add(channelId, channel);
                     }
                     return Done;
                 }

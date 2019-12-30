@@ -3,10 +3,11 @@
     using System.Net;
     using System.Threading;
     using Lapine.Agents;
-    using Lapine.Agents.Commands;
     using Lapine.Agents.Middleware;
     using Microsoft.Extensions.Logging;
     using Proto;
+
+    using static Lapine.Agents.Commands;
 
     class Program {
         static void Main() {
@@ -35,7 +36,7 @@
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
 
-            context.Send(client, new Connect());
+            context.Send(client, Connect);
 
             resetEvent.Wait();
         }

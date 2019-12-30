@@ -1,15 +1,16 @@
 namespace Lapine.Agents {
     using System;
     using System.Buffers;
+    using System.Net;
     using System.Net.Sockets;
     using System.Threading;
     using System.Threading.Tasks;
-    using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
     using Lapine.Protocol;
     using Microsoft.Extensions.Logging;
     using Proto;
 
+    using static Lapine.Agents.Commands;
     using static Lapine.Direction;
     using static Lapine.Log;
     using static Proto.Actor;
@@ -37,9 +38,9 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case SocketConnect message: {
-                    _log.LogInformation("Attempting to connect to {endpoint}:{port}", message.Endpoint.Address, message.Endpoint.Port);
-                    _socket.Connect(message.Endpoint);
+                case (Connect, IPEndPoint endpoint): {
+                    _log.LogInformation("Attempting to connect to {endpoint}:{port}",endpoint.Address, endpoint.Port);
+                    _socket.Connect(endpoint);
                     _log.LogInformation("Connection estabished");
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));

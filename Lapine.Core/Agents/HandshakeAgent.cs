@@ -1,7 +1,6 @@
 namespace Lapine.Agents {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Threading.Tasks;
     using Lapine.Agents.Events;
     using Lapine.Protocol.Commands;

@@ -2,11 +2,12 @@ namespace Lapine.Agents {
     using System;
     using System.Net;
     using System.Net.Sockets;
-    using Lapine.Agents.Commands;
     using Lapine.Protocol;
     using Bogus;
     using Proto;
     using Xunit;
+
+    using static Lapine.Agents.Commands;
 
     [Collection("Agents")]
     public class SocketAgentTests : Faker, IDisposable {
@@ -24,7 +25,7 @@ namespace Lapine.Agents {
 
         [Fact]
         public void EstablishesConnection() {
-            _context.Send(_subject, new SocketConnect(new IPEndPoint(IPAddress.Loopback, 5678)));
+            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, 5678)));
 
             var socket = _listener.AcceptSocket();
             Assert.True(socket.Connected);
@@ -32,7 +33,7 @@ namespace Lapine.Agents {
 
         [Fact]
         public void TransmitsData() {
-            _context.Send(_subject, new SocketConnect(new IPEndPoint(IPAddress.Loopback, 5678)));
+            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, 5678)));
             _context.Send(_subject, ProtocolHeader.Default);
 
             var socket = _listener.AcceptSocket();

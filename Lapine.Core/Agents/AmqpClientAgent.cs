@@ -2,12 +2,12 @@ namespace Lapine.Agents {
     using System;
     using System.Dynamic;
     using System.Threading.Tasks;
-    using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
     using Proto;
 
+    using static Lapine.Agents.Commands;
     using static Lapine.Direction;
     using static Proto.Actor;
 
@@ -38,7 +38,7 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case Connect _: {
+                case Connect: {
                     _state.EndpointEnumerator = _connectionConfiguration.GetEndpointEnumerator();
                     _behaviour.Become(Connecting);
 
@@ -85,7 +85,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     _behaviour.Become(Disconnected);
-                    context.Send(context.Self, new Connect());
+                    context.Send(context.Self, Connect);
                     break;
                 }
             }
@@ -109,7 +109,7 @@ namespace Lapine.Agents {
         }
 
         void SpawnChannelZero(IContext context) {
-            _state.Channel0 = context.SpawnNamed(
+            var channel0 = context.SpawnNamed(
                 name: "channel-0",
                 props: Props.FromProducer(() => new ChannelAgent())
                     .WithContextDecorator(LoggingContextDecorator.Create)
@@ -117,7 +117,7 @@ namespace Lapine.Agents {
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
 
-            context.Send(_state.ChannelRouter, ((UInt16)0, (PID)_state.Channel0));
+            context.Send(_state.ChannelRouter, (AddChannel, (UInt16)0, channel0));
         }
 
         void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {
@@ -126,7 +126,7 @@ namespace Lapine.Agents {
 
             if (_state.EndpointEnumerator.MoveNext()) {
                 var endpoint = _state.EndpointEnumerator.Current;
-                context.Send(_state.SocketAgent, new SocketConnect(endpoint));
+                context.Send(_state.SocketAgent, (Connect, endpoint));
             }
             else {
                 endpointsExhausted?.Invoke();
