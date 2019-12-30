@@ -10,6 +10,7 @@ namespace Lapine.Agents {
     using Microsoft.Extensions.Logging;
     using Proto;
 
+    using static Lapine.Direction;
     using static Lapine.Log;
     using static Proto.Actor;
 
@@ -60,7 +61,7 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case RawFrame frame: {
+                case (Outbound, RawFrame frame): {
                     var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
                     frame.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);
@@ -93,7 +94,7 @@ namespace Lapine.Agents {
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
-                            context.Send(context.Parent, frame);
+                            context.Send(context.Parent, (Outbound, frame));
 
                             var consumed = _frameBufferSize - surplus.Length;
                             _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
