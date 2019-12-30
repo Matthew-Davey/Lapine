@@ -1,12 +1,12 @@
 namespace Lapine.Agents {
     using System;
     using System.Threading.Tasks;
-    using Lapine.Agents.Commands;
     using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Lapine.Direction;
     using static Proto.Actor;
 
     public class ChannelAgent : IActor {
@@ -31,22 +31,22 @@ namespace Lapine.Agents {
 
         Task Running(IContext context) {
             switch (context.Message) {
-                case TransmitCommand message: {
-                    context.Send(context.Parent, message.Command);
+                case (Outbound, ICommand message): {
+                    context.Send(context.Parent, message);
                     return Done;
                 }
-                case ConnectionStart message: {
+                case (Inbound, ConnectionStart message): {
                     _handshakeAgent = context.SpawnNamed(
-                        Props.FromProducer(() => new HandshakeAgent("/"))
-                            .WithContextDecorator(context => new LoggingContextDecorator(context)),
-                        "handshake"
+                        name: "handshake",
+                        props: Props.FromProducer(() => new HandshakeAgent("/"))
+                            .WithContextDecorator(context => new LoggingContextDecorator(context))
                     );
                     context.Forward(_handshakeAgent);
                     _behaviour.Become(AwaitHandshake);
                     return Done;
                 }
-                case ConnectionClose message: {
-                    context.Send(context.Parent, new ConnectionCloseOk());
+                case (Inbound, ConnectionClose message): {
+                    context.Send(context.Parent, (Outbound, new ConnectionCloseOk()));
                     context.Self.Stop();
                     return Done;
                 }
@@ -56,16 +56,11 @@ namespace Lapine.Agents {
 
         Task AwaitHandshake(IContext context) {
             switch (context.Message) {
-                case ConnectionStartOk _:
-                case ConnectionSecureOk _:
-                case ConnectionTuneOk _:
-                case ConnectionOpen _: {
+                case (Outbound, ICommand command): {
                     context.Forward(context.Parent);
                     return Done;
                 }
-                case ConnectionSecure _:
-                case ConnectionTune _:
-                case ConnectionOpenOk _: {
+                case (Inbound, ICommand command): {
                     context.Forward(_handshakeAgent);
                     return Done;
                 }
@@ -77,6 +72,7 @@ namespace Lapine.Agents {
                     context.Self.Stop(); // TODO: fail gracefully
                     return Done;
                 }
+                // TODO: case: handshake timed out..
                 default: return Done;
             }
         }

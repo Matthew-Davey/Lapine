@@ -7,6 +7,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Lapine.Direction;
     using static Proto.Actor;
 
     public class HandshakeAgent : IActor {
@@ -33,14 +34,14 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
-                case ConnectionStart message: {
+                case (Inbound, ConnectionStart message): {
                     // TODO: Verify protocol version compatibility...
-                    context.Send(context.Parent, new ConnectionStartOk(
+                    context.Send(context.Parent, (Outbound, new ConnectionStartOk(
                         peerProperties: new Dictionary<String, Object>(), // TODO: populate peer properties
                         mechanism     : "PLAIN",
                         response      : "\0guest\0guest",
                         locale        : "en_US"
-                    ));
+                    )));
                     _behaviour.Become(AwaitConnectionTune);
                     return Done;
                 }
@@ -50,21 +51,16 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionTune(IContext context) {
             switch (context.Message) {
-                case ConnectionSecure _: {
-                    context.Send(context.Parent, new AuthenticationFailed());
-                    context.Self.Stop();
-                    return Done;
-                }
-                case ConnectionTune message: {
+                case (Inbound, ConnectionTune message): {
                     // TODO: negotiate tuning params
-                    context.Send(context.Parent, new ConnectionTuneOk(
+                    context.Send(context.Parent, (Outbound, new ConnectionTuneOk(
                         channelMax: message.ChannelMax,
                         frameMax  : message.FrameMax,
                         heartbeat : message.Heartbeat
-                    ));
-                    context.Send(context.Parent, new ConnectionOpen(
+                    )));
+                    context.Send(context.Parent, (Outbound, new ConnectionOpen(
                         virtualHost: _virtualHost
-                    ));
+                    )));
                     _behaviour.Become(AwaitConnectionOpenOk);
                     return Done;
                 }
@@ -74,7 +70,7 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionOpenOk(IContext context) {
             switch (context.Message) {
-                case ConnectionOpenOk message: {
+                case (Inbound, ConnectionOpenOk message): {
                     context.Send(context.Parent, new HandshakeCompleted());
                     return Done;
                 }

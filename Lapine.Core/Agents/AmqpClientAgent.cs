@@ -113,8 +113,8 @@ namespace Lapine.Agents {
                 name: "channel-0",
                 props: Props.FromProducer(() => new ChannelAgent())
                     .WithContextDecorator(LoggingContextDecorator.Create)
-                    .WithReceiveMiddleware(FramingMiddleware.UnwrapMethodFrames())
-                    .WithSenderMiddleware(FramingMiddleware.WrapCommandsFor(context.Self, 0))
+                    .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                    .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
 
             context.Send(_state.ChannelRouter, ((UInt16)0, (PID)_state.Channel0));

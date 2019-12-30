@@ -35,7 +35,7 @@ namespace Lapine.Agents.Middleware {
                         }
                     }
                 })
-                .WithReceiveMiddleware(FramingMiddleware.UnwrapMethodFrames())
+                .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
             );
         }
 
