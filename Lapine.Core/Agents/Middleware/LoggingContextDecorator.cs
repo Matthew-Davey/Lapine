@@ -18,27 +18,27 @@ namespace Lapine.Agents.Middleware {
             new LoggingContextDecorator(context);
 
         public override void Forward(PID target) {
-            _log.Log(_level, "Agent {agent} forwarding `{messageType}` to {target}", Self.ToShortString(), Message.GetType(), target.ToShortString());
+            _log.Log(_level, "Agent {agent} forwarding `{messageType}` to {target}", Self.ToShortString(), Message, target.ToShortString());
             base.Forward(target);
         }
 
         public override Task Receive(MessageEnvelope envelope) {
-            _log.Log(_level, "Agent {agent} receiving `{messageType}`", Self.ToShortString(), envelope.Message.GetType());
+            _log.Log(_level, "Agent {agent} receiving `{messageType}`", Self.ToShortString(), envelope.Message);
             return base.Receive(envelope);
         }
 
         public override void Request(PID target, Object message) {
-            _log.Log(_level, "Agent {agent} sending request message `{messageType}` to {target}", Self.ToShortString(), message.GetType(), target.ToShortString());
+            _log.Log(_level, "Agent {agent} sending request message `{messageType}` to {target}", Self.ToShortString(), message, target.ToShortString());
             base.Request(target, message);
         }
 
         public override void Respond(Object message) {
-            _log.Log(_level, "Agent {agent} responding to request message with reply `{messageType}`", Self.ToShortString(), message.GetType());
+            _log.Log(_level, "Agent {agent} responding to request message with reply `{messageType}`", Self.ToShortString(), message);
             base.Respond(message);
         }
 
         public override void Send(PID target, Object message) {
-            _log.Log(_level, "Agent {agent} sending `{messageType}` to {target}", Self.ToShortString(), message.GetType(), target.ToShortString());
+            _log.Log(_level, "Agent {agent} sending `{messageType}` to {target}", Self.ToShortString(), message, target.ToShortString());
             base.Send(target, message);
         }
 
