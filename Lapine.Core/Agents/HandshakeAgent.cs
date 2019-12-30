@@ -2,10 +2,10 @@ namespace Lapine.Agents {
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Lapine.Agents.Events;
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Lapine.Agents.Events;
     using static Lapine.Direction;
     using static Proto.Actor;
 
@@ -70,7 +70,7 @@ namespace Lapine.Agents {
         Task AwaitConnectionOpenOk(IContext context) {
             switch (context.Message) {
                 case (Inbound, ConnectionOpenOk message): {
-                    context.Send(context.Parent, new HandshakeCompleted());
+                    context.Send(context.Parent, (HandshakeCompleted));
                     return Done;
                 }
                 default: return Done;

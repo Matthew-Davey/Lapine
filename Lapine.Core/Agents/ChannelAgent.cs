@@ -1,11 +1,11 @@
 namespace Lapine.Agents {
     using System;
     using System.Threading.Tasks;
-    using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Lapine.Agents.Events;
     using static Lapine.Direction;
     using static Proto.Actor;
 
@@ -64,11 +64,11 @@ namespace Lapine.Agents {
                     context.Forward(_handshakeAgent);
                     return Done;
                 }
-                case HandshakeCompleted _: {
+                case (HandshakeCompleted): {
                     _behaviour.Become(Running);
                     return Done;
                 }
-                case AuthenticationFailed _: {
+                case (AuthenticationFailed): {
                     context.Self.Stop(); // TODO: fail gracefully
                     return Done;
                 }

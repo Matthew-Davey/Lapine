@@ -2,12 +2,12 @@ namespace Lapine.Agents {
     using System;
     using System.Dynamic;
     using System.Threading.Tasks;
-    using Lapine.Agents.Events;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
     using Proto;
 
     using static Lapine.Agents.Commands;
+    using static Lapine.Agents.Events;
     using static Lapine.Direction;
     using static Proto.Actor;
 
@@ -60,7 +60,7 @@ namespace Lapine.Agents {
                     });
                     break;
                 }
-                case SocketConnected _: {
+                case (SocketConnected): {
                     SpawnChannelRouter(context);
                     SpawnChannelZero(context);
                     _behaviour.Become(Connected);
