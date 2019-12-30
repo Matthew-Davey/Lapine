@@ -94,7 +94,7 @@ namespace Lapine.Agents {
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
-                            context.Send(context.Parent, (Outbound, frame));
+                            context.Send(context.Parent, (Inbound, frame));
 
                             var consumed = _frameBufferSize - surplus.Length;
                             _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
