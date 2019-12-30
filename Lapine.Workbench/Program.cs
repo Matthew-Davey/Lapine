@@ -36,7 +36,7 @@
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
 
-            context.Send(client, Connect);
+            context.Send(client, (Connect));
 
             resetEvent.Wait();
         }

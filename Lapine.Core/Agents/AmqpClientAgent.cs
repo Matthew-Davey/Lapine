@@ -38,7 +38,7 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case Connect: {
+                case (Connect): {
                     _state.EndpointEnumerator = _connectionConfiguration.GetEndpointEnumerator();
                     _behaviour.Become(Connecting);
 
@@ -85,7 +85,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     _behaviour.Become(Disconnected);
-                    context.Send(context.Self, Connect);
+                    context.Send(context.Self, (Connect));
                     break;
                 }
             }
