@@ -18,7 +18,7 @@ namespace Lapine.Agents.Middleware {
                                             ? next(context, envelope.WithMessage((Inbound, command)))
                                             : next(context, envelope),
                         (0x0A, 0x14) => ConnectionSecure.Deserialize(in buffer, out var command, out _)
-                                            ? next(context, envelope.WithMessage(command))
+                                            ? next(context, envelope.WithMessage((Inbound, command)))
                                             : next(context, envelope),
                         (0x0A, 0x1E) => ConnectionTune.Deserialize(in buffer, out var command, out _)
                                             ? next(context, envelope.WithMessage((Inbound, command)))
@@ -68,7 +68,7 @@ namespace Lapine.Agents.Middleware {
                         (0x32, 0x29) => QueueDeleteOk.Deserialize(in buffer, out var command, out _)
                                             ? next(context, envelope.WithMessage((Inbound, command)))
                                             : next(context, envelope),
-                        (0x3C, 0x0B) => BasicQos.Deserialize(in buffer, out var command, out _)
+                        (0x3C, 0x0B) => BasicQosOk.Deserialize(in buffer, out var command, out _)
                                             ? next(context, envelope.WithMessage((Inbound, command)))
                                             : next(context, envelope),
                         (0x3C, 0x15) => BasicConsumeOk.Deserialize(in buffer, out var command, out _)

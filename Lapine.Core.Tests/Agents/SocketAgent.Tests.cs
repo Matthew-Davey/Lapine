@@ -14,27 +14,28 @@ namespace Lapine.Agents {
         readonly RootContext _context;
         readonly PID _subject;
         readonly TcpListener _listener;
+        readonly Int32 _port;
 
         public SocketAgentTests() {
             _context  = new RootContext();
             _subject  = _context.Spawn(Props.FromProducer(() => new SocketAgent()));
-            _listener = new TcpListener(IPAddress.Loopback, 5678);
+            _port     = Random.Int(min: 1025, max: Int16.MaxValue);
+            _listener = new TcpListener(IPAddress.Loopback, _port);
 
             _listener.Start();
         }
 
         [Fact]
         public void EstablishesConnection() {
-            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, 5678)));
+            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, _port)));
 
             var socket = _listener.AcceptSocket();
             Assert.True(socket.Connected);
         }
 
-        [Fact]
-        public void TransmitsData() {
-            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, 5678)));
-            _context.Send(_subject, ProtocolHeader.Default);
+        [Fact(Timeout = 1000)]
+        public void TransmitsProtocolHeader() {
+            _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, _port)));
 
             var socket = _listener.AcceptSocket();
             var buffer = new Byte[8];
