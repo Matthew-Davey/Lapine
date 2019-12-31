@@ -247,7 +247,11 @@ namespace Lapine
                     break;
                 }
                 case 'A' : { // field-array
-                    break; // TODO: read and decode field-array
+                    if (surplus.ReadFieldArray(out var value, out surplus)) {
+                        result = value;
+                        return true;
+                    }
+                    break;
                 }
                 case 'T': { // timestamp
                     if (surplus.ReadUInt64BE(out var value, out surplus)) {
