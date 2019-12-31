@@ -9,7 +9,6 @@ namespace Lapine.Agents {
 
     using static System.DateTimeOffset;
     using static Lapine.Agents.Messages;
-    using static Lapine.Direction;
     using static Proto.Actor;
 
     public class HeartbeatAgent : IActor {

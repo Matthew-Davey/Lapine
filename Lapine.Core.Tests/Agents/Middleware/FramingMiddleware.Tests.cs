@@ -10,7 +10,7 @@ namespace Lapine.Agents.Middleware {
     using Proto.Mailbox;
     using Xunit;
 
-    using static Lapine.Direction;
+    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class FramingMiddlewareTests : Faker {

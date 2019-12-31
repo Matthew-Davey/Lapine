@@ -6,7 +6,6 @@ namespace Lapine.Agents {
     using Proto;
 
     using static Lapine.Agents.Messages;
-    using static Lapine.Direction;
     using static Proto.Actor;
 
     public class ChannelRouterAgent : IActor {

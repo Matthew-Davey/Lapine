@@ -7,7 +7,7 @@
     using Microsoft.Extensions.Logging;
     using Proto;
 
-    using static Lapine.Agents.Commands;
+    using static Lapine.Agents.Messages;
 
     class Program {
         static void Main() {

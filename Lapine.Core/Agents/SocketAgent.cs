@@ -10,7 +10,6 @@ namespace Lapine.Agents {
     using Proto;
 
     using static Lapine.Agents.Messages;
-    using static Lapine.Direction;
     using static Lapine.Log;
     using static Proto.Actor;
 

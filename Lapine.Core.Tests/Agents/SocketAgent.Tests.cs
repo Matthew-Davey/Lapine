@@ -7,7 +7,7 @@ namespace Lapine.Agents {
     using Proto;
     using Xunit;
 
-    using static Lapine.Agents.Commands;
+    using static Lapine.Agents.Messages;
 
     [Collection("Agents")]
     public class SocketAgentTests : Faker, IDisposable {
