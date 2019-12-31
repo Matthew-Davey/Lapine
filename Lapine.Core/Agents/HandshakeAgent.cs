@@ -5,6 +5,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static Lapine.Agents.Commands;
     using static Lapine.Agents.Events;
     using static Lapine.Direction;
     using static Proto.Actor;
@@ -57,6 +58,7 @@ namespace Lapine.Agents {
                         frameMax  : message.FrameMax,
                         heartbeat : message.Heartbeat
                     )));
+                    context.Send(context.Parent, (StartHeartbeatTransmission, frequency: message.Heartbeat));
                     context.Send(context.Parent, (Outbound, new ConnectionOpen(
                         virtualHost: _virtualHost
                     )));

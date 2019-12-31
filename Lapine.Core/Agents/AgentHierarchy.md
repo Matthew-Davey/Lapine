@@ -8,7 +8,7 @@ root
     ├── channel-router*
     ├── channel (0)*
     │   ├── handshake*
-    │   └── heartbeat
+    │   └── heartbeat*
     ├── channel (1)*
     │   └── publisher
     |       └── message-splitter

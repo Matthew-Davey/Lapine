@@ -24,6 +24,9 @@ namespace Lapine.Protocol {
         public UInt32 Size => (UInt32)_payload.Length;
         public ReadOnlyMemory<Byte> Payload => _payload;
 
+        public override String ToString() =>
+            $"{{{Type} Frame}}";
+
         public UInt32 SerializedSize => 7 + Size + 1; // header + payload + frame-terminator...
 
         static public RawFrame Wrap(in UInt16 channel, in ICommand command) {
@@ -36,6 +39,9 @@ namespace Lapine.Protocol {
 
             return new RawFrame(FrameType.Method, in channel, in payload);
         }
+
+        static public RawFrame Heartbeat =>
+            new RawFrame(FrameType.Heartbeat, channel: 0, new Byte[0]);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt8((Byte)Type)
