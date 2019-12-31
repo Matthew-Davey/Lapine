@@ -29,6 +29,68 @@ namespace Lapine {
             information: "Licensed under the MIT License https://opensource.org/licenses/MIT"
         );
 
+        static public PeerProperties Empty => new PeerProperties(
+            product    : null,
+            version    : null,
+            platform   : null,
+            copyright  : null,
+            information: null
+        );
+
+        public PeerProperties WithProduct(String product) => new PeerProperties(
+            product           : product,
+            version           : Version,
+            platform          : Platform,
+            copyright         : Copyright,
+            information       : Information,
+            clientProvidedName: ClientProvidedName
+        );
+
+        public PeerProperties WithVersion(String version) => new PeerProperties(
+            product           : Product,
+            version           : version,
+            platform          : Platform,
+            copyright         : Copyright,
+            information       : Information,
+            clientProvidedName: ClientProvidedName
+        );
+
+        public PeerProperties WithPlatform(String platform) => new PeerProperties(
+            product           : Product,
+            version           : Version,
+            platform          : platform,
+            copyright         : Copyright,
+            information       : Information,
+            clientProvidedName: ClientProvidedName
+        );
+
+        public PeerProperties WithCopyright(String copyright) => new PeerProperties(
+            product           : Product,
+            version           : Version,
+            platform          : Platform,
+            copyright         : copyright,
+            information       : Information,
+            clientProvidedName: ClientProvidedName
+        );
+
+        public PeerProperties WithInformation(String information) => new PeerProperties(
+            product           : Product,
+            version           : Version,
+            platform          : Platform,
+            copyright         : Copyright,
+            information       : information,
+            clientProvidedName: ClientProvidedName
+        );
+
+        public PeerProperties WithClientProvidedName(String clientProvidedName) => new PeerProperties(
+            product           : Product,
+            version           : Version,
+            platform          : Platform,
+            copyright         : Copyright,
+            information       : Information,
+            clientProvidedName: clientProvidedName
+        );
+
         public IReadOnlyDictionary<String, Object> ToDictionary() => new Dictionary<String, Object> {
             ["product"]         = Product,
             ["version"]         = Version,

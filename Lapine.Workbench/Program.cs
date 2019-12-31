@@ -25,8 +25,11 @@
 
             var context = new RootContext();
             var connectionConfiguration = new ConnectionConfiguration(
-                endpoints:                 new [] { new IPEndPoint(IPAddress.Loopback, 6572), new IPEndPoint(IPAddress.Loopback, 5672) },
-                endpointSelectionStrategy: new InOrderEndpointSelectionStrategy()
+                endpoints:                 new [] { new IPEndPoint(IPAddress.Loopback, 5672) },
+                endpointSelectionStrategy: new InOrderEndpointSelectionStrategy(),
+                peerProperties: PeerProperties.Default
+                    .WithProduct("Lapine.Workbench")
+                    .WithClientProvidedName("Lapine.Workbench")
             );
 
             var client = context.SpawnNamed(
