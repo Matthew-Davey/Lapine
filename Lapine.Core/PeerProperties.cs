@@ -10,13 +10,15 @@ namespace Lapine {
         public String Platform { get; }
         public String Copyright { get; }
         public String Information { get; }
+        public String ClientProvidedName { get; } // Used by RabbitMQ Management Console to identify the connection
 
-        public PeerProperties(String product, String version, String platform, String copyright, String information) {
-            Product     = product;
-            Version     = version;
-            Platform    = platform;
-            Copyright   = copyright;
-            Information = information;
+        public PeerProperties(String product, String version, String platform, String copyright, String information, String clientProvidedName = null) {
+            Product            = product;
+            Version            = version;
+            Platform           = platform;
+            Copyright          = copyright;
+            Information        = information;
+            ClientProvidedName = clientProvidedName ?? Product;
         }
 
         static public PeerProperties Default => new PeerProperties(
@@ -32,7 +34,8 @@ namespace Lapine {
             ["version"]         = Version,
             ["platform"]        = Platform,
             ["copyright"]       = Copyright,
-            ["information"]     = Information
+            ["information"]     = Information,
+            ["connection_name"] = ClientProvidedName
         };
     }
 }
