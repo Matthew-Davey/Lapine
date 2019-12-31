@@ -520,6 +520,9 @@ namespace Lapine
         }
 
         static public IBufferWriter<Byte> WriteFieldValue(this IBufferWriter<Byte> writer, in Object field) =>
+            // TODO: investigate correctness of these prefixes. Current values are based on amqp0-9-1.pdf pages 31/32, but
+            // https://github.com/rabbitmq/rabbitmq-server/blob/v3.5.x/src/rabbit_binary_parser.erl#L41 indicates otherwise
+            // (specifically suggests that 's' is 16 bit unsigned int)
             field switch {
                 Boolean        value => writer.WriteChar('t').WriteBoolean(value),
                 SByte          value => writer.WriteChar('b').WriteInt8(value),
@@ -534,7 +537,7 @@ namespace Lapine
                 Double         value => writer.WriteChar('d').WriteDouble(value),
                 //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
                 String         value => writer.WriteChar('S').WriteLongString(value),
-                //Object[]       value => writer.WriteChar('A').WriteFieldArray(value), // TODO: encode and write field-array
+                Object[]       value => writer.WriteChar('A').WriteFieldArray(value),
                 DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
                 DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),
                 IReadOnlyDictionary<String, Object> value => writer.WriteChar('F').WriteFieldTable(value),
