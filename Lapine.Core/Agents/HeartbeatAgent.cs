@@ -8,8 +8,8 @@ namespace Lapine.Agents {
     using Proto.Schedulers.SimpleScheduler;
 
     using static System.DateTimeOffset;
+    using static Lapine.Agents.Messages;
     using static Lapine.Direction;
-    using static Lapine.Agents.Commands;
     using static Proto.Actor;
 
     public class HeartbeatAgent : IActor {

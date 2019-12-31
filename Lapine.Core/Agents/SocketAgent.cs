@@ -9,8 +9,7 @@ namespace Lapine.Agents {
     using Microsoft.Extensions.Logging;
     using Proto;
 
-    using static Lapine.Agents.Commands;
-    using static Lapine.Agents.Events;
+    using static Lapine.Agents.Messages;
     using static Lapine.Direction;
     using static Lapine.Log;
     using static Proto.Actor;

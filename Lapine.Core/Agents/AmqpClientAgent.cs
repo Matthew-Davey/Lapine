@@ -6,8 +6,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Lapine.Agents.Commands;
-    using static Lapine.Agents.Events;
+    using static Lapine.Agents.Messages;
     using static Lapine.Direction;
     using static Proto.Actor;
 

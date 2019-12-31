@@ -24,6 +24,8 @@ root
 
 Message passing occurs only between parent-child agents, never between siblings.
 
+Messages take the form of tuples, where the first element is a symbol/atom describing the type of message.
+
 If a message needs to be passed to a sibling, it should walk up the hierarchy to the nearest common ancestor, and then be routed back down.
 
 \* = in progress
