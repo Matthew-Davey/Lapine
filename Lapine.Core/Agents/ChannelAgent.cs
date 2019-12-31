@@ -42,10 +42,14 @@ namespace Lapine.Agents {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
+                case ConnectionConfiguration connectionConfiguration: {
+                    _state.ConnectionConfiguration = connectionConfiguration;
+                    return Done;
+                }
                 case (Inbound, ConnectionStart message): {
                     _state.HandshakeAgent = context.SpawnNamed(
                         name: "handshake",
-                        props: Props.FromProducer(() => new HandshakeAgent("/"))
+                        props: Props.FromProducer(() => new HandshakeAgent(_state.ConnectionConfiguration))
                             .WithContextDecorator(context => new LoggingContextDecorator(context))
                     );
                     context.Forward(_state.HandshakeAgent);

@@ -114,7 +114,7 @@ namespace Lapine.Agents {
                     .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
-
+            context.Send(channel0, _connectionConfiguration);
             context.Send(_state.ChannelRouter, (AddChannel, (UInt16)0, channel0));
         }
 

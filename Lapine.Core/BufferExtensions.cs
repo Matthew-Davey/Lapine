@@ -533,8 +533,7 @@ namespace Lapine
                 Single         value => writer.WriteChar('f').WriteSingle(value),
                 Double         value => writer.WriteChar('d').WriteDouble(value),
                 //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
-                String         value when value.Length < 256 => writer.WriteChar('s').WriteShortString(value),
-                String         value when value.Length > 255 => writer.WriteChar('S').WriteLongString(value),
+                String         value => writer.WriteChar('S').WriteLongString(value),
                 //Object[]       value => writer.WriteChar('A').WriteFieldArray(value), // TODO: encode and write field-array
                 DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
                 DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),

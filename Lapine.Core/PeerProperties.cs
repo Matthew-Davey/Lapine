@@ -1,5 +1,6 @@
 namespace Lapine {
     using System;
+    using System.Collections.Generic;
 
     using static System.Runtime.InteropServices.RuntimeInformation;
 
@@ -23,7 +24,15 @@ namespace Lapine {
             version    : "0.1.0",
             platform   : OSDescription,
             copyright  : "© Lapine Contributors 2019",
-            information: String.Empty
+            information: "Licensed under the MIT License https://opensource.org/licenses/MIT"
         );
+
+        public IReadOnlyDictionary<String, Object> ToDictionary() => new Dictionary<String, Object> {
+            ["product"]         = Product,
+            ["version"]         = Version,
+            ["platform"]        = Platform,
+            ["copyright"]       = Copyright,
+            ["information"]     = Information
+        };
     }
 }
