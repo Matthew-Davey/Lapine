@@ -4,6 +4,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
+    using static System.Math;
     using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
@@ -49,13 +50,16 @@ namespace Lapine.Agents {
         Task AwaitConnectionTune(IContext context) {
             switch (context.Message) {
                 case (Inbound, ConnectionTune message): {
-                    // TODO: negotiate tuning params
+                    var heartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
+                    var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
+                    var maximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
+
                     context.Send(context.Parent, (Outbound, new ConnectionTuneOk(
-                        channelMax: message.ChannelMax,
-                        frameMax  : message.FrameMax,
-                        heartbeat : message.Heartbeat
+                        channelMax: maximumChannelCount,
+                        frameMax  : maximumFrameSize,
+                        heartbeat : heartbeatFrequency
                     )));
-                    context.Send(context.Parent, (StartHeartbeatTransmission, frequency: message.Heartbeat));
+                    context.Send(context.Parent, (StartHeartbeatTransmission, frequency: heartbeatFrequency));
                     context.Send(context.Parent, (Outbound, new ConnectionOpen(
                         virtualHost: _connectionConfiguration.VirtualHost
                     )));
