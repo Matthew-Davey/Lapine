@@ -25,7 +25,7 @@ namespace Lapine {
             product    : "Lapine",
             version    : "0.1.0",
             platform   : OSDescription,
-            copyright  : "© Lapine Contributors 2019",
+            copyright  : "© Lapine Contributors 2019-2020",
             information: "Licensed under the MIT License https://opensource.org/licenses/MIT"
         );
 
