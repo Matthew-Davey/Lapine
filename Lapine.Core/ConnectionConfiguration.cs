@@ -6,6 +6,7 @@ namespace Lapine {
 
     public class ConnectionConfiguration {
         public static IEndpointSelectionStrategy DefaultEndpointSelectionStrategy = new RandomEndpointSelectionStrategy();
+        public const UInt16 DefaultConnectionTimeout = 5000;
         public static IAuthenticationStrategy DefaultAuthenticationStrategy = new PlainAuthenticationStrategy();
         public const String DefaultVirtualHost = "/";
         public const UInt16 DefaultHeartbeatFrequency = 60;
@@ -14,6 +15,7 @@ namespace Lapine {
 
         public IEnumerable<IPEndPoint> Endpoints { get; }
         public IEndpointSelectionStrategy EndpointSelectionStrategy { get; }
+        public UInt16 ConnectionTimeout { get; }
         public IAuthenticationStrategy AuthenticationStrategy { get; }
         public PeerProperties PeerProperties { get; }
         public String VirtualHost { get; }
@@ -21,9 +23,10 @@ namespace Lapine {
         public UInt32 MaximumFrameSize { get; }
         public UInt16 MaximumChannelCount { get; }
 
-        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy endpointSelectionStrategy = null, IAuthenticationStrategy authenticationStrategy = null, PeerProperties peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
+        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy endpointSelectionStrategy = null, UInt16 connectionTimeout = DefaultConnectionTimeout, IAuthenticationStrategy authenticationStrategy = null, PeerProperties peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
             Endpoints                 = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
             EndpointSelectionStrategy = endpointSelectionStrategy ?? DefaultEndpointSelectionStrategy;
+            ConnectionTimeout         = connectionTimeout;
             AuthenticationStrategy    = authenticationStrategy ?? DefaultAuthenticationStrategy;
             PeerProperties            = peerProperties ?? PeerProperties.Default;
             VirtualHost               = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
