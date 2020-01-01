@@ -5,6 +5,7 @@ namespace Lapine {
     using System.Net;
 
     public class ConnectionConfiguration {
+        public static IEndpointSelectionStrategy DefaultEndpointSelectionStrategy = new RandomEndpointSelectionStrategy();
         public const String DefaultVirtualHost = "/";
         public const UInt16 DefaultHeartbeatFrequency = 60;
         public const UInt32 DefaultMaximumFrameSize = 131072; // From https://github.com/rabbitmq/rabbitmq-server/blob/7af37e5bb8bc4a517a6ab26a6038bef6cfa946e7/priv/schema/rabbit.schema#L564
@@ -18,9 +19,9 @@ namespace Lapine {
         public UInt32 MaximumFrameSize { get; }
         public UInt16 MaximumChannelCount { get; }
 
-        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy endpointSelectionStrategy, PeerProperties peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
+        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy endpointSelectionStrategy = null, PeerProperties peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
             Endpoints                 = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
-            EndpointSelectionStrategy = endpointSelectionStrategy ?? throw new ArgumentNullException(nameof(endpointSelectionStrategy));
+            EndpointSelectionStrategy = endpointSelectionStrategy ?? DefaultEndpointSelectionStrategy;
             PeerProperties            = peerProperties ?? PeerProperties.Default;
             VirtualHost               = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
             HeartbeatFrequency        = heartbeatFrequency;
