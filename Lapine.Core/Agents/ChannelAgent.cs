@@ -86,6 +86,7 @@ namespace Lapine.Agents {
                 }
                 case (HandshakeCompleted): {
                     _behaviour.UnbecomeStacked();
+                    context.Forward(context.Parent);
                     return Done;
                 }
                 case (AuthenticationFailed): {

@@ -36,7 +36,8 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case (Connect): {
+                case (Connect, TaskCompletionSource<Boolean> completion): {
+                    _state.ReadyComplete = completion;
                     _state.EndpointEnumerator = _connectionConfiguration.GetEndpointEnumerator();
                     _behaviour.Become(Connecting);
 
@@ -54,6 +55,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     TryNextEndpoint(context, endpointsExhausted: () => {
+                        _state.ReadyComplete.SetException(new Exception("None of the specified endpoints were reachable"));
                         throw new Exception("None of the specified endpoints were reachable");
                     });
                     break;
@@ -76,6 +78,10 @@ namespace Lapine.Agents {
                 }
                 case (Outbound, RawFrame frame): {
                     context.Forward(_state.SocketAgent);
+                    break;
+                }
+                case (HandshakeCompleted): {
+                    _state.ReadyComplete.SetResult(true);
                     break;
                 }
                 // If the socket agent terminates whilst we're in the connected state, it indicates that we've lost the connection.
