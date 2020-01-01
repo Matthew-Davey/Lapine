@@ -1,20 +1,24 @@
 namespace Lapine.Agents {
     using System;
+    using System.Dynamic;
     using System.Threading.Tasks;
     using Lapine.Protocol.Commands;
     using Proto;
 
     using static System.Math;
+    using static System.Text.Encoding;
     using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class HandshakeAgent : IActor {
         readonly Behavior _behaviour;
         readonly ConnectionConfiguration _connectionConfiguration;
+        readonly dynamic _state;
 
         public HandshakeAgent(ConnectionConfiguration connectionConfiguration) {
             _behaviour               = new Behavior(AwaitStart);
             _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
+            _state                   = new ExpandoObject();
         }
 
         public Task ReceiveAsync(IContext context) =>
@@ -33,11 +37,19 @@ namespace Lapine.Agents {
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
                 case (Inbound, ConnectionStart message): {
+                    if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
+                        // TODO: Unable to agree on authentication mechanism...
+                        throw new Exception();
+                    }
+
+                    _state.AuthenticationStage = 0;
+                    var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
+
                     // TODO: Verify protocol version compatibility...
                     context.Send(context.Parent, (Outbound, new ConnectionStartOk(
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),
-                        mechanism     : "PLAIN",
-                        response      : "\0guest\0guest",
+                        mechanism     : _connectionConfiguration.AuthenticationStrategy.Mechanism,
+                        response      : UTF8.GetString(authenticationResponse),
                         locale        : "en_US"
                     )));
                     _behaviour.Become(AwaitConnectionTune);
@@ -49,6 +61,13 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionTune(IContext context) {
             switch (context.Message) {
+                case (Inbound, ConnectionSecure message): {
+                    _state.AuthenticationStage++;
+                    var challenge = UTF8.GetBytes(message.Challenge);
+                    var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond(stage: _state.AuthenticationStage, challenge: challenge);
+                    context.Send(context.Parent, (Outbound, new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
+                    return Done;
+                }
                 case (Inbound, ConnectionTune message): {
                     var heartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
                     var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);

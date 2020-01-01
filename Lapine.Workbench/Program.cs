@@ -27,6 +27,7 @@
             var connectionConfiguration = new ConnectionConfiguration(
                 endpoints:                 new [] { new IPEndPoint(IPAddress.Loopback, 5672) },
                 endpointSelectionStrategy: new InOrderEndpointSelectionStrategy(),
+                authenticationStrategy:    new PlainAuthenticationStrategy(username: "guest", password: "guest"),
                 peerProperties: PeerProperties.Default
                     .WithProduct("Lapine.Workbench")
                     .WithClientProvidedName("Lapine.Workbench")
