@@ -36,8 +36,8 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case (Connect, TaskCompletionSource<Boolean> completion): {
-                    _state.ReadyComplete = completion;
+                case (Connect, PID listener): {
+                    _state.ConnectionReadyListener = listener;
                     _state.EndpointEnumerator = _connectionConfiguration.GetEndpointEnumerator();
                     _behaviour.Become(Connecting);
 
@@ -55,8 +55,8 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     TryNextEndpoint(context, endpointsExhausted: () => {
-                        _state.ReadyComplete.SetException(new Exception("None of the specified endpoints were reachable"));
-                        throw new Exception("None of the specified endpoints were reachable");
+                        context.Send(_state.ConnectionReadyListener, (ConnectionFailed));
+                        _behaviour.Become(Disconnected);
                     });
                     break;
                 }
@@ -81,7 +81,7 @@ namespace Lapine.Agents {
                     break;
                 }
                 case (HandshakeCompleted): {
-                    _state.ReadyComplete.SetResult(true);
+                    context.Send(_state.ConnectionReadyListener, (ConnectionReady));
                     break;
                 }
                 // If the socket agent terminates whilst we're in the connected state, it indicates that we've lost the connection.
@@ -89,7 +89,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     _behaviour.Become(Disconnected);
-                    context.Send(context.Self, (Connect));
+                    context.Send(context.Self, (Connect, context.Self));
                     break;
                 }
             }

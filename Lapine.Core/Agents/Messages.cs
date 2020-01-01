@@ -13,5 +13,8 @@ namespace Lapine.Agents {
         public const String AuthenticationFailed = ":authentication-failed";
         public const String HandshakeCompleted = ":handshake-completed";
         public const String SocketConnected = ":socket-connected";
+        public const String ConnectionReady = ":connection-ready";
+        public const String ConnectionFailed = ":connection-failed";
+        public const String Timeout = ":timeout";
     }
 }
