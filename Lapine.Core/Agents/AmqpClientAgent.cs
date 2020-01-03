@@ -62,7 +62,7 @@ namespace Lapine.Agents {
                 }
                 case (SocketConnected): {
                     SpawnChannelRouter(context);
-                    SpawnChannelZero(context);
+                    SpawnPrincipalChannel(context);
                     _behaviour.Become(Connected);
                     break;
                 }
@@ -112,16 +112,15 @@ namespace Lapine.Agents {
             );
         }
 
-        void SpawnChannelZero(IContext context) {
-            var channel0 = context.SpawnNamed(
+        void SpawnPrincipalChannel(IContext context) {
+            var principal = context.SpawnNamed(
                 name: "channel-0",
-                props: Props.FromProducer(() => new ChannelAgent())
+                props: Props.FromProducer(() => new PrincipalChannelAgent(_connectionConfiguration))
                     .WithContextDecorator(LoggingContextDecorator.Create)
                     .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
-            context.Send(channel0, _connectionConfiguration);
-            context.Send(_state.ChannelRouter, (AddChannel, (UInt16)0, channel0));
+            context.Send(_state.ChannelRouter, (AddChannel, (UInt16)0, principal));
         }
 
         void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {

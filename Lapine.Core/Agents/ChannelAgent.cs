@@ -2,8 +2,6 @@ namespace Lapine.Agents {
     using System;
     using System.Dynamic;
     using System.Threading.Tasks;
-    using Lapine.Agents.Middleware;
-    using Lapine.Protocol;
     using Lapine.Protocol.Commands;
     using Proto;
 
@@ -34,28 +32,6 @@ namespace Lapine.Agents {
 
         Task Running(IContext context) {
             switch (context.Message) {
-                case (Outbound, _): {
-                    context.Forward(context.Parent);
-                    return Done;
-                }
-                case (Inbound, RawFrame frame) when frame.Type == FrameType.Heartbeat: {
-                    context.Forward(_state.HeartbeatAgent);
-                    return Done;
-                }
-                case ConnectionConfiguration connectionConfiguration: {
-                    _state.ConnectionConfiguration = connectionConfiguration;
-                    return Done;
-                }
-                case (Inbound, ConnectionStart message): {
-                    _state.HandshakeAgent = context.SpawnNamed(
-                        name: "handshake",
-                        props: Props.FromProducer(() => new HandshakeAgent(_state.ConnectionConfiguration))
-                            .WithContextDecorator(context => new LoggingContextDecorator(context))
-                    );
-                    context.Forward(_state.HandshakeAgent);
-                    _behaviour.BecomeStacked(AwaitHandshake);
-                    return Done;
-                }
                 case (Inbound, ConnectionClose message): {
                     context.Send(context.Parent, (Outbound, new ConnectionCloseOk()));
                     context.Self.Stop();
@@ -63,39 +39,6 @@ namespace Lapine.Agents {
                 }
             }
             return Done;
-        }
-
-        Task AwaitHandshake(IContext context) {
-            switch (context.Message) {
-                case (Outbound, _): {
-                    context.Forward(context.Parent);
-                    return Done;
-                }
-                case (Inbound, ICommand _): {
-                    context.Forward(_state.HandshakeAgent);
-                    return Done;
-                }
-                case (StartHeartbeatTransmission, UInt16 frequency): {
-                    _state.HeartbeatAgent = context.SpawnNamed(
-                        name: "heartbeat",
-                        props: Props.FromProducer(() => new HeartbeatAgent())
-                            .WithContextDecorator(LoggingContextDecorator.Create)
-                    );
-                    context.Forward(_state.HeartbeatAgent);
-                    return Done;
-                }
-                case (HandshakeCompleted): {
-                    _behaviour.UnbecomeStacked();
-                    context.Forward(context.Parent);
-                    return Done;
-                }
-                case (AuthenticationFailed): {
-                    context.Self.Stop(); // TODO: fail gracefully
-                    return Done;
-                }
-                // TODO: case: handshake timed out..
-                default: return Done;
-            }
         }
     }
 }
