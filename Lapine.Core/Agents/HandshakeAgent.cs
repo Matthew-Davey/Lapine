@@ -44,6 +44,14 @@ namespace Lapine.Agents {
                         return context.Self.StopAsync();
                     }
 
+                    if (!message.Locales.Contains(_connectionConfiguration.Locale)) {
+                        context.Send(_listener, (HandshakeFailed));
+                        return context.Self.StopAsync();
+                    }
+
+                    // TODO: Verify protocol version compatibility...
+
+                    _state.ServerProperties = message.ServerProperties;
                     _state.AuthenticationStage = 0;
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
 
@@ -52,7 +60,7 @@ namespace Lapine.Agents {
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),
                         mechanism     : _connectionConfiguration.AuthenticationStrategy.Mechanism,
                         response      : UTF8.GetString(authenticationResponse),
-                        locale        : "en_US"
+                        locale        : _connectionConfiguration.Locale
                     )));
                     _behaviour.Become(AwaitConnectionTune);
                     return Done;
