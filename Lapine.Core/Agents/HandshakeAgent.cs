@@ -4,6 +4,7 @@ namespace Lapine.Agents {
     using System.Threading.Tasks;
     using Lapine.Protocol.Commands;
     using Proto;
+    using Proto.Schedulers.SimpleScheduler;
 
     using static System.Math;
     using static System.Text.Encoding;
@@ -30,6 +31,12 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case Started _: {
                     _behaviour.Become(AwaitConnectionStart);
+                    _state.TimeoutScheduler = new SimpleScheduler(context);
+                    _state.TimeoutScheduler.ScheduleTellOnce(
+                        delay  : TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout),
+                        target : context.Self,
+                        message: (Timeout)
+                    );
                     return Done;
                 }
                 default: return Done;
@@ -38,6 +45,10 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
+                case (Timeout): {
+                    context.Send(_listener, (HandshakeFailed));
+                    return context.Self.StopAsync();
+                }
                 case (Inbound, ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (HandshakeFailed));
@@ -55,7 +66,6 @@ namespace Lapine.Agents {
                     _state.AuthenticationStage = 0;
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
 
-                    // TODO: Verify protocol version compatibility...
                     context.Send(_listener, (Outbound, new ConnectionStartOk(
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),
                         mechanism     : _connectionConfiguration.AuthenticationStrategy.Mechanism,
@@ -71,6 +81,10 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionTune(IContext context) {
             switch (context.Message) {
+                case (Timeout): {
+                    context.Send(_listener, (HandshakeFailed));
+                    return context.Self.StopAsync();
+                }
                 case (Inbound, ConnectionSecure message): {
                     _state.AuthenticationStage++;
                     var challenge = UTF8.GetBytes(message.Challenge);
@@ -101,6 +115,10 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionOpenOk(IContext context) {
             switch (context.Message) {
+                case (Timeout): {
+                    context.Send(_listener, (HandshakeFailed));
+                    return context.Self.StopAsync();
+                }
                 case (Inbound, ConnectionOpenOk message): {
                     context.Send(_listener, (HandshakeCompleted));
                     context.Self.Stop();
