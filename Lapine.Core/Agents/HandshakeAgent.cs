@@ -11,13 +11,15 @@ namespace Lapine.Agents {
     using static Proto.Actor;
 
     public class HandshakeAgent : IActor {
-        readonly Behavior _behaviour;
+        readonly PID _listener;
         readonly ConnectionConfiguration _connectionConfiguration;
+        readonly Behavior _behaviour;
         readonly dynamic _state;
 
-        public HandshakeAgent(ConnectionConfiguration connectionConfiguration) {
-            _behaviour               = new Behavior(AwaitStart);
+        public HandshakeAgent(PID listener, ConnectionConfiguration connectionConfiguration) {
+            _listener                = listener ?? throw new ArgumentNullException(nameof(listener));
             _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
+            _behaviour               = new Behavior(AwaitStart);
             _state                   = new ExpandoObject();
         }
 
@@ -46,7 +48,7 @@ namespace Lapine.Agents {
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
 
                     // TODO: Verify protocol version compatibility...
-                    context.Send(context.Parent, (Outbound, new ConnectionStartOk(
+                    context.Send(_listener, (Outbound, new ConnectionStartOk(
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),
                         mechanism     : _connectionConfiguration.AuthenticationStrategy.Mechanism,
                         response      : UTF8.GetString(authenticationResponse),
@@ -65,7 +67,7 @@ namespace Lapine.Agents {
                     _state.AuthenticationStage++;
                     var challenge = UTF8.GetBytes(message.Challenge);
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond(stage: _state.AuthenticationStage, challenge: challenge);
-                    context.Send(context.Parent, (Outbound, new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
+                    context.Send(_listener, (Outbound, new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
                     return Done;
                 }
                 case (Inbound, ConnectionTune message): {
@@ -73,13 +75,13 @@ namespace Lapine.Agents {
                     var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
                     var maximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
 
-                    context.Send(context.Parent, (Outbound, new ConnectionTuneOk(
+                    context.Send(_listener, (Outbound, new ConnectionTuneOk(
                         channelMax: maximumChannelCount,
                         frameMax  : maximumFrameSize,
                         heartbeat : heartbeatFrequency
                     )));
-                    context.Send(context.Parent, (StartHeartbeatTransmission, frequency: heartbeatFrequency));
-                    context.Send(context.Parent, (Outbound, new ConnectionOpen(
+                    context.Send(_listener, (StartHeartbeatTransmission, frequency: heartbeatFrequency));
+                    context.Send(_listener, (Outbound, new ConnectionOpen(
                         virtualHost: _connectionConfiguration.VirtualHost
                     )));
                     _behaviour.Become(AwaitConnectionOpenOk);
@@ -92,7 +94,7 @@ namespace Lapine.Agents {
         Task AwaitConnectionOpenOk(IContext context) {
             switch (context.Message) {
                 case (Inbound, ConnectionOpenOk message): {
-                    context.Send(context.Parent, (HandshakeCompleted));
+                    context.Send(_listener, (HandshakeCompleted));
                     context.Self.Stop();
                     return Done;
                 }

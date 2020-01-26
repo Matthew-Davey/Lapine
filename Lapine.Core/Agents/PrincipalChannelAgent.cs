@@ -39,7 +39,7 @@ namespace Lapine.Agents {
                 case (Inbound, ConnectionStart message): {
                     _state.HandshakeAgent = context.SpawnNamed(
                         name: "handshake",
-                        props: Props.FromProducer(() => new HandshakeAgent(_connectionConfiguration))
+                        props: Props.FromProducer(() => new HandshakeAgent(context.Self, _connectionConfiguration))
                             .WithContextDecorator(LoggingContextDecorator.Create)
                     );
                     context.Forward(_state.HandshakeAgent);
