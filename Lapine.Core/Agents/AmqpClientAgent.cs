@@ -96,21 +96,19 @@ namespace Lapine.Agents {
             return Done;
         }
 
-        void SpawnSocketAgent(IContext context) {
+        void SpawnSocketAgent(IContext context) =>
             _state.SocketAgent = context.SpawnNamed(
                 name: "socket",
                 props: Props.FromProducer(() => new SocketAgent())
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
-        }
 
-        void SpawnChannelRouter(IContext context) {
+        void SpawnChannelRouter(IContext context) =>
             _state.ChannelRouter = context.SpawnNamed(
                 name: "channel-router",
                 props: Props.FromProducer(() => new ChannelRouterAgent())
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
-        }
 
         void SpawnPrincipalChannel(IContext context) {
             var principal = context.SpawnNamed(

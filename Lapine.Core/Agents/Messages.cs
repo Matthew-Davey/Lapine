@@ -2,14 +2,11 @@ namespace Lapine.Agents {
     using System;
 
     public static class Messages {
-        // An atom/symbol denoting an outbound entity (sent from peer to server)
-        public const String Outbound = ":outbound";
+        public const String Outbound = ":outbound"; // An atom/symbol denoting an outbound entity (sent from peer to server)
         public const String Connect = ":connect";
         public const String AddChannel = ":add-channel";
         public const String StartHeartbeatTransmission = ":start-heartbeat-transmission";
-
-        // An atom/symbol denoting an inbound entity (sent from server to peer)
-        public const String Inbound = ":inbound";
+        public const String Inbound = ":inbound"; // An atom/symbol denoting an inbound entity (sent from server to peer)
         public const String AuthenticationFailed = ":authentication-failed";
         public const String HandshakeCompleted = ":handshake-completed";
         public const String HandshakeFailed = ":handshake-failed";

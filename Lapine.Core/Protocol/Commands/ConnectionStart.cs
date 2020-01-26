@@ -47,7 +47,7 @@ namespace Lapine.Protocol.Commands {
     public sealed class ConnectionStartOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0B);
 
-        public IReadOnlyDictionary<String, Object> PeerProperties { get; } // TODO: Decode property table
+        public IReadOnlyDictionary<String, Object> PeerProperties { get; }
         public String Mechanism { get; }
         public String Response { get; }
         public String Locale { get; }

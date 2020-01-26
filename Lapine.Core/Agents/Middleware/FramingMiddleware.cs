@@ -8,7 +8,7 @@ namespace Lapine.Agents.Middleware {
 
     public static class FramingMiddleware {
         static public Func<Receiver, Receiver> UnwrapInboundMethodFrames() =>
-            (next => (context, envelope) => {
+            next => (context, envelope) => {
                 if (envelope.Message is (Inbound, RawFrame frame) &&
                     frame.Type is FrameType.Method &&
                     frame.Payload.Span.ReadMethodHeader(out var methodHeader, out var buffer))
@@ -107,10 +107,10 @@ namespace Lapine.Agents.Middleware {
                 else {
                     return next(context, envelope);
                 }
-            });
+            };
 
         static public Func<Sender, Sender> WrapOutboundCommands(UInt16 channel) =>
-            (next => (context, pid, envelope) => {
+            next => (context, pid, envelope) => {
                 if (envelope.Message is (Outbound, ICommand command)) {
                     var frame = RawFrame.Wrap(in channel, in command);
                     return next(context, pid, envelope.WithMessage((Outbound, frame)));
@@ -118,6 +118,6 @@ namespace Lapine.Agents.Middleware {
                 else {
                     return next(context, pid, envelope);
                 }
-            });
+            };
     }
 }
