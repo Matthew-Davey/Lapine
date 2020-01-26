@@ -40,8 +40,8 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (Inbound, ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
-                        // TODO: Unable to agree on authentication mechanism...
-                        throw new Exception();
+                        context.Send(_listener, (HandshakeFailed));
+                        return context.Self.StopAsync();
                     }
 
                     _state.AuthenticationStage = 0;
