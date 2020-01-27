@@ -99,7 +99,7 @@ namespace Lapine.Agents {
         void SpawnSocketAgent(IContext context) =>
             _state.SocketAgent = context.SpawnNamed(
                 name: "socket",
-                props: Props.FromProducer(() => new SocketAgent())
+                props: Props.FromProducer(() => new SocketAgent(context.Self))
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
 

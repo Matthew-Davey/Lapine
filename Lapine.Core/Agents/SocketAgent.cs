@@ -15,6 +15,7 @@ namespace Lapine.Agents {
 
     public class SocketAgent : IActor {
         readonly ILogger _log;
+        readonly PID _listener;
         readonly Behavior _behaviour;
         readonly Socket _socket;
         readonly Memory<Byte> _frameBuffer;
@@ -22,9 +23,10 @@ namespace Lapine.Agents {
         readonly Thread _pollThread;
         UInt16 _frameBufferSize = 0;
 
-        public SocketAgent() {
+        public SocketAgent(PID listener) {
             _log                     = CreateLogger(GetType());
-            _behaviour               = new Behavior(Disconnected);
+            _listener                = listener ?? throw new ArgumentNullException(nameof(listener));
+            _behaviour               = new Behavior(AwaitConnect);
             _socket                  = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _frameBuffer             = new Byte[1024 * 1024 * 8];
             _cancellationTokenSource = new CancellationTokenSource();
@@ -34,18 +36,17 @@ namespace Lapine.Agents {
         public Task ReceiveAsync(IContext context) =>
             _behaviour.ReceiveAsync(context);
 
-        Task Disconnected(IContext context) {
+        Task AwaitConnect(IContext context) {
             switch (context.Message) {
                 case (Connect, IPEndPoint endpoint): {
                     _log.LogInformation("Attempting to connect to {endpoint}:{port}",endpoint.Address, endpoint.Port);
                     _socket.Connect(endpoint);
-                    _log.LogInformation("Connection estabished");
+                    _log.LogInformation("Connection established");
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
 
-                    if (context.Parent != null)
-                        context.Send(context.Parent, (SocketConnected));
+                    context.Send(_listener, (SocketConnected));
 
                     // Transmit protocol header to start handshake process...
                     _log.LogDebug("Sending protocol header");
@@ -68,18 +69,26 @@ namespace Lapine.Agents {
                     _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
                     return Done;
                 }
+                case (Disconnect): {
+                    context.Self.Stop();
+                    return Done;
+                }
                 case Stopping _: {
-                    _cancellationTokenSource.Cancel();
-                    _pollThread.Join();
-                    _socket.Close();
-                    _behaviour.Become(Stopped);
+                    if (_socket.Connected) {
+                        _socket.Disconnect(false);
+                        _socket.Close();
+                        context.Send(_listener, (SocketDisconnected));
+                    }
+
+                    if (_pollThread.IsAlive) {
+                        _cancellationTokenSource.Cancel();
+                        _pollThread.Join();
+                    }
                     return Done;
                 }
                 default: return Done;
             }
         }
-
-        Task Stopped(IContext _) => Done;
 
         void PollThreadMain(Object state) {
             var (cancellationToken, context) = ((CancellationToken, IContext))state;
@@ -94,7 +103,7 @@ namespace Lapine.Agents {
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
-                            context.Send(context.Parent, (Inbound, frame));
+                            context.Send(_listener, (Inbound, frame));
 
                             var consumed = _frameBufferSize - surplus.Length;
                             _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
@@ -106,6 +115,9 @@ namespace Lapine.Agents {
             catch (SocketException) {
                 // TODO: Publish a disconnected event, or just let the actor die?
                 // Or both?
+            }
+            catch (ObjectDisposedException) {
+                // The socket has been closed...
             }
             catch (OperationCanceledException) {
                 // Let the thread terminate...
