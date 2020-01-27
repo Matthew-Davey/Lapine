@@ -43,6 +43,136 @@ namespace Lapine {
             endpoints: new [] { new IPEndPoint(IPAddress.Loopback, DefaultPort) }
         );
 
+        public ConnectionConfiguration WithEndpoints(params IPEndPoint[] endpoints) => new ConnectionConfiguration(
+            endpoints                : endpoints ?? throw new ArgumentNullException(nameof(endpoints)),
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithEndpointSelectionStrategy(IEndpointSelectionStrategy endpointSelectionStrategy) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: endpointSelectionStrategy ?? throw new ArgumentNullException(nameof(endpointSelectionStrategy)),
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithConnectionTimeout(UInt16 connectionTimeout) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : connectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithAuthenticationStrategy(IAuthenticationStrategy authenticationStrategy) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : authenticationStrategy ?? throw new ArgumentNullException(nameof(authenticationStrategy)),
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithLocale(String locale) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : locale ?? throw new ArgumentNullException(nameof(locale)),
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithPeerProperties(PeerProperties peerProperties) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : peerProperties ?? throw new ArgumentNullException(nameof(peerProperties)),
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithVirtualHost(String virtualHost) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : virtualHost ?? throw new ArgumentNullException(nameof(virtualHost)),
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithHeartbeatFrequency(UInt16 heartbeatFrequency) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : heartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithMaximumFrameSize(UInt32 maximumFrameSize) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : maximumFrameSize,
+            maximumChannelCount      : MaximumChannelCount
+        );
+
+        public ConnectionConfiguration WithMaximumChannelCount(UInt16 maximumChannelCount) => new ConnectionConfiguration(
+            endpoints                : Endpoints,
+            endpointSelectionStrategy: EndpointSelectionStrategy,
+            connectionTimeout        : ConnectionTimeout,
+            authenticationStrategy   : AuthenticationStrategy,
+            locale                   : Locale,
+            peerProperties           : PeerProperties,
+            virtualHost              : VirtualHost,
+            heartbeatFrequency       : HeartbeatFrequency,
+            maximumFrameSize         : MaximumFrameSize,
+            maximumChannelCount      : maximumChannelCount
+        );
+
         internal IEnumerator<IPEndPoint> GetEndpointEnumerator() =>
             EndpointSelectionStrategy.GetConnectionSequence(Endpoints)
                 .ToList()

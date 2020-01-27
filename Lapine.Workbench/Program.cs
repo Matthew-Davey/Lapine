@@ -19,14 +19,11 @@
                 resetEvent.Set();
             };
 
-            var connectionConfiguration = new ConnectionConfiguration(
-                endpoints:                 new [] { new IPEndPoint(IPAddress.Loopback, 5672) },
-                endpointSelectionStrategy: new RandomEndpointSelectionStrategy(),
-                authenticationStrategy:    new PlainAuthenticationStrategy(username: "guest", password: "guest"),
-                peerProperties: PeerProperties.Default
+            var connectionConfiguration = ConnectionConfiguration.Default
+                .WithPeerProperties(PeerProperties.Default
                     .WithProduct("Lapine.Workbench")
                     .WithClientProvidedName("Lapine.Workbench")
-            );
+                );
 
             var amqpClient = new AmqpClient(connectionConfiguration);
 
