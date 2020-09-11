@@ -169,5 +169,18 @@ namespace Lapine {
             Assert.Equal(expected: expectedValue, actual: value);
             Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
         }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(UInt16), default(UInt16), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01, 0x00, 0x01 }, (UInt16)1, (UInt16)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01, 0x00, 0x01, 0x00 }, (UInt16)1, (UInt16)1, new Byte[] { 0x00 })]
+        static public void ReadMethodHeader(in Boolean expectedResult, in Byte[] input, in UInt16 expectedClassId, in UInt16 expectedMethodId, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadMethodHeader(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedClassId, actual: value.ClassId);
+            Assert.Equal(expected: expectedMethodId, actual: value.MethodId);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
     }
 }
