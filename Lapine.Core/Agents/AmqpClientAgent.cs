@@ -71,7 +71,7 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case (":inbound", RawFrame frame): {
+                case (":receive", RawFrame frame): {
                     context.Forward(_state.ChannelRouter);
                     break;
                 }

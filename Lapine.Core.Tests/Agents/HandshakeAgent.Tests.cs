@@ -30,7 +30,7 @@ namespace Lapine.Agents {
         [Scenario]
         public void FailsWhenAuthMechanismNotSupportedByServer() {
             "When the agent receives a ConnectionStart message with an unsupported auth mechanism".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionStart(
+                _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),
                     mechanisms      : new [] { "unsupported" },
@@ -48,7 +48,7 @@ namespace Lapine.Agents {
         [Scenario]
         public void FailsWhenLocaleNotSupportedByServer() {
             "When the agent receives a ConnectionStart message with an unsupported locale".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionStart(
+                _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),
                     mechanisms      : new [] { "PLAIN" },
@@ -66,7 +66,7 @@ namespace Lapine.Agents {
         [Scenario]
         public void StartsConnection() {
             "When the agent receives a ConnectionStart message with a supported auth mechanism".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionStart(
+                _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),
                     mechanisms      : new [] { "PLAIN" },
@@ -84,7 +84,7 @@ namespace Lapine.Agents {
         [Scenario]
         public void TunesConnection() {
             "Given the connection has already been started".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionStart(
+                _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),
                     mechanisms      : new [] { "PLAIN" },
@@ -92,7 +92,7 @@ namespace Lapine.Agents {
                 )));
             });
             "When the agent receives a ConnectionTune message".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionTune(
+                _rootContext.Send(_subject, (":receive", new ConnectionTune(
                     channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
                     frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
                     heartbeat : ConnectionConfiguration.DefaultHeartbeatFrequency
@@ -115,20 +115,20 @@ namespace Lapine.Agents {
         [Scenario]
         public void CompletesHandshake() {
             "Given the connection has already been started and tuned".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionStart(
+                _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),
                     mechanisms      : new [] { "PLAIN" },
                     locales         : new [] { "en_US" }
                 )));
-                _rootContext.Send(_subject, (":inbound", new ConnectionTune(
+                _rootContext.Send(_subject, (":receive", new ConnectionTune(
                     channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
                     frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
                     heartbeat : ConnectionConfiguration.DefaultHeartbeatFrequency
                 )));
             });
             "When the agent receives a ConnectionOpenOk message".x(() => {
-                _rootContext.Send(_subject, (":inbound", new ConnectionOpenOk()));
+                _rootContext.Send(_subject, (":receive", new ConnectionOpenOk()));
             });
             "Then it should complete the handshake process".x(() => {
                 Assert.Contains(_sent, message => message switch {

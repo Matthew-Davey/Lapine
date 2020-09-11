@@ -31,7 +31,7 @@ namespace Lapine.Agents {
 
         Task Running(IContext context) {
             switch (context.Message) {
-                case (":inbound", ConnectionClose message): {
+                case (":receive", ConnectionClose message): {
                     context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
                     context.Self.Stop();
                     return Done;

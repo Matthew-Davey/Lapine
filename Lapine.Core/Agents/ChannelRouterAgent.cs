@@ -21,7 +21,7 @@ namespace Lapine.Agents {
                     }
                     return Done;
                 }
-                case (":inbound", RawFrame frame): {
+                case (":receive", RawFrame frame): {
                     if (_channels.ContainsKey(frame.Channel)) {
                         context.Forward(_channels[frame.Channel]);
                     }

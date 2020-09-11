@@ -78,7 +78,7 @@ namespace Lapine.Agents {
             "Then it should send an Inbound Frame message".x(async () => {
                 await Task.Delay(10);
                 Assert.Contains(_sent, message => message switch {
-                    (":inbound", RawFrame _) => true,
+                    (":receive", RawFrame _) => true,
                     _                        => false
                 });
             });

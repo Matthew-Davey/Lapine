@@ -31,7 +31,7 @@ namespace Lapine.Agents {
                     _state.SchedulerCancellationTokenSource = cancellationTokenSource;
                     break;
                 }
-                case (":inbound", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
+                case (":receive", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
                     _state.LastReceivedHeartbeat = UtcNow;
                     break;
                 }

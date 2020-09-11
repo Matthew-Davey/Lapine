@@ -30,7 +30,7 @@ namespace Lapine.Agents.Middleware {
                         case SystemMessage _: {
                             return Done;
                         }
-                        case (":inbound", ICommand message): {
+                        case (":receive", ICommand message): {
                             _unwrappedMessage = message;
                             _messageReceivedSignal.Set();
                             return Done;
@@ -54,7 +54,7 @@ namespace Lapine.Agents.Middleware {
                 locales: new [] { "en_US" }
             );
 
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ConnectionStart;
@@ -74,7 +74,7 @@ namespace Lapine.Agents.Middleware {
         public void UnwrapsConnectionSecureMethodFrame() {
             var message = new ConnectionSecure(challenge: Random.Hash());
 
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ConnectionSecure;
@@ -94,7 +94,7 @@ namespace Lapine.Agents.Middleware {
                 heartbeat : Random.UShort()
             );
 
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ConnectionTune;
@@ -110,7 +110,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsConnectionOpenOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ConnectionOpenOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ConnectionOpenOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -128,7 +128,7 @@ namespace Lapine.Agents.Middleware {
                 replyText    : Random.Word(),
                 failingMethod: (Random.UShort(), Random.UShort())
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ConnectionClose;
@@ -145,7 +145,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsConnectionCloseOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ConnectionCloseOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ConnectionCloseOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -158,7 +158,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsChannelOpenOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ChannelOpenOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ChannelOpenOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -174,7 +174,7 @@ namespace Lapine.Agents.Middleware {
             var message = new ChannelFlow(
                 active: Random.Bool()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ChannelFlow;
@@ -192,7 +192,7 @@ namespace Lapine.Agents.Middleware {
             var message = new ChannelFlowOk(
                 active: Random.Bool()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ChannelFlowOk;
@@ -212,7 +212,7 @@ namespace Lapine.Agents.Middleware {
                 replyText    : Random.Word(),
                 failingMethod: (Random.UShort(), Random.UShort())
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as ChannelClose;
@@ -229,7 +229,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsChannelCloseOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ChannelCloseOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ChannelCloseOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -242,7 +242,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsExchangeDeclareOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ExchangeDeclareOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ExchangeDeclareOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -255,7 +255,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsExchangeDeleteOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new ExchangeDeleteOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new ExchangeDeleteOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -273,7 +273,7 @@ namespace Lapine.Agents.Middleware {
                 messageCount : Random.UInt(),
                 consumerCount: Random.UInt()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as QueueDeclareOk;
@@ -290,7 +290,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsQueueBindOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new QueueBindOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new QueueBindOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -303,7 +303,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsQueueUnbindOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new QueueUnbindOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new QueueUnbindOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -319,7 +319,7 @@ namespace Lapine.Agents.Middleware {
             var message = new QueuePurgeOk(
                 messageCount: Random.UInt()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as QueuePurgeOk;
@@ -337,7 +337,7 @@ namespace Lapine.Agents.Middleware {
             var message = new QueueDeleteOk(
                 messageCount: Random.UInt()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as QueueDeleteOk;
@@ -352,7 +352,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsBasicQosOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new BasicQosOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new BasicQosOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -368,7 +368,7 @@ namespace Lapine.Agents.Middleware {
             var message = new BasicConsumeOk(
                 consumerTag: Random.Word()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as BasicConsumeOk;
@@ -386,7 +386,7 @@ namespace Lapine.Agents.Middleware {
             var message = new BasicCancelOk(
                 consumerTag: Random.Word()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as BasicCancelOk;
@@ -407,7 +407,7 @@ namespace Lapine.Agents.Middleware {
                 exchangeName: Random.Word(),
                 routingKey  : Random.Word()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as BasicReturn;
@@ -431,7 +431,7 @@ namespace Lapine.Agents.Middleware {
                 redelivered : Random.Bool(),
                 exchangeName: Random.Word()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as BasicDeliver;
@@ -456,7 +456,7 @@ namespace Lapine.Agents.Middleware {
                 routingKey  : Random.Word(),
                 messageCount: Random.UInt()
             );
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, message)));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 var unwrappedMessage = _unwrappedMessage as BasicGetOk;
@@ -475,7 +475,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsBasicGetEmptyMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new BasicGetEmpty())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new BasicGetEmpty())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -488,7 +488,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsBasicRecoverOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new BasicRecoverOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new BasicRecoverOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -501,7 +501,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsTransactionSelectOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new TransactionSelectOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new TransactionSelectOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -514,7 +514,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsTransactionCommitOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new TransactionCommitOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new TransactionCommitOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);
@@ -527,7 +527,7 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsTransactionRollbackOkMethodFrame() {
-            _context.Send(_subject, (":inbound", RawFrame.Wrap(_channelNumber, new TransactionRollbackOk())));
+            _context.Send(_subject, (":receive", RawFrame.Wrap(_channelNumber, new TransactionRollbackOk())));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
                 Assert.True(_messageReceivedSignal.IsSet);

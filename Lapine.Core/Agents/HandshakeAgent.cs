@@ -48,7 +48,7 @@ namespace Lapine.Agents {
                     context.Send(_listener, (":handshake-failed"));
                     return context.Self.StopAsync();
                 }
-                case (":inbound", ConnectionStart message): {
+                case (":receive", ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (":handshake-failed"));
                         return context.Self.StopAsync();
@@ -84,14 +84,14 @@ namespace Lapine.Agents {
                     context.Send(_listener, (":handshake-failed"));
                     return context.Self.StopAsync();
                 }
-                case (":inbound", ConnectionSecure message): {
+                case (":receive", ConnectionSecure message): {
                     _state.AuthenticationStage++;
                     var challenge = UTF8.GetBytes(message.Challenge);
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond(stage: _state.AuthenticationStage, challenge: challenge);
                     context.Send(_listener, (":transmit", new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
                     return Done;
                 }
-                case (":inbound", ConnectionTune message): {
+                case (":receive", ConnectionTune message): {
                     var heartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
                     var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
                     var maximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
@@ -118,7 +118,7 @@ namespace Lapine.Agents {
                     context.Send(_listener, (":handshake-failed"));
                     return context.Self.StopAsync();
                 }
-                case (":inbound", ConnectionOpenOk message): {
+                case (":receive", ConnectionOpenOk message): {
                     context.Send(_listener, (":handshake-completed"));
                     context.Self.Stop();
                     return Done;

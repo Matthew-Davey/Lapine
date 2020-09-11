@@ -35,7 +35,7 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
-                case (":inbound", ConnectionStart message): {
+                case (":receive", ConnectionStart message): {
                     _state.HandshakeAgent = context.SpawnNamed(
                         name: "handshake",
                         props: Props.FromProducer(() => new HandshakeAgent(context.Self, _connectionConfiguration))
@@ -55,7 +55,7 @@ namespace Lapine.Agents {
                     context.Forward(context.Parent);
                     return Done;
                 }
-                case (":inbound", ICommand _): {
+                case (":receive", ICommand _): {
                     context.Forward(_state.HandshakeAgent);
                     return Done;
                 }
@@ -84,7 +84,7 @@ namespace Lapine.Agents {
 
         Task Open(IContext context) {
             switch (context.Message) {
-                case (":inbound", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
+                case (":receive", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
@@ -92,7 +92,7 @@ namespace Lapine.Agents {
                     context.Forward(context.Parent);
                     return Done;
                 }
-                case (":inbound", ConnectionClose message): {
+                case (":receive", ConnectionClose message): {
                     context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
                     context.Self.Stop();
                     _behaviour.Become(Closed);
