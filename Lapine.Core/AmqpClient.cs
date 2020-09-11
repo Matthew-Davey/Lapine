@@ -8,15 +8,15 @@ namespace Lapine {
 
     using static Proto.Actor;
 
-    public class AmqpClient : IDisposable {
+    public class AmqpClient : IAsyncDisposable {
         readonly RootContext _context;
         readonly ISimpleScheduler _scheduler;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly PID _agent;
 
         public AmqpClient(ConnectionConfiguration connectionConfiguration) {
-            _context                 = new RootContext();
-            _scheduler               = new SimpleScheduler(_context);
+            _context = new RootContext();
+            _scheduler = new SimpleScheduler(_context);
             _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
             _agent = _context.SpawnNamed(
                 name: "amqp-client",
@@ -62,7 +62,7 @@ namespace Lapine {
             return onReady.Task;
         }
 
-        public void Dispose() =>
-            _agent.Stop();
+        public async ValueTask DisposeAsync() =>
+            await _agent.StopAsync();
     }
 }

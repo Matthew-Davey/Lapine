@@ -1,7 +1,5 @@
 ﻿namespace Lapine.Workbench {
     using System;
-    using System.Net;
-    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Logging;
 
@@ -12,11 +10,11 @@
                 config.SetMinimumLevel(LogLevel.Debug);
             });
 
-            var resetEvent = new ManualResetEventSlim();
+            var completion = new TaskCompletionSource<Int32>();
 
             Console.CancelKeyPress += (_, args) => {
                 args.Cancel = true;
-                resetEvent.Set();
+                completion.SetResult(0);
             };
 
             var connectionConfiguration = ConnectionConfiguration.Default
@@ -29,9 +27,9 @@
 
             await amqpClient.ConnectAsync();
 
-            resetEvent.Wait();
+            Environment.ExitCode = await completion.Task;
 
-            amqpClient.Dispose();
+            await amqpClient.DisposeAsync();
         }
     }
 }
