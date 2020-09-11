@@ -71,14 +71,14 @@ namespace Lapine.Agents {
                         response      : UTF8.GetString(authenticationResponse),
                         locale        : _connectionConfiguration.Locale
                     )));
-                    _behaviour.Become(AwaitConnectionTune);
+                    _behaviour.Become(AwaitConnectionSecureOrTune);
                     return Done;
                 }
                 default: return Done;
             }
         }
 
-        Task AwaitConnectionTune(IContext context) {
+        Task AwaitConnectionSecureOrTune(IContext context) {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
