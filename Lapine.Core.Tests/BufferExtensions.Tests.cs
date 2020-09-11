@@ -207,5 +207,53 @@ namespace Lapine {
             Assert.Equal(expected: expectedValue, actual: value);
             Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
         }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Byte), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x01 }, (Byte)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x01, 0x00 }, (Byte)1, new Byte[] { 0x00 })]
+        static public void ReadUInt8(in Boolean expectedResult, in Byte[] input, in Byte expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadUInt8(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(UInt16), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01 }, (UInt16)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01, 0x00 }, (UInt16)1, new Byte[] { 0x00 })]
+        static public void ReadUInt16BE(in Boolean expectedResult, in Byte[] input, in UInt16 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadUInt16BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(UInt32), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x01 }, (UInt32)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x01, 0x00 }, (UInt32)1, new Byte[] { 0x00 })]
+        static public void ReadUInt32BE(in Boolean expectedResult, in Byte[] input, in UInt32 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadUInt32BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(UInt64), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }, (UInt64)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00 }, (UInt64)1, new Byte[] { 0x00 })]
+        static public void ReadUInt64BE(in Boolean expectedResult, in Byte[] input, in UInt64 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadUInt64BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
     }
 }
