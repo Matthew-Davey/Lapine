@@ -158,5 +158,16 @@ namespace Lapine {
             Assert.Equal(expected: expectedValue, actual: value);
             Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
         }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(String), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74 }, "test", new Byte[0])]
+        static public void ReadLongString(in Boolean expectedResult, in Byte[] input, String expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadLongString(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
     }
 }
