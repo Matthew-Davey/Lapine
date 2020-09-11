@@ -162,6 +162,7 @@ namespace Lapine {
         [Theory]
         [InlineData(false, new Byte[0], default(String), new Byte[0])]
         [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74 }, "test", new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00 }, "test", new Byte[] { 0x00 })]
         static public void ReadLongString(in Boolean expectedResult, in Byte[] input, String expectedValue, in Byte[] expectedSurplus) {
             var result = BufferExtensions.ReadLongString(input, out var value, out var surplus);
 
@@ -186,8 +187,21 @@ namespace Lapine {
         [Theory]
         [InlineData(false, new Byte[0], default(String), new Byte[0])]
         [InlineData(true, new Byte[] { 0x04, 0x74, 0x65, 0x73, 0x74 }, "test", new Byte[0])]
+        [InlineData(true, new Byte[] { 0x04, 0x74, 0x65, 0x73, 0x74, 0x00 }, "test", new Byte[] { 0x00 })]
         static public void ReadShortString(in Boolean expectedResult, in Byte[] input, String expectedValue, in Byte[] expectedSurplus) {
             var result = BufferExtensions.ReadShortString(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Single), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x80, 0x3F }, (Single)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00 }, (Single)1, new Byte[] { 0x00 })]
+        static public void ReadSingle(in Boolean expectedResult, in Byte[] input, in Single expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadSingle(input, out var value, out var surplus);
 
             Assert.Equal(expected: expectedResult, actual: result);
             Assert.Equal(expected: expectedValue, actual: value);
