@@ -23,7 +23,7 @@ A C# client library for the Advanced Message Queueing Protocol (AMQP) v0.9.1
 - [x] Connection tuning
 - [x] Heartbeating
 - [x] Cluster node selection
-- [x] Automatic reconnection
+- [ ] Automatic reconnection
 
 #### Channel
 - [ ] Open
