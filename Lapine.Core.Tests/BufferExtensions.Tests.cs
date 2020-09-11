@@ -73,5 +73,18 @@ namespace Lapine {
             Assert.Equal(expected: expectedValue, actual: value.ToArray());
             Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
         }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Double), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F }, 1D, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00 }, 1D, new Byte[] { 0x00 })]
+        static public void ReadDoouble(in Boolean expectedResult, in Byte[] input, in Double expectedValue, in Byte[] expectedSurplus)
+        {
+            var result = BufferExtensions.ReadDouble(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
     }
 }
