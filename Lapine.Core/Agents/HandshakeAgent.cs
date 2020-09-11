@@ -65,7 +65,7 @@ namespace Lapine.Agents {
                     _state.AuthenticationStage = 0;
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
 
-                    context.Send(_listener, (":outbound", new ConnectionStartOk(
+                    context.Send(_listener, (":transmit", new ConnectionStartOk(
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),
                         mechanism     : _connectionConfiguration.AuthenticationStrategy.Mechanism,
                         response      : UTF8.GetString(authenticationResponse),
@@ -88,7 +88,7 @@ namespace Lapine.Agents {
                     _state.AuthenticationStage++;
                     var challenge = UTF8.GetBytes(message.Challenge);
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond(stage: _state.AuthenticationStage, challenge: challenge);
-                    context.Send(_listener, (":outbound", new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
+                    context.Send(_listener, (":transmit", new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
                     return Done;
                 }
                 case (":inbound", ConnectionTune message): {
@@ -96,13 +96,13 @@ namespace Lapine.Agents {
                     var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
                     var maximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
 
-                    context.Send(_listener, (":outbound", new ConnectionTuneOk(
+                    context.Send(_listener, (":transmit", new ConnectionTuneOk(
                         channelMax: maximumChannelCount,
                         frameMax  : maximumFrameSize,
                         heartbeat : heartbeatFrequency
                     )));
                     context.Send(_listener, (":start-heartbeat-transmission", frequency: heartbeatFrequency));
-                    context.Send(_listener, (":outbound", new ConnectionOpen(
+                    context.Send(_listener, (":transmit", new ConnectionOpen(
                         virtualHost: _connectionConfiguration.VirtualHost
                     )));
                     _behaviour.Become(AwaitConnectionOpenOk);

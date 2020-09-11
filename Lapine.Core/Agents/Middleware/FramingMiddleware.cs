@@ -109,9 +109,9 @@ namespace Lapine.Agents.Middleware {
 
         static public Func<Sender, Sender> WrapOutboundCommands(UInt16 channel) =>
             next => (context, pid, envelope) => {
-                if (envelope.Message is (":outbound", ICommand command)) {
+                if (envelope.Message is (":transmit", ICommand command)) {
                     var frame = RawFrame.Wrap(in channel, in command);
-                    return next(context, pid, envelope.WithMessage((":outbound", frame)));
+                    return next(context, pid, envelope.WithMessage((":transmit", frame)));
                 }
                 else {
                     return next(context, pid, envelope);

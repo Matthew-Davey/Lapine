@@ -51,7 +51,7 @@ namespace Lapine.Agents {
 
         Task Negotiating(IContext context) {
             switch (context.Message) {
-                case (":outbound", _): {
+                case (":transmit", _): {
                     context.Forward(context.Parent);
                     return Done;
                 }
@@ -88,12 +88,12 @@ namespace Lapine.Agents {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
-                case (":outbound", _): {
+                case (":transmit", _): {
                     context.Forward(context.Parent);
                     return Done;
                 }
                 case (":inbound", ConnectionClose message): {
-                    context.Send(context.Parent, (":outbound", new ConnectionCloseOk()));
+                    context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
                     context.Self.Stop();
                     _behaviour.Become(Closed);
                     return Done;

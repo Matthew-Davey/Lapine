@@ -61,7 +61,7 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case (":outbound", RawFrame frame): {
+                case (":transmit", RawFrame frame): {
                     var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
                     frame.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);

@@ -75,7 +75,7 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionStartOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    (":outbound", ConnectionStartOk _) => true,
+                    (":transmit", ConnectionStartOk _) => true,
                     _                                  => false
                 });
             });
@@ -100,13 +100,13 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionTuneOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    (":outbound", ConnectionTuneOk _) => true,
+                    (":transmit", ConnectionTuneOk _) => true,
                     _                                 => false
                 });
             });
             "And it should sent a ConnectionOpen message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    (":outbound", ConnectionOpen x) when x.VirtualHost == ConnectionConfiguration.DefaultVirtualHost => true,
+                    (":transmit", ConnectionOpen x) when x.VirtualHost == ConnectionConfiguration.DefaultVirtualHost => true,
                     _ => false
                 });
             });

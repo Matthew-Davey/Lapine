@@ -25,7 +25,7 @@ namespace Lapine.Agents {
                         delay                  : TimeSpan.FromSeconds(frequency),
                         interval               : TimeSpan.FromSeconds(frequency),
                         target                 : context.Parent,
-                        message                : (":outbound", RawFrame.Heartbeat),
+                        message                : (":transmit", RawFrame.Heartbeat),
                         cancellationTokenSource: out CancellationTokenSource cancellationTokenSource
                     );
                     _state.SchedulerCancellationTokenSource = cancellationTokenSource;

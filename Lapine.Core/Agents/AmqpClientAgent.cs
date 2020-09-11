@@ -75,7 +75,7 @@ namespace Lapine.Agents {
                     context.Forward(_state.ChannelRouter);
                     break;
                 }
-                case (":outbound", RawFrame frame): {
+                case (":transmit", RawFrame frame): {
                     context.Forward(_state.SocketAgent);
                     break;
                 }
