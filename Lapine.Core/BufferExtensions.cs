@@ -207,7 +207,7 @@ namespace Lapine
                     break;
                 }
                 case 'l': { // long-long-uint
-                    if (surplus.ReadUInt32BE(out var value, out surplus)) {
+                    if (surplus.ReadUInt64BE(out var value, out surplus)) {
                         result = value;
                         return true;
                     }
