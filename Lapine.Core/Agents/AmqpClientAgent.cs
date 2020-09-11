@@ -6,7 +6,6 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class AmqpClientAgent : IActor {
@@ -36,7 +35,7 @@ namespace Lapine.Agents {
 
         Task Disconnected(IContext context) {
             switch (context.Message) {
-                case (Connect, PID listener): {
+                case (":connect", PID listener): {
                     _state.ConnectionReadyListener = listener;
                     _state.EndpointEnumerator = _connectionConfiguration.GetEndpointEnumerator();
                     _behaviour.Become(Connecting);
@@ -55,12 +54,12 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     TryNextEndpoint(context, endpointsExhausted: () => {
-                        context.Send(_state.ConnectionReadyListener, (ConnectionFailed));
+                        context.Send(_state.ConnectionReadyListener, (":connection-failed"));
                         _behaviour.Become(Disconnected);
                     });
                     break;
                 }
-                case (SocketConnected): {
+                case (":socket-connected"): {
                     SpawnChannelRouter(context);
                     SpawnPrincipalChannel(context);
                     _behaviour.Become(Connected);
@@ -72,16 +71,16 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case (Inbound, RawFrame frame): {
+                case (":inbound", RawFrame frame): {
                     context.Forward(_state.ChannelRouter);
                     break;
                 }
-                case (Outbound, RawFrame frame): {
+                case (":outbound", RawFrame frame): {
                     context.Forward(_state.SocketAgent);
                     break;
                 }
-                case (HandshakeCompleted): {
-                    context.Send(_state.ConnectionReadyListener, (ConnectionReady));
+                case (":handshake-completed"): {
+                    context.Send(_state.ConnectionReadyListener, (":connection-ready"));
                     break;
                 }
                 // If the socket agent terminates whilst we're in the connected state, it indicates that we've lost the connection.
@@ -89,7 +88,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     _behaviour.Become(Disconnected);
-                    context.Send(context.Self, (Connect, context.Self));
+                    context.Send(context.Self, (":connect", context.Self));
                     break;
                 }
             }
@@ -118,7 +117,7 @@ namespace Lapine.Agents {
                     .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
-            context.Send(_state.ChannelRouter, (AddChannel, (UInt16)0, principal));
+            context.Send(_state.ChannelRouter, (":add-channel", (UInt16)0, principal));
         }
 
         void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {
@@ -127,7 +126,7 @@ namespace Lapine.Agents {
 
             if (_state.EndpointEnumerator.MoveNext()) {
                 var endpoint = _state.EndpointEnumerator.Current;
-                context.Send(_state.SocketAgent, (Connect, endpoint));
+                context.Send(_state.SocketAgent, (":connect", endpoint));
             }
             else {
                 endpointsExhausted?.Invoke();

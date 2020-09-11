@@ -12,8 +12,6 @@ namespace Lapine.Agents {
     using Xbehave;
     using Xunit;
 
-    using static Lapine.Agents.Messages;
-
     public class SocketAgentTests : Faker, IDisposable {
         readonly RootContext _context;
         readonly IList<Object> _sent;
@@ -43,7 +41,7 @@ namespace Lapine.Agents {
         [Scenario(Timeout = 1000)]
         public void EstablishesConnection(Socket socket) {
             "When the agent is instructed to connect to a remote endpoint".x(() => {
-                _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, _port)));
+                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
             });
             "Then it should establish a TCP connection".x(() => {
                 socket = _tcpListener.AcceptSocket();
@@ -51,8 +49,8 @@ namespace Lapine.Agents {
             });
             "And it should send a SocketConnected message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    (SocketConnected) => true,
-                    _                 => false
+                    (":socket-connected") => true,
+                    _                     => false
                 });
             });
             "And it should transmit the protocol header immediately".x(() => {
@@ -67,7 +65,7 @@ namespace Lapine.Agents {
         [Scenario]
         public void ReceivesIncomingFrames(Socket socket) {
             "Given the agent is connected to a remote endpoint".x(() => {
-                _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, _port)));
+                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
                 socket = _tcpListener.AcceptSocket();
             });
             "When the remote endpoint sends a frame".x(() => {
@@ -80,8 +78,8 @@ namespace Lapine.Agents {
             "Then it should send an Inbound Frame message".x(async () => {
                 await Task.Delay(10);
                 Assert.Contains(_sent, message => message switch {
-                    (Inbound, RawFrame _) => true,
-                    _                     => false
+                    (":inbound", RawFrame _) => true,
+                    _                        => false
                 });
             });
         }
@@ -89,17 +87,17 @@ namespace Lapine.Agents {
         [Scenario]
         public void Disconnects(Socket socket) {
             "Given the agent is connected to a remote endpoint".x(() => {
-                _context.Send(_subject, (Connect, new IPEndPoint(IPAddress.Loopback, _port)));
+                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
                 socket = _tcpListener.AcceptSocket();
             });
             "When it receives a Disconnect message".x(() => {
-                _context.Send(_subject, (Disconnect));
+                _context.Send(_subject, (":disconnect"));
             });
             "Then the agent should send a Disconnected message".x(async () => {
                 await Task.Delay(10);
                 Assert.Contains(_sent, message => message switch {
-                    (SocketDisconnected) => true,
-                    _                    => false
+                    (":socket-disconnected") => true,
+                    _                        => false
                 });
             });
         }

@@ -9,7 +9,6 @@ namespace Lapine.Agents {
     using Microsoft.Extensions.Logging;
     using Proto;
 
-    using static Lapine.Agents.Messages;
     using static Lapine.Log;
     using static Proto.Actor;
 
@@ -38,15 +37,15 @@ namespace Lapine.Agents {
 
         Task AwaitConnect(IContext context) {
             switch (context.Message) {
-                case (Connect, IPEndPoint endpoint): {
-                    _log.LogInformation("Attempting to connect to {endpoint}:{port}",endpoint.Address, endpoint.Port);
+                case (":connect", IPEndPoint endpoint): {
+                    _log.LogInformation("Attempting to connect to {endpoint}:{port}", endpoint.Address, endpoint.Port);
                     _socket.Connect(endpoint);
                     _log.LogInformation("Connection established");
 
                     _pollThread.Start((_cancellationTokenSource.Token, context));
                     _behaviour.Become(Connected);
 
-                    context.Send(_listener, (SocketConnected));
+                    context.Send(_listener, (":socket-connected"));
 
                     // Transmit protocol header to start handshake process...
                     _log.LogDebug("Sending protocol header");
@@ -62,14 +61,14 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case (Outbound, RawFrame frame): {
+                case (":outbound", RawFrame frame): {
                     var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
                     frame.Serialize(buffer);
                     _socket.Send(buffer.WrittenSpan);
                     _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
                     return Done;
                 }
-                case (Disconnect): {
+                case (":disconnect"): {
                     context.Self.Stop();
                     return Done;
                 }
@@ -77,7 +76,7 @@ namespace Lapine.Agents {
                     if (_socket.Connected) {
                         _socket.Disconnect(false);
                         _socket.Close();
-                        context.Send(_listener, (SocketDisconnected));
+                        context.Send(_listener, (":socket-disconnected"));
                     }
 
                     if (_pollThread.IsAlive) {
@@ -103,7 +102,7 @@ namespace Lapine.Agents {
                         _frameBufferSize += (UInt16)bytesReceived;
 
                         while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
-                            context.Send(_listener, (Inbound, frame));
+                            context.Send(_listener, (":inbound", frame));
 
                             var consumed = _frameBufferSize - surplus.Length;
                             _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);

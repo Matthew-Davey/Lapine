@@ -5,7 +5,6 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class ChannelAgent : IActor {
@@ -32,8 +31,8 @@ namespace Lapine.Agents {
 
         Task Running(IContext context) {
             switch (context.Message) {
-                case (Inbound, ConnectionClose message): {
-                    context.Send(context.Parent, (Outbound, new ConnectionCloseOk()));
+                case (":inbound", ConnectionClose message): {
+                    context.Send(context.Parent, (":outbound", new ConnectionCloseOk()));
                     context.Self.Stop();
                     return Done;
                 }

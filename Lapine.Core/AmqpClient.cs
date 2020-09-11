@@ -6,7 +6,7 @@ namespace Lapine {
     using Proto;
     using Proto.Schedulers.SimpleScheduler;
 
-    using static Lapine.Agents.Messages;
+    using static Proto.Actor;
 
     public class AmqpClient : IDisposable {
         readonly RootContext _context;
@@ -34,22 +34,27 @@ namespace Lapine {
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
-                            _scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self, (Timeout));
-                            _context.Send(_agent, (Connect, notify: context.Self));
+                            _scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self, (":timeout"));
+                            _context.Send(_agent, (":connect", notify: context.Self));
                             break;
                         }
-                        case (ConnectionReady): {
+                        case (":connection-ready"): {
                             onReady.SetResult(true);
                             context.Self.Stop();
                             break;
                         }
-                        case (Timeout): {
+                        case (":connection-failed"): {
+                            onReady.SetException(new Exception());
+                            context.Self.Stop();
+                            break;
+                        }
+                        case (":timeout"): {
                             onReady.SetException(new TimeoutException());
                             context.Self.Stop();
                             break;
                         }
                     }
-                    return Actor.Done;
+                    return Done;
                 })
                 .WithContextDecorator(LoggingContextDecorator.Create)
             );

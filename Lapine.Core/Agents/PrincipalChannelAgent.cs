@@ -7,7 +7,6 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class PrincipalChannelAgent : IActor {
@@ -36,7 +35,7 @@ namespace Lapine.Agents {
 
         Task AwaitConnectionStart(IContext context) {
             switch (context.Message) {
-                case (Inbound, ConnectionStart message): {
+                case (":inbound", ConnectionStart message): {
                     _state.HandshakeAgent = context.SpawnNamed(
                         name: "handshake",
                         props: Props.FromProducer(() => new HandshakeAgent(context.Self, _connectionConfiguration))
@@ -52,15 +51,15 @@ namespace Lapine.Agents {
 
         Task Negotiating(IContext context) {
             switch (context.Message) {
-                case (Outbound, _): {
+                case (":outbound", _): {
                     context.Forward(context.Parent);
                     return Done;
                 }
-                case (Inbound, ICommand _): {
+                case (":inbound", ICommand _): {
                     context.Forward(_state.HandshakeAgent);
                     return Done;
                 }
-                case (StartHeartbeatTransmission, UInt16 frequency): {
+                case (":start-heartbeat-transmission", UInt16 frequency): {
                     _state.HeartbeatAgent = context.SpawnNamed(
                         name: "heartbeat",
                         props: Props.FromProducer(() => new HeartbeatAgent())
@@ -69,13 +68,13 @@ namespace Lapine.Agents {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
-                case (HandshakeCompleted): {
+                case (":handshake-completed"): {
                     _behaviour.UnbecomeStacked();
                     context.Forward(context.Parent);
                     _behaviour.Become(Open);
                     return Done;
                 }
-                case (AuthenticationFailed): {
+                case (":authentication-failed"): {
                     context.Self.Stop(); // TODO: fail gracefully
                     return Done;
                 }
@@ -85,16 +84,16 @@ namespace Lapine.Agents {
 
         Task Open(IContext context) {
             switch (context.Message) {
-                case (Inbound, RawFrame frame) when frame.Type == FrameType.Heartbeat: {
+                case (":inbound", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
-                case (Outbound, _): {
+                case (":outbound", _): {
                     context.Forward(context.Parent);
                     return Done;
                 }
-                case (Inbound, ConnectionClose message): {
-                    context.Send(context.Parent, (Outbound, new ConnectionCloseOk()));
+                case (":inbound", ConnectionClose message): {
+                    context.Send(context.Parent, (":outbound", new ConnectionCloseOk()));
                     context.Self.Stop();
                     _behaviour.Become(Closed);
                     return Done;

@@ -5,7 +5,6 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class ChannelRouterAgent : IActor {
@@ -16,13 +15,13 @@ namespace Lapine.Agents {
 
         public Task ReceiveAsync(IContext context) {
             switch (context.Message) {
-                case (AddChannel, UInt16 channelId, PID channel): {
+                case (":add-channel", UInt16 channelId, PID channel): {
                     if (_channels.ContainsKey(channelId) == false) {
                         _channels.Add(channelId, channel);
                     }
                     return Done;
                 }
-                case (Inbound, RawFrame frame): {
+                case (":inbound", RawFrame frame): {
                     if (_channels.ContainsKey(frame.Channel)) {
                         context.Forward(_channels[frame.Channel]);
                     }

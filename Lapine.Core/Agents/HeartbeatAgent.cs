@@ -8,7 +8,6 @@ namespace Lapine.Agents {
     using Proto.Schedulers.SimpleScheduler;
 
     using static System.DateTimeOffset;
-    using static Lapine.Agents.Messages;
     using static Proto.Actor;
 
     public class HeartbeatAgent : IActor {
@@ -19,20 +18,20 @@ namespace Lapine.Agents {
 
         public Task ReceiveAsync(IContext context) {
             switch (context.Message) {
-                case (StartHeartbeatTransmission, UInt16 frequency): {
+                case (":start-heartbeat-transmission", UInt16 frequency): {
                     _state.HeartbeatFrequency = frequency;
                     _state.Scheduler = new SimpleScheduler(context);
                     _state.Scheduler.ScheduleTellRepeatedly(
                         delay                  : TimeSpan.FromSeconds(frequency),
                         interval               : TimeSpan.FromSeconds(frequency),
                         target                 : context.Parent,
-                        message                : (Outbound, RawFrame.Heartbeat),
+                        message                : (":outbound", RawFrame.Heartbeat),
                         cancellationTokenSource: out CancellationTokenSource cancellationTokenSource
                     );
                     _state.SchedulerCancellationTokenSource = cancellationTokenSource;
                     break;
                 }
-                case (Inbound, RawFrame frame) when frame.Type == FrameType.Heartbeat: {
+                case (":inbound", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
                     _state.LastReceivedHeartbeat = UtcNow;
                     break;
                 }
