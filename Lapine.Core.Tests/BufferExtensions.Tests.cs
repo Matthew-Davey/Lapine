@@ -110,5 +110,53 @@ namespace Lapine {
             Assert.Equal(expected: expectedValue, actual: value);
             Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
         }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(SByte), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x01 }, (SByte)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x01, 0x00 }, (SByte)1, new Byte[] { 0x00 })]
+        static public void ReadInt8(in Boolean expectedResult, in Byte[] input, in SByte expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadInt8(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Int16), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01 }, (Int16)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x01, 0x00 }, (Int16)1, new Byte[] { 0x00 })]
+        static public void ReadInt16BE(in Boolean expectedResult, in Byte[] input, in Int16 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadInt16BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Int32), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x01 }, (Int32)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x01, 0x00 }, (Int32)1, new Byte[] { 0x00 })]
+        static public void ReadInt32BE(in Boolean expectedResult, in Byte[] input, in Int32 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadInt32BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
+
+        [Theory]
+        [InlineData(false, new Byte[0], default(Int64), new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }, (Int64)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00 }, (Int64)1, new Byte[] { 0x00 })]
+        static public void ReadInt64BE(in Boolean expectedResult, in Byte[] input, in Int64 expectedValue, in Byte[] expectedSurplus) {
+            var result = BufferExtensions.ReadInt64BE(input, out var value, out var surplus);
+
+            Assert.Equal(expected: expectedResult, actual: result);
+            Assert.Equal(expected: expectedValue, actual: value);
+            Assert.Equal(expected: expectedSurplus, actual: surplus.ToArray());
+        }
     }
 }
