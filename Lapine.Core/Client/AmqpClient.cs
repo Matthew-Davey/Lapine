@@ -6,6 +6,8 @@ namespace Lapine.Client {
     using Proto;
     using Proto.Schedulers.SimpleScheduler;
 
+    using static Proto.Actor;
+
     public class AmqpClient : IAsyncDisposable {
         readonly ActorSystem _system;
         readonly ISimpleScheduler _scheduler;
@@ -29,7 +31,7 @@ namespace Lapine.Client {
 
             _system.Root.SpawnNamed(
                 name: "cmd-connect",
-                props: Props.FromFunc(async context => {
+                props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
                             _scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self, (":timeout"));
@@ -38,25 +40,50 @@ namespace Lapine.Client {
                         }
                         case (":connection-ready"): {
                             onReady.SetResult(true);
-                            await context.StopAsync(context.Self);
+                            context.Stop(context.Self);
                             break;
                         }
                         case (":connection-failed"): {
                             onReady.SetException(new Exception());
-                            await context.StopAsync(context.Self);
+                            context.Stop(context.Self);
                             break;
                         }
                         case (":timeout"): {
                             onReady.SetException(new TimeoutException());
-                            await context.StopAsync(context.Self);
+                            context.Stop(context.Self);
                             break;
                         }
                     }
+                    return Done;
                 })
                 .WithContextDecorator(LoggingContextDecorator.Create)
             );
 
             return onReady.Task;
+        }
+
+        public Task<Channel> OpenChannel() {
+            var onOpen = new TaskCompletionSource<Channel>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _system.Root.SpawnNamed(
+                name: "cmd-open-channel",
+                props: Props.FromFunc(context => {
+                    switch (context.Message) {
+                        case Started _: {
+                            context.Send(_agent, (":open-channel", context.Self));
+                            break;
+                        }
+                        case (":channel-opened", PID channel): {
+                            onOpen.SetResult(new Channel(channel));
+                            context.Stop(context.Self);
+                            break;
+                        }
+                    }
+                    return Done;
+                })
+            );
+
+            return onOpen.Task;
         }
 
         public async ValueTask DisposeAsync() =>

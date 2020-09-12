@@ -29,7 +29,7 @@ namespace Lapine.Agents {
 
         [Scenario]
         public void FailsWhenAuthMechanismNotSupportedByServer() {
-            "When the agent receives a ConnectionStart message with an unsupported auth mechanism".x(() => {
+            "When the agent receives a ConnectionStart command with an unsupported auth mechanism".x(() => {
                 _rootContext.Send(_subject, (":receive", new ConnectionStart(
                     version         : (0, 9),
                     serverProperties: new Dictionary<String, Object>(),

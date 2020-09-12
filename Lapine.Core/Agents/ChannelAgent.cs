@@ -8,10 +8,12 @@ namespace Lapine.Agents {
     using static Proto.Actor;
 
     class ChannelAgent : IActor {
+        readonly PID _listener;
         readonly Behavior _behaviour;
         readonly dynamic _state;
 
-        public ChannelAgent() {
+        public ChannelAgent(PID listener) {
+            _listener  = listener;
             _behaviour = new Behavior(Unstarted);
             _state     = new ExpandoObject();
         }
@@ -22,18 +24,41 @@ namespace Lapine.Agents {
         Task Unstarted(IContext context) {
             switch (context.Message) {
                 case Started _: {
-                    _behaviour.Become(Running);
+                    _behaviour.Become(Closed);
                     break;
                 }
             }
             return Done;
         }
 
-        Task Running(IContext context) {
+        Task Closed(IContext context) {
             switch (context.Message) {
-                case (":receive", ConnectionClose message): {
-                    context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
-                    context.Stop(context.Self);
+                case (":open", PID listener): {
+                    _state.ChannelOpenListener = listener;
+                    context.Send(_listener, (":transmit", new ChannelOpen()));
+                    _behaviour.Become(AwaitingChannelOpenOk);
+                    break;
+                }
+            }
+            return Done;
+        }
+
+        Task AwaitingChannelOpenOk(IContext context) {
+            switch (context.Message) {
+                case (":receive", ChannelOpenOk message): {
+                    context.Send(_state.ChannelOpenListener, (":channel-opened", context.Self));
+                    _behaviour.Become(Open);
+                    break;
+                }
+            }
+            return Done;
+        }
+
+        Task Open(IContext context) {
+            switch (context.Message) {
+                case (":receive", ChannelClose message): {
+                    context.Send(_listener, (":transmit", new ChannelCloseOk()));
+                    _behaviour.Become(Closed);
                     break;
                 }
             }

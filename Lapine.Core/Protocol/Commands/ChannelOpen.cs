@@ -6,12 +6,17 @@ namespace Lapine.Protocol.Commands {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0A);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer;
+            writer.WriteShortString(String.Empty); // reserved_1
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ChannelOpen result, out ReadOnlySpan<Byte> surplus) {
-            surplus = buffer;
-            result = new ChannelOpen();
-            return true;
+            if (buffer.ReadShortString(out var reserved, out surplus)) {
+                result = new ChannelOpen();
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 
@@ -19,12 +24,17 @@ namespace Lapine.Protocol.Commands {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer;
+            writer.WriteLongString(String.Empty); // reserved_1
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ChannelOpenOk result, out ReadOnlySpan<Byte> surplus) {
-            surplus = buffer;
-            result = new ChannelOpenOk();
-            return true;
+            if (buffer.ReadLongString(out var reserved, out surplus)) {
+                result = new ChannelOpenOk();
+                return true;
+            }
+            else {
+                result = default;
+                return false;
+            }
         }
     }
 }

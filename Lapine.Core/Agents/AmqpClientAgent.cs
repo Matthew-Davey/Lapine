@@ -83,6 +83,18 @@ namespace Lapine.Agents {
                     context.Send(_state.ConnectionReadyListener, (":connection-ready"));
                     break;
                 }
+                case (":open-channel", PID listener): {
+                    var channel = context.SpawnNamed(
+                        name: "channel-1",
+                        props: Props.FromProducer(() => new ChannelAgent(context.Self))
+                            .WithContextDecorator(LoggingContextDecorator.Create)
+                            .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                            .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(1))
+                    );
+                    context.Send(_state.ChannelRouter, (":add-channel", (UInt16)1, channel));
+                    context.Send(channel, (":open", listener));
+                    break;
+                }
                 // If the socket agent terminates whilst we're in the connected state, it indicates that we've lost the connection.
                 // Restart the socket agent, and try connecting again...
                 case Terminated message when message.Who == _state.SocketAgent: {
