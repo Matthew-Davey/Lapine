@@ -7,7 +7,7 @@ namespace Lapine.Agents {
 
     using static Proto.Actor;
 
-    public class ChannelAgent : IActor {
+    class ChannelAgent : IActor {
         readonly Behavior _behaviour;
         readonly dynamic _state;
 

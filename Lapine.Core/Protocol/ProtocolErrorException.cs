@@ -1,7 +1,7 @@
 namespace Lapine.Protocol {
     using System;
 
-    public class ProtocolErrorException : ApplicationException {
+    class ProtocolErrorException : ApplicationException {
         public ProtocolErrorException() : base() {
         }
 

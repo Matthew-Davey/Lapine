@@ -10,7 +10,7 @@ namespace Lapine.Agents {
     using static System.Text.Encoding;
     using static Proto.Actor;
 
-    public class HandshakeAgent : IActor {
+    class HandshakeAgent : IActor {
         readonly PID _listener;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly Behavior _behaviour;

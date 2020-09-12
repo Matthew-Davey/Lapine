@@ -4,7 +4,7 @@ namespace Lapine.Agents.Middleware {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    public static class FramingMiddleware {
+    static class FramingMiddleware {
         static public Func<Receiver, Receiver> UnwrapInboundMethodFrames() =>
             next => (context, envelope) => {
                 if (envelope.Message is (":receive", RawFrame frame) &&

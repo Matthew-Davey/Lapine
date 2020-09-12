@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
 
     using static System.String;
 
-    public sealed class ConnectionStart : ICommand {
+    sealed class ConnectionStart : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0A);
 
         public (Byte Major, Byte Minor) Version { get; }
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionStartOk : ICommand {
+    sealed class ConnectionStartOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0B);
 
         public IReadOnlyDictionary<String, Object> PeerProperties { get; }

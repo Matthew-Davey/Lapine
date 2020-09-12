@@ -12,7 +12,7 @@ namespace Lapine.Agents {
     using static Lapine.Log;
     using static Proto.Actor;
 
-    public class SocketAgent : IActor {
+    class SocketAgent : IActor {
         readonly ILogger _log;
         readonly PID _listener;
         readonly Behavior _behaviour;

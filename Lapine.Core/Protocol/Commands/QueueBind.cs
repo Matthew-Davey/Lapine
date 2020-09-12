@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Collections.Generic;
 
-    public sealed class QueueBind : ICommand {
+    sealed class QueueBind : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x14);
 
         public String QueueName { get; }
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class QueueBindOk : ICommand {
+    sealed class QueueBindOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x15);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

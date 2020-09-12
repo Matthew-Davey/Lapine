@@ -8,7 +8,7 @@ namespace Lapine
     using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
 
-    public static class BufferExtensions {
+    static class BufferExtensions {
         static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, out Boolean[] result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.Length < 1) {
                 result = default;

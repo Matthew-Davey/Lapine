@@ -7,7 +7,7 @@ namespace Lapine.Agents {
 
     using static Proto.Actor;
 
-    public class ChannelRouterAgent : IActor {
+    class ChannelRouterAgent : IActor {
         readonly IDictionary<UInt16, PID> _channels;
 
         public ChannelRouterAgent() =>

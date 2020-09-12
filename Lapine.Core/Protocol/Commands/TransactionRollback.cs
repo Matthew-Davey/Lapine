@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class TransactionRollback : ICommand {
+    sealed class TransactionRollback : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x5A, 0x1E);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
@@ -14,7 +14,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class TransactionRollbackOk : ICommand {
+    sealed class TransactionRollbackOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x5A, 0x1F);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

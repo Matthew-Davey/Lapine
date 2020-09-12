@@ -5,7 +5,7 @@ namespace Lapine.Protocol
 
     using static System.Text.Encoding;
 
-    public readonly struct ProtocolHeader : ISerializable {
+    readonly struct ProtocolHeader : ISerializable {
         readonly UInt32 _protocol;
         readonly Byte _protocolId;
         readonly ProtocolVersion _version;

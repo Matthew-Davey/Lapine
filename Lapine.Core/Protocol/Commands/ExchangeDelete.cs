@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ExchangeDelete : ICommand {
+    sealed class ExchangeDelete : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x14);
 
         public String ExchangeName { get; }
@@ -33,7 +33,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ExchangeDeleteOk : ICommand {
+    sealed class ExchangeDeleteOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x15);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

@@ -9,7 +9,7 @@ namespace Lapine.Agents {
 
     using static Proto.Actor;
 
-    public class PrincipalChannelAgent : IActor {
+    class PrincipalChannelAgent : IActor {
         readonly Behavior _behaviour;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly dynamic _state;

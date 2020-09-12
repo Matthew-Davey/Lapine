@@ -4,7 +4,7 @@ namespace Lapine.Agents.Middleware {
     using Microsoft.Extensions.Logging;
     using Proto;
 
-    public class LoggingContextDecorator : ActorContextDecorator
+    class LoggingContextDecorator : ActorContextDecorator
     {
         readonly ILogger _log;
         readonly LogLevel _level;

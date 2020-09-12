@@ -2,7 +2,7 @@ namespace Lapine.Protocol {
     using System;
     using System.Buffers;
 
-    public readonly struct ProtocolVersion : ISerializable {
+    readonly struct ProtocolVersion : ISerializable {
         readonly Byte _major;
         readonly Byte _minor;
         readonly Byte _revision;

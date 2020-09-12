@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class QueuePurge : ICommand {
+    sealed class QueuePurge : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x1E);
 
         public String QueueName { get; }
@@ -31,7 +31,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class QueuePurgeOk : ICommand {
+    sealed class QueuePurgeOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x1F);
 
         public UInt32 MessageCount { get; }

@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ConnectionSecure : ICommand {
+    sealed class ConnectionSecure : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x14);
 
         public String Challenge { get; }
@@ -25,7 +25,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionSecureOk : ICommand {
+    sealed class ConnectionSecureOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x15);
 
         public String Response { get; }

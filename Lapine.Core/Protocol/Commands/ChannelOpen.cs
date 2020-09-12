@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ChannelOpen : ICommand {
+    sealed class ChannelOpen : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0A);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -15,7 +15,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ChannelOpenOk : ICommand {
+    sealed class ChannelOpenOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

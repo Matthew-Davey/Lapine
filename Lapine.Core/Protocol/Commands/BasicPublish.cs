@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicPublish : ICommand {
+    sealed class BasicPublish : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x28);
 
         public String ExchangeName { get; }

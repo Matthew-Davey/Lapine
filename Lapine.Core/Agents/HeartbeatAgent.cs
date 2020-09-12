@@ -10,7 +10,7 @@ namespace Lapine.Agents {
     using static System.DateTimeOffset;
     using static Proto.Actor;
 
-    public class HeartbeatAgent : IActor {
+    class HeartbeatAgent : IActor {
         readonly PID _listener;
         readonly dynamic _state;
 

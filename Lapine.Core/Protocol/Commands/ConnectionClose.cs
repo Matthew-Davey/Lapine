@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class ConnectionClose : ICommand {
+    sealed class ConnectionClose : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x32);
 
         public UInt16 ReplyCode { get; }
@@ -37,7 +37,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    public sealed class ConnectionCloseOk : ICommand {
+    sealed class ConnectionCloseOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x33);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

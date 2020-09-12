@@ -8,7 +8,7 @@ namespace Lapine.Agents {
 
     using static Proto.Actor;
 
-    public class AmqpClientAgent : IActor {
+    class AmqpClientAgent : IActor {
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly Behavior _behaviour;
         readonly dynamic _state;

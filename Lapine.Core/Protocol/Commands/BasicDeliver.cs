@@ -2,7 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
 
-    public sealed class BasicDeliver : ICommand {
+    sealed class BasicDeliver : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x3C);
 
         public String ConsumerTag { get; }

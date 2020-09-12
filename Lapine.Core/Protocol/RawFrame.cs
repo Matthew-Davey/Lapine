@@ -3,7 +3,7 @@ namespace Lapine.Protocol {
     using System.Buffers;
     using Lapine.Protocol.Commands;
 
-    public readonly struct RawFrame : ISerializable {
+    readonly struct RawFrame : ISerializable {
         public const Byte FrameTerminator = 0xCE;
 
         readonly FrameType _type;
