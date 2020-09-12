@@ -26,9 +26,9 @@ A C# client library for the Advanced Message Queueing Protocol (AMQP) v0.9.1
 - [ ] Automatic reconnection
 
 #### Channel
-- [ ] Open
+- [x] Open
 - [ ] Flow
-- [ ] Close
+- [x] Close
 
 #### Exchange
 - [ ] Declare

@@ -29,8 +29,8 @@ namespace Lapine.Client {
         public Task ConnectAsync() {
             var onReady = new TaskCompletionSource<Boolean>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _system.Root.SpawnNamed(
-                name: "cmd-connect",
+            _system.Root.SpawnPrefix(
+                prefix: "cmd-connect",
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
@@ -65,8 +65,8 @@ namespace Lapine.Client {
         public Task<Channel> OpenChannel() {
             var onOpen = new TaskCompletionSource<Channel>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _system.Root.SpawnNamed(
-                name: "cmd-open-channel",
+            _system.Root.SpawnPrefix(
+                prefix: "cmd-open-channel",
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {

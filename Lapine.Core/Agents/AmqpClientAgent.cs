@@ -1,6 +1,8 @@
 namespace Lapine.Agents {
     using System;
+    using System.Collections.Generic;
     using System.Dynamic;
+    using System.Linq;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
     using Lapine.Protocol;
@@ -79,19 +81,14 @@ namespace Lapine.Agents {
                     context.Forward(_state.SocketAgent);
                     break;
                 }
-                case (":handshake-completed"): {
+                case (":handshake-completed", UInt16 maximumChannelCount): {
+                    _state.AvailableChannels = new Queue<UInt16>(Enumerable.Range(1, maximumChannelCount).Select(x => (UInt16)x));
                     context.Send(_state.ConnectionReadyListener, (":connection-ready"));
                     break;
                 }
                 case (":open-channel", PID listener): {
-                    var channel = context.SpawnNamed(
-                        name: "channel-1",
-                        props: Props.FromProducer(() => new ChannelAgent(context.Self, 1))
-                            .WithContextDecorator(LoggingContextDecorator.Create)
-                            .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
-                            .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(1))
-                    );
-                    context.Send(_state.ChannelRouter, (":add-channel", (UInt16)1, channel));
+                    var channelNumber = _state.AvailableChannels.Dequeue();
+                    var channel = SpawnChannel(context, channelNumber);
                     context.Send(channel, (":open", listener));
                     break;
                 }
@@ -134,6 +131,18 @@ namespace Lapine.Agents {
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
             context.Send(_state.ChannelRouter, (":add-channel", (UInt16)0, principal));
+        }
+
+        PID SpawnChannel(IContext context, UInt16 channelNumber) {
+            var channel = context.SpawnNamed(
+                name: $"channel-{channelNumber}",
+                props: Props.FromProducer(() => new ChannelAgent(context.Self, channelNumber))
+                    .WithContextDecorator(LoggingContextDecorator.Create)
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                    .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: channelNumber))
+            );
+            context.Send(_state.ChannelRouter, (":add-channel", (UInt16)channelNumber, channel));
+            return channel;
         }
 
         void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {

@@ -40,7 +40,7 @@ namespace Lapine.Agents {
             "Then it should send a handshake failed message".x(() => {
                 Assert.Contains(_sent, message => message switch {
                     (":handshake-failed") => true,
-                    _                     => false
+                    _ => false
                 });
             });
         }
@@ -58,7 +58,7 @@ namespace Lapine.Agents {
             "Then it should send a handshake failed message".x(() => {
                 Assert.Contains(_sent, message => message switch {
                     (":handshake-failed") => true,
-                    _                     => false
+                    _ => false
                 });
             });
         }
@@ -76,7 +76,7 @@ namespace Lapine.Agents {
             "Then it should send a ConnectionStartOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
                     (":transmit", ConnectionStartOk _) => true,
-                    _                                  => false
+                    _ => false
                 });
             });
         }
@@ -101,7 +101,7 @@ namespace Lapine.Agents {
             "Then it should send a ConnectionTuneOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
                     (":transmit", ConnectionTuneOk _) => true,
-                    _                                 => false
+                    _ => false
                 });
             });
             "And it should sent a ConnectionOpen message".x(() => {
@@ -132,8 +132,8 @@ namespace Lapine.Agents {
             });
             "Then it should complete the handshake process".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    (":handshake-completed") => true,
-                    _                        => false
+                    (":handshake-completed", UInt16 _) => true,
+                    _ => false
                 });
             });
         }

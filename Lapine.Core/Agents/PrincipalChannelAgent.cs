@@ -68,7 +68,7 @@ namespace Lapine.Agents {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
-                case (":handshake-completed"): {
+                case (":handshake-completed", UInt16 MaximumChannelCount): {
                     _behaviour.UnbecomeStacked();
                     context.Forward(context.Parent);
                     _behaviour.Become(Open);

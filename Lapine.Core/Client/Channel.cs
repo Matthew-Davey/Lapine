@@ -15,8 +15,8 @@ namespace Lapine.Client {
         public Task Close() {
             var onClosed = new TaskCompletionSource<Boolean>();
 
-            _system.Root.SpawnNamed(
-                name: "cmd-close-channel",
+            _system.Root.SpawnPrefix(
+                prefix: "cmd-close-channel",
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
@@ -25,6 +25,7 @@ namespace Lapine.Client {
                         }
                         case (":channel-closed", UInt16 _): {
                             onClosed.SetResult(true);
+                            context.Stop(context.Self);
                             break;
                         }
                     }

@@ -96,16 +96,16 @@ namespace Lapine.Agents {
                     return Done;
                 }
                 case (":receive", ConnectionTune message): {
-                    var heartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
-                    var maximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
-                    var maximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
+                    _state.HeartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
+                    _state.MaximumFrameSize    = Min(message.FrameMax, _connectionConfiguration.MaximumFrameSize);
+                    _state.MaximumChannelCount = Min(message.ChannelMax, _connectionConfiguration.MaximumChannelCount);
 
                     context.Send(_listener, (":transmit", new ConnectionTuneOk(
-                        channelMax: maximumChannelCount,
-                        frameMax  : maximumFrameSize,
-                        heartbeat : heartbeatFrequency
+                        channelMax: (UInt16)_state.MaximumChannelCount,
+                        frameMax  : (UInt32)_state.MaximumFrameSize,
+                        heartbeat : (UInt16)_state.HeartbeatFrequency
                     )));
-                    context.Send(_listener, (":start-heartbeat-transmission", frequency: heartbeatFrequency));
+                    context.Send(_listener, (":start-heartbeat-transmission", frequency: _state.HeartbeatFrequency));
                     context.Send(_listener, (":transmit", new ConnectionOpen(
                         virtualHost: _connectionConfiguration.VirtualHost
                     )));
@@ -124,7 +124,7 @@ namespace Lapine.Agents {
                     return Done;
                 }
                 case (":receive", ConnectionOpenOk message): {
-                    context.Send(_listener, (":handshake-completed"));
+                    context.Send(_listener, (":handshake-completed", (UInt16)_state.MaximumChannelCount));
                     context.Stop(context.Self);
                     return Done;
                 }

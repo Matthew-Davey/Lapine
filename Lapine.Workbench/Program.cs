@@ -28,11 +28,15 @@
 
             await amqpClient.ConnectAsync();
 
-            var channel = await amqpClient.OpenChannel();
-
-            await channel.Close();
+            var channel1 = await amqpClient.OpenChannel();
+            var channel2 = await amqpClient.OpenChannel();
+            var channel3 = await amqpClient.OpenChannel();
 
             Environment.ExitCode = await completion.Task;
+
+            await channel1.Close();
+            await channel2.Close();
+            await channel3.Close();
 
             await amqpClient.DisposeAsync();
         }
