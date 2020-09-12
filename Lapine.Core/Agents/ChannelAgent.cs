@@ -29,14 +29,15 @@ namespace Lapine.Agents {
             return Done;
         }
 
-        async Task Running(IContext context) {
+        Task Running(IContext context) {
             switch (context.Message) {
                 case (":receive", ConnectionClose message): {
                     context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
-                    await context.StopAsync(context.Self);
+                    context.Stop(context.Self);
                     break;
                 }
             }
+            return Done;
         }
     }
 }

@@ -46,17 +46,20 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.StopAsync(context.Self);
+                    context.Stop(context.Self);
+                    return Done;
                 }
                 case (":receive", ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (":handshake-failed"));
-                        return context.StopAsync(context.Self);
+                        context.Stop(context.Self);
+                        return Done;
                     }
 
                     if (!message.Locales.Contains(_connectionConfiguration.Locale)) {
                         context.Send(_listener, (":handshake-failed"));
-                        return context.StopAsync(context.Self);
+                        context.Stop(context.Self);
+                        return Done;
                     }
 
                     // TODO: Verify protocol version compatibility...
@@ -82,7 +85,8 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.StopAsync(context.Self);
+                    context.Stop(context.Self);
+                    return Done;
                 }
                 case (":receive", ConnectionSecure message): {
                     _state.AuthenticationStage++;
@@ -116,11 +120,13 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.StopAsync(context.Self);
+                    context.Stop(context.Self);
+                    return Done;
                 }
                 case (":receive", ConnectionOpenOk message): {
                     context.Send(_listener, (":handshake-completed"));
-                    return context.StopAsync(context.Self);
+                    context.Stop(context.Self);
+                    return Done;
                 }
                 default: return Done;
             }
