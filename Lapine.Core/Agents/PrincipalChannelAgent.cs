@@ -62,7 +62,7 @@ namespace Lapine.Agents {
                 case (":start-heartbeat-transmission", UInt16 frequency): {
                     _state.HeartbeatAgent = context.SpawnNamed(
                         name: "heartbeat",
-                        props: Props.FromProducer(() => new HeartbeatAgent())
+                        props: Props.FromProducer(() => new HeartbeatAgent(context.Self))
                             .WithContextDecorator(LoggingContextDecorator.Create)
                     );
                     context.Forward(_state.HeartbeatAgent);
@@ -84,13 +84,18 @@ namespace Lapine.Agents {
 
         Task Open(IContext context) {
             switch (context.Message) {
-                case (":receive", RawFrame frame) when frame.Type == FrameType.Heartbeat: {
+                case (":receive", RawFrame frame): {
                     context.Forward(_state.HeartbeatAgent);
                     return Done;
                 }
                 case (":transmit", _): {
                     context.Forward(context.Parent);
                     return Done;
+                }
+                case (":remote-flatline", DateTime lastRemoteHeartbeat): {
+                    context.Self.Stop(); // TODO: How to best respond to a remote flatline?
+                    _behaviour.Become(Closed);
+                    break;
                 }
                 case (":receive", ConnectionClose message): {
                     context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
