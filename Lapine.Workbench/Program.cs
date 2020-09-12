@@ -1,6 +1,7 @@
 ﻿namespace Lapine.Workbench {
     using System;
     using System.Threading.Tasks;
+    using Lapine.Client;
     using Microsoft.Extensions.Logging;
 
     class Program {
