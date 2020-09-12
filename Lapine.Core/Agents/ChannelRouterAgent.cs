@@ -27,6 +27,12 @@ namespace Lapine.Agents {
                     }
                     return Done;
                 }
+                case (":channel-closed", UInt16 channelNumber): {
+                    if (_channels.ContainsKey(channelNumber)) {
+                        _channels.Remove(channelNumber);
+                    }
+                    return Done;
+                }
                 default: return Done;
             }
         }

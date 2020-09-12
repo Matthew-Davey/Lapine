@@ -27,7 +27,10 @@
             var amqpClient = new AmqpClient(connectionConfiguration);
 
             await amqpClient.ConnectAsync();
+
             var channel = await amqpClient.OpenChannel();
+
+            await channel.Close();
 
             Environment.ExitCode = await completion.Task;
 

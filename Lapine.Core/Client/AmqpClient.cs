@@ -74,7 +74,7 @@ namespace Lapine.Client {
                             break;
                         }
                         case (":channel-opened", PID channel): {
-                            onOpen.SetResult(new Channel(channel));
+                            onOpen.SetResult(new Channel(_system, channel));
                             context.Stop(context.Self);
                             break;
                         }

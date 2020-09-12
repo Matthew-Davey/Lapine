@@ -18,7 +18,7 @@ namespace Lapine.Agents {
             _sent        = new List<Object>();
             _listener    = _rootContext.Spawn(Props.FromFunc(_ => Actor.Done));
             _subject     = _rootContext.Spawn(
-                Props.FromProducer(() => new ChannelAgent(_listener))
+                Props.FromProducer(() => new ChannelAgent(_listener, 1))
                     .WithDispatcher(new SynchronousDispatcher())
                     .WithSenderMiddleware(next => (context, target, envelope) => {
                         _sent.Add(envelope.Message);
@@ -44,6 +44,32 @@ namespace Lapine.Agents {
             "Then it should send a 'channel-opened' message".x(() => {
                 Assert.Contains(_sent, message => message switch {
                     (":channel-opened", PID _) => true,
+                    _ => false
+                });
+            });
+        }
+
+        [Scenario]
+        public void ClosingChannel() {
+            "Given an open channel".x(() => {
+                _rootContext.Send(_subject, (":open", _listener));
+                _rootContext.Send(_subject, (":receive", new ChannelOpenOk()));
+            });
+            "When the channel is closed".x(() => {
+                _rootContext.Send(_subject, (":close", _listener));
+            });
+            "Then it should have sent a ChannelClose command".x(() => {
+                Assert.Contains(_sent, message => message switch {
+                    (":transmit", ChannelClose _) => true,
+                    _ => false
+                });
+            });
+            "When the channel receives a ChannelCloseOK command".x(() => {
+                _rootContext.Send(_subject, (":receive", new ChannelCloseOk()));
+            });
+            "Then it should have sent a 'channel-closed' message".x(() => {
+                Assert.Contains(_sent, message => message switch {
+                    (":channel-closed", UInt16 _) => true,
                     _ => false
                 });
             });
