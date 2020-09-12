@@ -6,19 +6,17 @@ namespace Lapine {
     using Proto;
     using Proto.Schedulers.SimpleScheduler;
 
-    using static Proto.Actor;
-
     public class AmqpClient : IAsyncDisposable {
-        readonly RootContext _context;
+        readonly ActorSystem _system;
         readonly ISimpleScheduler _scheduler;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly PID _agent;
 
         public AmqpClient(ConnectionConfiguration connectionConfiguration) {
-            _context = new RootContext();
-            _scheduler = new SimpleScheduler(_context);
+            _system = new ActorSystem();
+            _scheduler = new SimpleScheduler(_system.Root);
             _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
-            _agent = _context.SpawnNamed(
+            _agent = _system.Root.SpawnNamed(
                 name: "amqp-client",
                 props: Props.FromProducer(() => new AmqpClientAgent(_connectionConfiguration))
                     .WithContextDecorator(LoggingContextDecorator.Create)
@@ -29,32 +27,31 @@ namespace Lapine {
         public Task ConnectAsync() {
             var onReady = new TaskCompletionSource<Boolean>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _context.SpawnNamed(
+            _system.Root.SpawnNamed(
                 name: "cmd-connect",
-                props: Props.FromFunc(context => {
+                props: Props.FromFunc(async context => {
                     switch (context.Message) {
                         case Started _: {
                             _scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self, (":timeout"));
-                            _context.Send(_agent, (":connect", notify: context.Self));
+                            context.Send(_agent, (":connect", notify: context.Self));
                             break;
                         }
                         case (":connection-ready"): {
                             onReady.SetResult(true);
-                            context.Self.Stop();
+                            await context.StopAsync(context.Self);
                             break;
                         }
                         case (":connection-failed"): {
                             onReady.SetException(new Exception());
-                            context.Self.Stop();
+                            await context.StopAsync(context.Self);
                             break;
                         }
                         case (":timeout"): {
                             onReady.SetException(new TimeoutException());
-                            context.Self.Stop();
+                            await context.StopAsync(context.Self);
                             break;
                         }
                     }
-                    return Done;
                 })
                 .WithContextDecorator(LoggingContextDecorator.Create)
             );
@@ -63,6 +60,6 @@ namespace Lapine {
         }
 
         public async ValueTask DisposeAsync() =>
-            await _agent.StopAsync();
+            await _system.Root.StopAsync(_agent);
     }
 }

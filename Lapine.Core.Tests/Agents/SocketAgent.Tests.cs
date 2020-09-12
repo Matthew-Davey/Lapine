@@ -21,7 +21,7 @@ namespace Lapine.Agents {
         readonly Int32 _port;
 
         public SocketAgentTests() {
-            _context  = new RootContext();
+            _context  = ActorSystem.Default.Root;
             _sent     = new List<Object>();
             _listener = _context.Spawn(Props.FromFunc(_ => Actor.Done));
             _subject  = _context.Spawn(
@@ -104,7 +104,7 @@ namespace Lapine.Agents {
 
         public void Dispose() {
             _tcpListener.Stop();
-            _subject.Stop();
+            _context.Stop(_subject);
         }
     }
 }

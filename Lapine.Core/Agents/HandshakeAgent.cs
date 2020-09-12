@@ -46,17 +46,17 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.Self.StopAsync();
+                    return context.StopAsync(context.Self);
                 }
                 case (":receive", ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (":handshake-failed"));
-                        return context.Self.StopAsync();
+                        return context.StopAsync(context.Self);
                     }
 
                     if (!message.Locales.Contains(_connectionConfiguration.Locale)) {
                         context.Send(_listener, (":handshake-failed"));
-                        return context.Self.StopAsync();
+                        return context.StopAsync(context.Self);
                     }
 
                     // TODO: Verify protocol version compatibility...
@@ -82,7 +82,7 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.Self.StopAsync();
+                    return context.StopAsync(context.Self);
                 }
                 case (":receive", ConnectionSecure message): {
                     _state.AuthenticationStage++;
@@ -116,12 +116,11 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    return context.Self.StopAsync();
+                    return context.StopAsync(context.Self);
                 }
                 case (":receive", ConnectionOpenOk message): {
                     context.Send(_listener, (":handshake-completed"));
-                    context.Self.Stop();
-                    return Done;
+                    return context.StopAsync(context.Self);
                 }
                 default: return Done;
             }

@@ -114,7 +114,7 @@ namespace Lapine.Agents {
                 name: "channel-0",
                 props: Props.FromProducer(() => new PrincipalChannelAgent(_connectionConfiguration))
                     .WithContextDecorator(LoggingContextDecorator.Create)
-                    .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: 0))
             );
             context.Send(_state.ChannelRouter, (":add-channel", (UInt16)0, principal));

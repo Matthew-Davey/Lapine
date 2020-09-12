@@ -14,7 +14,7 @@ namespace Lapine.Agents {
         readonly PID _subject;
 
         public HandshakeAgentTests() {
-            _rootContext = new RootContext();
+            _rootContext = ActorSystem.Default.Root;
             _sent        = new List<Object>();
             _listener    = _rootContext.Spawn(Props.FromFunc(_ => Actor.Done));
             _subject     = _rootContext.Spawn(

@@ -69,8 +69,7 @@ namespace Lapine.Agents {
                     return Done;
                 }
                 case (":disconnect"): {
-                    context.Self.Stop();
-                    return Done;
+                    return context.StopAsync(context.Self);
                 }
                 case Stopping _: {
                     if (_socket.Connected) {

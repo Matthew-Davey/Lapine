@@ -23,7 +23,7 @@ namespace Lapine.Agents.Middleware {
         public FramingMiddlewareTests() {
             _channelNumber = Random.UShort();
             _messageReceivedSignal = new  ManualResetEventSlim();
-            _context = new RootContext();
+            _context = ActorSystem.Default.Root;
             _subject = _context.Spawn(
                 Props.FromFunc(context => {
                     switch (context.Message) {
@@ -38,7 +38,7 @@ namespace Lapine.Agents.Middleware {
                         default: return Done;
                     }
                 })
-                .WithReceiveMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
             );
         }
 

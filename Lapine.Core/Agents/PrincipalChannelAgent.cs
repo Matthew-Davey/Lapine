@@ -75,36 +75,34 @@ namespace Lapine.Agents {
                     return Done;
                 }
                 case (":authentication-failed"): {
-                    context.Self.Stop(); // TODO: fail gracefully
-                    return Done;
+                    return context.StopAsync(context.Self); // TODO: fail gracefully
                 }
             }
             return Done;
         }
 
-        Task Open(IContext context) {
+        async Task Open(IContext context) {
             switch (context.Message) {
                 case (":receive", RawFrame frame): {
                     context.Forward(_state.HeartbeatAgent);
-                    return Done;
+                    break;
                 }
                 case (":transmit", _): {
                     context.Forward(context.Parent);
-                    return Done;
+                    break;
                 }
                 case (":remote-flatline", DateTime lastRemoteHeartbeat): {
-                    context.Self.Stop(); // TODO: How to best respond to a remote flatline?
+                    await context.StopAsync(context.Self); // TODO: How to best respond to a remote flatline?
                     _behaviour.Become(Closed);
                     break;
                 }
                 case (":receive", ConnectionClose message): {
                     context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
-                    context.Self.Stop();
+                    await context.StopAsync(context.Self);
                     _behaviour.Become(Closed);
-                    return Done;
+                    break;
                 }
             }
-            return Done;
         }
 
         Task Closed(IContext context) => Done;
