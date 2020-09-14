@@ -84,24 +84,6 @@ namespace Lapine.Agents {
             });
         }
 
-        [Scenario]
-        public void Disconnects(Socket socket) {
-            "Given the agent is connected to a remote endpoint".x(() => {
-                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
-                socket = _tcpListener.AcceptSocket();
-            });
-            "When it receives a Disconnect message".x(() => {
-                _context.Send(_subject, (":disconnect"));
-            });
-            "Then the agent should send a Disconnected message".x(async () => {
-                await Task.Delay(10);
-                Assert.Contains(_sent, message => message switch {
-                    (":socket-disconnected") => true,
-                    _                        => false
-                });
-            });
-        }
-
         public void Dispose() {
             _tcpListener.Stop();
             _context.Stop(_subject);

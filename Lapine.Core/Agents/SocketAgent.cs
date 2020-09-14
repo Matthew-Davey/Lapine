@@ -6,121 +6,90 @@ namespace Lapine.Agents {
     using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Protocol;
-    using Microsoft.Extensions.Logging;
     using Proto;
 
-    using static Lapine.Log;
     using static Proto.Actor;
 
     class SocketAgent : IActor {
-        readonly ILogger _log;
         readonly PID _listener;
         readonly Behavior _behaviour;
         readonly Socket _socket;
-        readonly Memory<Byte> _frameBuffer;
-        readonly CancellationTokenSource _cancellationTokenSource;
-        readonly Thread _pollThread;
-        UInt16 _frameBufferSize = 0;
+        readonly ArrayBufferWriter<Byte> _transmitBuffer;
+        Task _pollingTask;
 
         public SocketAgent(PID listener) {
-            _log                     = CreateLogger(GetType());
-            _listener                = listener ?? throw new ArgumentNullException(nameof(listener));
-            _behaviour               = new Behavior(AwaitConnect);
-            _socket                  = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            _frameBuffer             = new Byte[1024 * 1024 * 8];
-            _cancellationTokenSource = new CancellationTokenSource();
-            _pollThread              = new Thread(PollThreadMain);
+            _listener       = listener ?? throw new ArgumentNullException(nameof(listener));
+            _behaviour      = new Behavior(Unstarted);
+            _socket         = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            _transmitBuffer = new ArrayBufferWriter<Byte>(initialCapacity: 1024 * 1024 * 1);
         }
 
         public Task ReceiveAsync(IContext context) =>
             _behaviour.ReceiveAsync(context);
 
-        Task AwaitConnect(IContext context) {
+        Task Unstarted(IContext context) {
+            switch (context.Message) {
+                case Started _: {
+                    _behaviour.Become(Disconnected);
+                    break;
+                }
+            }
+            return Done;
+        }
+
+        Task Disconnected(IContext context) {
             switch (context.Message) {
                 case (":connect", IPEndPoint endpoint): {
-                    _log.LogInformation("Attempting to connect to {endpoint}:{port}", endpoint.Address, endpoint.Port);
                     _socket.Connect(endpoint);
-                    _log.LogInformation("Connection established");
-
-                    _pollThread.Start((_cancellationTokenSource.Token, context));
+                    _pollingTask = BeginPolling(context);
                     _behaviour.Become(Connected);
 
                     context.Send(_listener, (":socket-connected"));
 
                     // Transmit protocol header to start handshake process...
-                    _log.LogDebug("Sending protocol header");
-                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: 8);
-                    ProtocolHeader.Default.Serialize(buffer);
-                    _socket.Send(buffer.WrittenSpan);
-                    _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
-                    return Done;
+                    Transmit(ProtocolHeader.Default);
+                    break;
                 }
-                default: return Done;
             }
+            return Done;
         }
 
         Task Connected(IContext context) {
             switch (context.Message) {
                 case (":transmit", RawFrame frame): {
-                    var buffer = new ArrayBufferWriter<Byte>(initialCapacity: (Int32)frame.SerializedSize);
-                    frame.Serialize(buffer);
-                    _socket.Send(buffer.WrittenSpan);
-                    _log.LogDebug("Transmitted {bytes} bytes", buffer.WrittenSpan.Length);
-                    return Done;
+                    Transmit(frame);
+                    break;
                 }
-                case (":disconnect"): {
-                    context.Stop(context.Self);
-                    return Done;
-                }
-                case Stopping _: {
-                    if (_socket.Connected) {
-                        _socket.Disconnect(false);
-                        _socket.Close();
-                        context.Send(_listener, (":socket-disconnected"));
-                    }
-
-                    if (_pollThread.IsAlive) {
-                        _cancellationTokenSource.Cancel();
-                        _pollThread.Join();
-                    }
-                    return Done;
-                }
-                default: return Done;
             }
+            return Done;
         }
 
-        void PollThreadMain(Object state) {
-            var (cancellationToken, context) = ((CancellationToken, IContext))state;
+        void Transmit(ISerializable entity) {
+            _transmitBuffer.WriteSerializable(entity);
+            _socket.Send(_transmitBuffer.WrittenSpan);
+            _transmitBuffer.Clear();
+        }
 
-            try {
-                while (cancellationToken.IsCancellationRequested == false) {
-                    var bytesReceived = _socket.Receive(_frameBuffer.Slice(_frameBufferSize).Span);
+        Task BeginPolling(IContext context) =>
+            Task.Factory.StartNew(() => {
+                var receiveBuffer = new Byte[1024 * 1024 * 8].AsMemory();
+                var receiveBufferTail = 0;
+
+                while (true) {
+                    var bytesReceived = _socket.Receive(receiveBuffer.Slice(receiveBufferTail).Span);
 
                     if (bytesReceived > 0) {
-                        _log.LogDebug("Received {bytes} bytes", bytesReceived);
+                        receiveBufferTail += bytesReceived;
 
-                        _frameBufferSize += (UInt16)bytesReceived;
-
-                        while (RawFrame.Deserialize(_frameBuffer.Slice(0, _frameBufferSize).Span, out var frame, out var surplus)) {
+                        while (RawFrame.Deserialize(receiveBuffer.Slice(0, receiveBufferTail).Span, out var frame, out var surplus)) {
                             context.Send(_listener, (":receive", frame));
 
-                            var consumed = _frameBufferSize - surplus.Length;
-                            _frameBuffer.Slice(consumed, _frameBufferSize).CopyTo(_frameBuffer);
-                            _frameBufferSize -= (UInt16)consumed;
+                            var consumed = receiveBufferTail - surplus.Length; // How many bytes of the frame buffer were consumed by deserializating this frame...
+                            receiveBuffer.Slice(consumed, receiveBufferTail).CopyTo(receiveBuffer);
+                            receiveBufferTail -= consumed;
                         }
                     }
                 }
-            }
-            catch (SocketException) {
-                // TODO: Publish a disconnected event, or just let the actor die?
-                // Or both?
-            }
-            catch (ObjectDisposedException) {
-                // The socket has been closed...
-            }
-            catch (OperationCanceledException) {
-                // Let the thread terminate...
-            }
-        }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Current);
     }
 }
