@@ -35,5 +35,34 @@ namespace Lapine.Client {
 
             return onClosed.Task;
         }
+
+        public Task DeclareExchange(ExchangeDefinition definition) {
+            var onDeclared = new TaskCompletionSource<Boolean>();
+
+            _system.Root.SpawnPrefix(
+                prefix: "cmd-exchange-declare",
+                props: Props.FromFunc(context => {
+                    switch (context.Message) {
+                        case Started _: {
+                            context.Send(_agent, (":exchange-declare", definition, context.Self));
+                            break;
+                        }
+                        case (":exchange-declared"): {
+                            onDeclared.SetResult(true);
+                            context.Stop(context.Self);
+                            break;
+                        }
+                        case (":exchange-declare-failed", UInt16 replyCode, String replyText): {
+                            onDeclared.SetException(AmqpException.Create(replyCode, replyText));
+                            context.Stop(context.Self);
+                            break;
+                        }
+                    }
+                    return Actor.Done;
+                })
+            );
+
+            return onDeclared.Task;
+        }
     }
 }

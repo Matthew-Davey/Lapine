@@ -1,7 +1,9 @@
 namespace Lapine.Agents {
     using System;
+    using System.Collections.Generic;
     using System.Dynamic;
     using System.Threading.Tasks;
+    using Lapine.Client;
     using Lapine.Protocol.Commands;
     using Proto;
 
@@ -63,10 +65,43 @@ namespace Lapine.Agents {
                     _behaviour.Become(Closed);
                     break;
                 }
+                case (":exchange-declare", ExchangeDefinition definition, PID listener): {
+                    _state.ExchangeDeclareListener = listener;
+                    context.Send(_listener, (":transmit", new ExchangeDeclare(
+                        exchangeName: definition.Name,
+                        exchangeType: definition.Type,
+                        passive: false,
+                        durable: definition.Durability == Durability.Durable,
+                        autoDelete: definition.AutoDelete,
+                        @internal: false,
+                        noWait: false,
+                        arguments: definition.Arguments
+                    )));
+                    _behaviour.Become(AwaitingExchangeDeclareOk);
+                    break;
+                }
                 case (":close", PID listener): {
                     _state.ChannelCloseListener = listener;
                     context.Send(_listener, (":transmit", new ChannelClose(0, "Channel closed by client", (0, 0))));
                     _behaviour.Become(AwaitingChannelCloseOk);
+                    break;
+                }
+            }
+            return Done;
+        }
+
+        Task AwaitingExchangeDeclareOk(IContext context) {
+            switch (context.Message) {
+                case (":receive", ExchangeDeclareOk _): {
+                    context.Send(_state.ExchangeDeclareListener, (":exchange-declared"));
+                    _behaviour.Become(Open);
+                    break;
+                }
+                case (":receive", ChannelClose message): {
+                    context.Send(_state.ExchangeDeclareListener, (":exchange-declare-failed", message.ReplyCode, message.ReplyText));
+                    context.Send(_listener, (":transmit", new ChannelCloseOk()));
+                    context.Send(_listener, (":channel-closed", _channelNumber));
+                    _behaviour.Become(Closed);
                     break;
                 }
             }

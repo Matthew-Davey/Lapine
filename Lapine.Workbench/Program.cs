@@ -28,15 +28,15 @@
 
             await amqpClient.ConnectAsync();
 
-            var channel1 = await amqpClient.OpenChannel();
-            var channel2 = await amqpClient.OpenChannel();
-            var channel3 = await amqpClient.OpenChannel();
+            var channel = await amqpClient.OpenChannel();
+
+            await channel.DeclareExchange(ExchangeDefinition.Create("test.exchange")
+                .WithType("topic")
+                .WithDurability(Durability.Durable));
 
             Environment.ExitCode = await completion.Task;
 
-            await channel1.Close();
-            await channel2.Close();
-            await channel3.Close();
+            await channel.Close();
 
             await amqpClient.DisposeAsync();
         }
