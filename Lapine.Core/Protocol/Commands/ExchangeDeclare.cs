@@ -35,7 +35,8 @@ namespace Lapine.Protocol.Commands {
                 .WriteFieldTable(Arguments);
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDeclare result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var exchangeName, out surplus) &&
+            if (buffer.ReadUInt16BE(out var reserved1, out surplus) &&
+                surplus.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadShortString(out var exchangeType, out surplus) &&
                 surplus.ReadBits(out var bits, out surplus) &&
                 surplus.ReadFieldTable(out var arguments, out surplus))
