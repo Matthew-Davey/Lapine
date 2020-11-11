@@ -3,13 +3,14 @@ namespace Lapine
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
 
     using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
 
     static class BufferExtensions {
-        static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, out Boolean[] result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Boolean[]? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.Length < 1) {
                 result = default;
                 surplus = default;
@@ -89,7 +90,7 @@ namespace Lapine
             }
         }
 
-        static public Boolean ReadFieldArray(in this ReadOnlySpan<Byte> buffer, out IList<Object> result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadFieldArray(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IList<Object>? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadInt32BE(out var arrayLength, out surplus) &&
                 surplus.ReadBytes((UInt32)arrayLength, out var arrayBytes, out surplus))
             {
@@ -115,7 +116,7 @@ namespace Lapine
             }
         }
 
-        static public Boolean ReadFieldTable(in this ReadOnlySpan<Byte> buffer, out IReadOnlyDictionary<String, Object> result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadFieldTable(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IReadOnlyDictionary<String, Object>? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt32BE(out var tableLength, out surplus) &&
                 surplus.ReadBytes(tableLength, out var tableBytes, out surplus))
             {
@@ -143,7 +144,7 @@ namespace Lapine
             }
         }
 
-        static public Boolean ReadFieldValue(in this ReadOnlySpan<Byte> buffer, out Object result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadFieldValue(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Object? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadChar(out var fieldType, out surplus) == false) {
                 result = default;
                 return false;
@@ -261,7 +262,7 @@ namespace Lapine
                     break;
                 }
                 case 'V': { // no-field
-                    result = null;
+                    result = new Object();
                     return true;
                 }
                 case 'F': { // field-table
@@ -325,7 +326,7 @@ namespace Lapine
             return true;
         }
 
-        static public Boolean ReadLongString(in this ReadOnlySpan<Byte> buffer, out String result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadLongString(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result, out ReadOnlySpan<Byte> surplus) {
             if (ReadUInt32BE(in buffer, out var length, out surplus) &&
                 ReadBytes(in surplus, length, out var bytes, out surplus))
             {
@@ -351,7 +352,7 @@ namespace Lapine
             }
         }
 
-        static public Boolean ReadShortString(in this ReadOnlySpan<Byte> buffer, out String result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean ReadShortString(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result, out ReadOnlySpan<Byte> surplus) {
             if (ReadUInt8(in buffer, out var length, out surplus) &&
                 ReadBytes(in surplus, length, out var bytes, out surplus))
             {

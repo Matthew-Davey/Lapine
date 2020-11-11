@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class ChannelClose : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x28);
@@ -22,7 +23,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteUInt16BE(FailingMethod.ClassId)
                 .WriteUInt16BE(FailingMethod.MethodId);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ChannelClose result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelClose? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var replyCode, out surplus) &&
                 surplus.ReadShortString(out var replyText, out surplus) &&
                 surplus.ReadUInt16BE(out var classId, out surplus) &&
@@ -44,7 +45,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ChannelCloseOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelCloseOk? result, out ReadOnlySpan<Byte> surplus) {
             surplus = buffer;
             result = new ChannelCloseOk();
             return true;

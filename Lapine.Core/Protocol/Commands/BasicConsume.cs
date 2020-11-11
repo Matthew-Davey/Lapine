@@ -2,6 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicConsume : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x14);
@@ -30,7 +31,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteBits(NoLocal, NoAck, Exclusive, NoWait)
                 .WriteFieldTable(Arguments);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicConsume result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsume? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadShortString(out var consumerTag, out surplus) &&
                 surplus.ReadBits(out var bits, out surplus) &&
@@ -57,7 +58,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteShortString(ConsumerTag);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicConsumeOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsumeOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var consumerTag, out surplus)) {
                 result = new BasicConsumeOk(consumerTag);
                 return true;

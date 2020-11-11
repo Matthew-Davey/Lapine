@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicGet : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x46);
@@ -17,7 +18,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteShortString(QueueName)
                 .WriteBoolean(NoAck);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicGet result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGet? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadBoolean(out var noAck, out surplus))
             {
@@ -55,7 +56,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteShortString(RoutingKey)
                 .WriteUInt32BE(MessageCount);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicGetOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt64BE(out var deliveryTag, out surplus) &&
                 surplus.ReadBoolean(out var redelivered, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&
@@ -77,7 +78,7 @@ namespace Lapine.Protocol.Commands {
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicGetEmpty result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetEmpty? result, out ReadOnlySpan<Byte> surplus) {
             surplus = buffer;
             result  = new BasicGetEmpty();
             return true;

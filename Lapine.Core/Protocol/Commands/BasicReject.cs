@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicReject : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x5A);
@@ -17,7 +18,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteUInt64BE(DeliveryTag)
                 .WriteBoolean(ReQueue);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicReject result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicReject? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt64BE(out var deliveryTag, out surplus) &&
                 surplus.ReadBoolean(out var requeue, out surplus))
             {

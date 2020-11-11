@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicDeliver : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x3C);
@@ -23,7 +24,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteBoolean(Redelivered)
                 .WriteShortString(ExchangeName);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicDeliver result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicDeliver? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var consumerTag, out surplus) &&
                 surplus.ReadUInt64BE(out var deliveryTag, out surplus) &&
                 surplus.ReadBoolean(out var redelivered, out surplus) &&

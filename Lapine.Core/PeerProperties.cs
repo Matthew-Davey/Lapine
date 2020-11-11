@@ -5,14 +5,14 @@ namespace Lapine {
     using static System.Runtime.InteropServices.RuntimeInformation;
 
     public class PeerProperties {
-        public String Product { get; }
-        public String Version { get; }
-        public String Platform { get; }
-        public String Copyright { get; }
-        public String Information { get; }
-        public String ClientProvidedName { get; } // Used by RabbitMQ Management Console to identify the connection
+        public String? Product { get; }
+        public String? Version { get; }
+        public String? Platform { get; }
+        public String? Copyright { get; }
+        public String? Information { get; }
+        public String? ClientProvidedName { get; } // Used by RabbitMQ Management Console to identify the connection
 
-        public PeerProperties(String product, String version, String platform, String copyright, String information, String clientProvidedName = null) {
+        public PeerProperties(String? product, String? version, String? platform, String? copyright, String? information, String? clientProvidedName = null) {
             Product            = product;
             Version            = version;
             Platform           = platform;
@@ -92,12 +92,12 @@ namespace Lapine {
         );
 
         public IReadOnlyDictionary<String, Object> ToDictionary() => new Dictionary<String, Object> {
-            ["product"]         = Product,
-            ["version"]         = Version,
-            ["platform"]        = Platform,
-            ["copyright"]       = Copyright,
-            ["information"]     = Information,
-            ["connection_name"] = ClientProvidedName
+            ["product"]         = Product ?? String.Empty,
+            ["version"]         = Version ?? String.Empty,
+            ["platform"]        = Platform ?? String.Empty,
+            ["copyright"]       = Copyright ?? String.Empty,
+            ["information"]     = Information ?? String.Empty,
+            ["connection_name"] = ClientProvidedName ?? String.Empty
         };
     }
 }

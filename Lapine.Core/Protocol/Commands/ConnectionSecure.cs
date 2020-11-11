@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class ConnectionSecure : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x14);
@@ -13,7 +14,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteLongString(Challenge);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionSecure result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecure? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadLongString(out var challenge, out surplus)) {
                 result = new ConnectionSecure(challenge);
                 return true;
@@ -36,7 +37,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteLongString(Response);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionSecureOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecureOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadLongString(out var response, out surplus)) {
                 result = new ConnectionSecureOk(response);
                 return true;

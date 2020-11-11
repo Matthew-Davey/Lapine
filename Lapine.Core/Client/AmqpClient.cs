@@ -40,17 +40,17 @@ namespace Lapine.Client {
                         }
                         case (":connection-ready"): {
                             onReady.SetResult(true);
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                         case (":connection-failed"): {
                             onReady.SetException(new Exception());
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                         case (":timeout"): {
                             onReady.SetException(new TimeoutException());
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                     }
@@ -75,7 +75,7 @@ namespace Lapine.Client {
                         }
                         case (":channel-opened", PID channel): {
                             onOpen.SetResult(new Channel(_system, channel));
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                     }

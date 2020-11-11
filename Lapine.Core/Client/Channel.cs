@@ -25,7 +25,7 @@ namespace Lapine.Client {
                         }
                         case (":channel-closed", UInt16 _): {
                             onClosed.SetResult(true);
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                     }
@@ -49,12 +49,12 @@ namespace Lapine.Client {
                         }
                         case (":exchange-declared"): {
                             onDeclared.SetResult(true);
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                         case (":exchange-declare-failed", UInt16 replyCode, String replyText): {
                             onDeclared.SetException(AmqpException.Create(replyCode, replyText));
-                            context.Stop(context.Self);
+                            context.Stop(context.Self!);
                             break;
                         }
                     }

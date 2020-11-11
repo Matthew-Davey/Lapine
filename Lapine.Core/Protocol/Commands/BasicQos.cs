@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicQos : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x0A);
@@ -20,7 +21,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteUInt16BE(PrefetchCount)
                 .WriteBoolean(Global);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicQos result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQos? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt32BE(out var prefetchSize, out surplus) &&
                 surplus.ReadUInt16BE(out var prefetchCount, out surplus) &&
                 surplus.ReadBoolean(out var global, out surplus))
@@ -40,7 +41,7 @@ namespace Lapine.Protocol.Commands {
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicQosOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQosOk? result, out ReadOnlySpan<Byte> surplus) {
             surplus = buffer;
             result  = new BasicQosOk();
             return true;

@@ -2,6 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class ExchangeDeclare : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0A);
@@ -34,7 +35,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteBits(Passive, Durable, AutoDelete, Internal, NoWait)
                 .WriteFieldTable(Arguments);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDeclare result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclare? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var reserved1, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadShortString(out var exchangeType, out surplus) &&
@@ -57,7 +58,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDeclareOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclareOk? result, out ReadOnlySpan<Byte> surplus) {
             surplus = buffer;
             result = new ExchangeDeclareOk();
             return true;

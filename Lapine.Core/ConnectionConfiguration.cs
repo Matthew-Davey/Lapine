@@ -26,7 +26,7 @@ namespace Lapine {
         public UInt32 MaximumFrameSize { get; }
         public UInt16 MaximumChannelCount { get; }
 
-        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy endpointSelectionStrategy = null, UInt16 connectionTimeout = DefaultConnectionTimeout, IAuthenticationStrategy authenticationStrategy = null, String locale = DefaultLocale, PeerProperties peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
+        public ConnectionConfiguration(IEnumerable<IPEndPoint> endpoints, IEndpointSelectionStrategy? endpointSelectionStrategy = null, UInt16 connectionTimeout = DefaultConnectionTimeout, IAuthenticationStrategy? authenticationStrategy = null, String locale = DefaultLocale, PeerProperties? peerProperties = null, String virtualHost = DefaultVirtualHost, UInt16 heartbeatFrequency = DefaultHeartbeatFrequency, UInt32 maximumFrameSize = DefaultMaximumFrameSize, UInt16 maximumChannelCount = DefaultMaximumChannelCount) {
             Endpoints                 = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
             EndpointSelectionStrategy = endpointSelectionStrategy ?? DefaultEndpointSelectionStrategy;
             ConnectionTimeout         = connectionTimeout;

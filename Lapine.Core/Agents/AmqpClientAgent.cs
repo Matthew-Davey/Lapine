@@ -101,7 +101,7 @@ namespace Lapine.Agents {
                 case Terminated message when message.Who == _state.SocketAgent: {
                     SpawnSocketAgent(context);
                     _behaviour.Become(Disconnected);
-                    context.Send(context.Self, (":connect", context.Self));
+                    context.Send(context.Self!, (":connect", context.Self));
                     break;
                 }
             }
@@ -111,7 +111,7 @@ namespace Lapine.Agents {
         void SpawnSocketAgent(IContext context) =>
             _state.SocketAgent = context.SpawnNamed(
                 name: "socket",
-                props: Props.FromProducer(() => new SocketAgent(context.Self))
+                props: Props.FromProducer(() => new SocketAgent(context.Self!))
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
 
@@ -136,7 +136,7 @@ namespace Lapine.Agents {
         PID SpawnChannel(IContext context, UInt16 channelNumber) {
             var channel = context.SpawnNamed(
                 name: $"channel-{channelNumber}",
-                props: Props.FromProducer(() => new ChannelAgent(context.Self, channelNumber))
+                props: Props.FromProducer(() => new ChannelAgent(context.Self!, channelNumber))
                     .WithContextDecorator(LoggingContextDecorator.Create)
                     .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                     .WithSenderMiddleware(FramingMiddleware.WrapOutboundCommands(channel: channelNumber))
@@ -145,7 +145,7 @@ namespace Lapine.Agents {
             return channel;
         }
 
-        void TryNextEndpoint(IContext context, Action endpointsExhausted = null) {
+        void TryNextEndpoint(IContext context, Action? endpointsExhausted = null) {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
 

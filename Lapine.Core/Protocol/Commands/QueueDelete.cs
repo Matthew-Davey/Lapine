@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class QueueDelete : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x28);
@@ -21,7 +22,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteShortString(QueueName)
                 .WriteBits(IfUnused, IfEmpty, NoWait);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out QueueDelete result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDelete? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadBits(out var bits, out surplus))
             {
@@ -46,7 +47,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt32BE(MessageCount);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out QueueDeleteOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeleteOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt32BE(out var messageCount, out surplus)) {
                 result = new QueueDeleteOk(messageCount);
                 return true;

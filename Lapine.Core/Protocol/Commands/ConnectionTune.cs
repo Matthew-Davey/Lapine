@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class ConnectionTune : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1E);
@@ -20,7 +21,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteUInt32BE(FrameMax)
                 .WriteUInt16BE(Heartbeat);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionTune result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionTune? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var channelMax, out surplus) &&
                 surplus.ReadUInt32BE(out var frameMax, out surplus) &&
                 surplus.ReadUInt16BE(out var heartbeat, out surplus))
@@ -53,7 +54,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteUInt32BE(FrameMax)
                 .WriteUInt16BE(Heartbeat);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionTuneOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionTuneOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var channelMax, out surplus) &&
                 surplus.ReadUInt32BE(out var frameMax, out surplus) &&
                 surplus.ReadUInt16BE(out var heartbeat, out surplus))

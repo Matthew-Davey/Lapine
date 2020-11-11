@@ -2,6 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
 
     using static System.String;
 
@@ -27,7 +28,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteLongString(Join(' ', Mechanisms))
                 .WriteLongString(Join(' ', Locales));
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionStart result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStart? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt8(out var major, out surplus) &&
                 surplus.ReadUInt8(out var minor, out surplus) &&
                 surplus.ReadFieldTable(out var serverProperties, out surplus) &&
@@ -65,7 +66,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteLongString(Response)
                 .WriteShortString(Locale);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ConnectionStartOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStartOk? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadFieldTable(out var peerProperties, out surplus) &&
                 surplus.ReadShortString(out var mechanism, out surplus) &&
                 surplus.ReadLongString(out var response, out surplus) &&

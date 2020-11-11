@@ -5,7 +5,7 @@ namespace Lapine.Protocol {
         public FramingErrorException() : base() {
         }
 
-        public FramingErrorException(String message, Exception inner = null) : base(message, inner) {
+        public FramingErrorException(String message, Exception? inner = null) : base(message, inner) {
         }
     }
 }

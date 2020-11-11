@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class BasicReturn : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x32);
@@ -23,7 +24,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteShortString(ExchangeName)
                 .WriteShortString(RoutingKey);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out BasicReturn result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicReturn? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadUInt16BE(out var replyCode, out surplus) &&
                 surplus.ReadShortString(out var replyText, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&

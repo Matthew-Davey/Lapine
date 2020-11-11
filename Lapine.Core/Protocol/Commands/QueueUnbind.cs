@@ -2,6 +2,7 @@ namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class QueueUnbind : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x32);
@@ -24,7 +25,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteShortString(RoutingKey)
                 .WriteFieldTable(Arguments);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out QueueUnbind result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbind? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadShortString(out var routingKey, out surplus) &&
@@ -45,7 +46,7 @@ namespace Lapine.Protocol.Commands {
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out QueueUnbindOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbindOk? result, out ReadOnlySpan<Byte> surplus) {
             result = new QueueUnbindOk();
             surplus = buffer;
             return true;

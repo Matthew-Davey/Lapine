@@ -15,7 +15,7 @@ namespace Lapine.Agents {
         readonly Behavior _behaviour;
         readonly Socket _socket;
         readonly ArrayBufferWriter<Byte> _transmitBuffer;
-        Task _pollingTask;
+        Task? _pollingTask;
 
         public SocketAgent(PID listener) {
             _listener       = listener ?? throw new ArgumentNullException(nameof(listener));

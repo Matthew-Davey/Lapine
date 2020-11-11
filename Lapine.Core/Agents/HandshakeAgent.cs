@@ -46,19 +46,19 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    context.Stop(context.Self);
+                    context.Stop(context.Self!);
                     return Done;
                 }
                 case (":receive", ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (":handshake-failed"));
-                        context.Stop(context.Self);
+                        context.Stop(context.Self!);
                         return Done;
                     }
 
                     if (!message.Locales.Contains(_connectionConfiguration.Locale)) {
                         context.Send(_listener, (":handshake-failed"));
-                        context.Stop(context.Self);
+                        context.Stop(context.Self!);
                         return Done;
                     }
 
@@ -85,7 +85,7 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    context.Stop(context.Self);
+                    context.Stop(context.Self!);
                     return Done;
                 }
                 case (":receive", ConnectionSecure message): {
@@ -120,12 +120,12 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
-                    context.Stop(context.Self);
+                    context.Stop(context.Self!);
                     return Done;
                 }
                 case (":receive", ConnectionOpenOk message): {
                     context.Send(_listener, (":handshake-completed", (UInt16)_state.MaximumChannelCount));
-                    context.Stop(context.Self);
+                    context.Stop(context.Self!);
                     return Done;
                 }
                 default: return Done;

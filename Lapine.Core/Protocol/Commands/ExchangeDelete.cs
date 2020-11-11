@@ -1,6 +1,7 @@
 namespace Lapine.Protocol.Commands {
     using System;
     using System.Buffers;
+    using System.Diagnostics.CodeAnalysis;
 
     sealed class ExchangeDelete : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x14);
@@ -19,7 +20,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteShortString(ExchangeName)
                 .WriteBits(IfUnused, NoWait);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDelete result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDelete? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadBits(out var bits, out surplus))
             {
@@ -39,7 +40,7 @@ namespace Lapine.Protocol.Commands {
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer;
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ExchangeDeleteOk result, out ReadOnlySpan<Byte> surplus) {
+        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeleteOk? result, out ReadOnlySpan<Byte> surplus) {
             surplus = buffer;
             result = new ExchangeDeleteOk();
             return true;

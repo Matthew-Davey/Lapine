@@ -38,7 +38,7 @@ namespace Lapine.Agents {
                 case (":receive", ConnectionStart message): {
                     _state.HandshakeAgent = context.SpawnNamed(
                         name: "handshake",
-                        props: Props.FromProducer(() => new HandshakeAgent(context.Self, _connectionConfiguration))
+                        props: Props.FromProducer(() => new HandshakeAgent(context.Self!, _connectionConfiguration))
                             .WithContextDecorator(LoggingContextDecorator.Create)
                     );
                     context.Forward(_state.HandshakeAgent);
@@ -52,7 +52,8 @@ namespace Lapine.Agents {
         Task Negotiating(IContext context) {
             switch (context.Message) {
                 case (":transmit", _): {
-                    context.Forward(context.Parent);
+                    if (context.Parent is not null)
+                        context.Forward(context.Parent);
                     return Done;
                 }
                 case (":receive", ICommand _): {
@@ -62,7 +63,7 @@ namespace Lapine.Agents {
                 case (":start-heartbeat-transmission", UInt16 frequency): {
                     _state.HeartbeatAgent = context.SpawnNamed(
                         name: "heartbeat",
-                        props: Props.FromProducer(() => new HeartbeatAgent(context.Self))
+                        props: Props.FromProducer(() => new HeartbeatAgent(context.Self!))
                             .WithContextDecorator(LoggingContextDecorator.Create)
                     );
                     context.Forward(_state.HeartbeatAgent);
@@ -70,12 +71,13 @@ namespace Lapine.Agents {
                 }
                 case (":handshake-completed", UInt16 MaximumChannelCount): {
                     _behaviour.UnbecomeStacked();
-                    context.Forward(context.Parent);
+                    if (context.Parent is not null)
+                        context.Forward(context.Parent);
                     _behaviour.Become(Open);
                     return Done;
                 }
                 case (":authentication-failed"): {
-                    context.Stop(context.Self); // TODO: fail gracefully
+                    context.Stop(context.Self!); // TODO: fail gracefully
                     return Done;
                 }
             }
@@ -89,17 +91,19 @@ namespace Lapine.Agents {
                     break;
                 }
                 case (":transmit", _): {
-                    context.Forward(context.Parent);
+                    if (context.Parent is not null)
+                        context.Forward(context.Parent);
                     break;
                 }
                 case (":remote-flatline", DateTime lastRemoteHeartbeat): {
-                    context.Stop(context.Self); // TODO: How to best respond to a remote flatline?
+                    context.Stop(context.Self!); // TODO: How to best respond to a remote flatline?
                     _behaviour.Become(Closed);
                     break;
                 }
                 case (":receive", ConnectionClose message): {
-                    context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
-                    context.Stop(context.Self);
+                    if (context.Parent is not null)
+                        context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
+                    context.Stop(context.Self!);
                     _behaviour.Become(Closed);
                     break;
                 }
