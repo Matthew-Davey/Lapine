@@ -71,7 +71,7 @@ namespace Lapine.Agents {
                 }
                 case (":handshake-completed", UInt16 MaximumChannelCount): {
                     _behaviour.UnbecomeStacked();
-                    if (context.Parent is not null)
+                    if (context.Parent != null)
                         context.Forward(context.Parent);
                     _behaviour.Become(Open);
                     return Done;
@@ -91,7 +91,7 @@ namespace Lapine.Agents {
                     break;
                 }
                 case (":transmit", _): {
-                    if (context.Parent is not null)
+                    if (context.Parent != null)
                         context.Forward(context.Parent);
                     break;
                 }
@@ -101,7 +101,7 @@ namespace Lapine.Agents {
                     break;
                 }
                 case (":receive", ConnectionClose message): {
-                    if (context.Parent is not null)
+                    if (context.Parent != null)
                         context.Send(context.Parent, (":transmit", new ConnectionCloseOk()));
                     context.Stop(context.Self!);
                     _behaviour.Become(Closed);
