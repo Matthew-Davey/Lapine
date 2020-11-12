@@ -52,7 +52,7 @@ namespace Lapine.Agents {
         Task Negotiating(IContext context) {
             switch (context.Message) {
                 case (":transmit", _): {
-                    if (context.Parent is not null)
+                    if (context.Parent != null)
                         context.Forward(context.Parent);
                     return Done;
                 }
