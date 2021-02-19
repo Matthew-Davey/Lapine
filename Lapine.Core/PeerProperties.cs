@@ -21,7 +21,7 @@ namespace Lapine {
             ClientProvidedName = clientProvidedName ?? Product;
         }
 
-        static public PeerProperties Default => new PeerProperties(
+        static public PeerProperties Default => new (
             product    : "Lapine",
             version    : "0.1.0",
             platform   : OSDescription,
@@ -29,7 +29,7 @@ namespace Lapine {
             information: "Licensed under the MIT License https://opensource.org/licenses/MIT"
         );
 
-        static public PeerProperties Empty => new PeerProperties(
+        static public PeerProperties Empty => new (
             product    : null,
             version    : null,
             platform   : null,
@@ -37,7 +37,7 @@ namespace Lapine {
             information: null
         );
 
-        public PeerProperties WithProduct(String product) => new PeerProperties(
+        public PeerProperties WithProduct(String product) => new (
             product           : product,
             version           : Version,
             platform          : Platform,
@@ -46,7 +46,7 @@ namespace Lapine {
             clientProvidedName: ClientProvidedName
         );
 
-        public PeerProperties WithVersion(String version) => new PeerProperties(
+        public PeerProperties WithVersion(String version) => new (
             product           : Product,
             version           : version,
             platform          : Platform,
@@ -55,7 +55,7 @@ namespace Lapine {
             clientProvidedName: ClientProvidedName
         );
 
-        public PeerProperties WithPlatform(String platform) => new PeerProperties(
+        public PeerProperties WithPlatform(String platform) => new (
             product           : Product,
             version           : Version,
             platform          : platform,
@@ -64,7 +64,7 @@ namespace Lapine {
             clientProvidedName: ClientProvidedName
         );
 
-        public PeerProperties WithCopyright(String copyright) => new PeerProperties(
+        public PeerProperties WithCopyright(String copyright) => new (
             product           : Product,
             version           : Version,
             platform          : Platform,
@@ -73,7 +73,7 @@ namespace Lapine {
             clientProvidedName: ClientProvidedName
         );
 
-        public PeerProperties WithInformation(String information) => new PeerProperties(
+        public PeerProperties WithInformation(String information) => new (
             product           : Product,
             version           : Version,
             platform          : Platform,
@@ -82,7 +82,7 @@ namespace Lapine {
             clientProvidedName: ClientProvidedName
         );
 
-        public PeerProperties WithClientProvidedName(String clientProvidedName) => new PeerProperties(
+        public PeerProperties WithClientProvidedName(String clientProvidedName) => new (
             product           : Product,
             version           : Version,
             platform          : Platform,

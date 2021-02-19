@@ -123,7 +123,7 @@ namespace Lapine.Agents {
                     context.Stop(context.Self!);
                     return Done;
                 }
-                case (":receive", ConnectionOpenOk message): {
+                case (":receive", ConnectionOpenOk _): {
                     context.Send(_listener, (":handshake-completed", (UInt16)_state.MaximumChannelCount));
                     context.Stop(context.Self!);
                     return Done;

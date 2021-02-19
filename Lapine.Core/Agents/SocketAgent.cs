@@ -76,7 +76,7 @@ namespace Lapine.Agents {
                 var receiveBufferTail = 0;
 
                 while (true) {
-                    var bytesReceived = _socket.Receive(receiveBuffer.Slice(receiveBufferTail).Span);
+                    var bytesReceived = _socket.Receive(receiveBuffer[receiveBufferTail..].Span);
 
                     if (bytesReceived > 0) {
                         receiveBufferTail += bytesReceived;

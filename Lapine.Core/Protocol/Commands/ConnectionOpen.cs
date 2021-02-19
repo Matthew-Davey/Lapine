@@ -18,8 +18,8 @@ namespace Lapine.Protocol.Commands {
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpen? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.ReadShortString(out var vhost, out surplus) &&
-                surplus.ReadShortString(out var reserved1, out surplus) &&
-                surplus.ReadBoolean(out var reserved2, out surplus))
+                surplus.ReadShortString(out var _, out surplus) &&
+                surplus.ReadBoolean(out var _, out surplus))
             {
                 result = new ConnectionOpen(vhost);
                 return true;

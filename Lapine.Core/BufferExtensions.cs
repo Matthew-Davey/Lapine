@@ -24,10 +24,10 @@ namespace Lapine
 
             for (var i = 0; i < 8; i++) {
                 result[i] = (bits & mask) != 0;
-                mask = mask << 1;
+                mask <<= 1;
             }
 
-            surplus = buffer.Slice(1);
+            surplus = buffer[1..];
             return true;
         }
 
@@ -39,7 +39,7 @@ namespace Lapine
             }
 
             result  = buffer[0] > 0;
-            surplus = buffer.Slice(1);
+            surplus = buffer[1..];
             return true;
         }
 
@@ -50,8 +50,8 @@ namespace Lapine
                 return false;
             }
 
-            result  = buffer.Slice(0, (Int32)number);
-            surplus = buffer.Slice((Int32)number);
+            result  = buffer[0..(UInt16)number];
+            surplus = buffer[(UInt16)number..];
             return true;
         }
 
@@ -63,7 +63,7 @@ namespace Lapine
             }
 
             result  = (Char)buffer[0];
-            surplus = buffer.Slice(1);
+            surplus = buffer[1..];
             return true;
         }
 
@@ -75,7 +75,7 @@ namespace Lapine
             }
 
             result  = ASCII.GetString(buffer.Slice(0, number)).AsSpan();
-            surplus = buffer.Slice(number);
+            surplus = buffer[number..];
             return true;
         }
 
@@ -230,7 +230,7 @@ namespace Lapine
                 }
                 case 'D': { // decimal-value
                     result = default(Decimal); // TODO: read and decode decimal-value
-                    surplus = surplus.Slice(5);
+                    surplus = surplus[5..];
                     return true;
                 }
                 case 's': { // short-string
@@ -286,7 +286,7 @@ namespace Lapine
             }
 
             result = (SByte)buffer[0];
-            surplus = buffer.Slice(1);
+            surplus = buffer[1..];
             return true;
         }
 
@@ -298,7 +298,7 @@ namespace Lapine
             }
 
             result  = ReadInt16BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(Int16));
+            surplus = buffer[sizeof(Int16)..];
             return true;
         }
 
@@ -310,7 +310,7 @@ namespace Lapine
             }
 
             result  = ReadInt32BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(Int32));
+            surplus = buffer[sizeof(Int32)..];
             return true;
         }
 
@@ -322,7 +322,7 @@ namespace Lapine
             }
 
             result  = ReadInt64BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(Int64));
+            surplus = buffer[sizeof(Int64)..];
             return true;
         }
 
@@ -384,7 +384,7 @@ namespace Lapine
             }
 
             result  = buffer[0];
-            surplus = buffer.Slice(sizeof(Byte));
+            surplus = buffer[sizeof(Byte)..];
             return true;
         }
 
@@ -396,7 +396,7 @@ namespace Lapine
             }
 
             result  = ReadUInt16BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(UInt16));
+            surplus = buffer[sizeof(UInt16)..];
             return true;
         }
 
@@ -408,7 +408,7 @@ namespace Lapine
             }
 
             result  = ReadUInt32BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(UInt32));
+            surplus = buffer[sizeof(UInt32)..];
             return true;
         }
 
@@ -420,7 +420,7 @@ namespace Lapine
             }
 
             result  = ReadUInt64BigEndian(buffer);
-            surplus = buffer.Slice(sizeof(UInt64));
+            surplus = buffer[sizeof(UInt64)..];
             return true;
         }
 

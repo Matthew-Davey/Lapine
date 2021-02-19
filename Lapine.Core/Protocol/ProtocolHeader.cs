@@ -11,7 +11,7 @@ namespace Lapine.Protocol
         readonly ProtocolVersion _version;
 
         static public ProtocolHeader Default =>
-            new ProtocolHeader("AMQP", 0, ProtocolVersion.Default);
+            new ("AMQP", 0, ProtocolVersion.Default);
 
         public ProtocolHeader(in ReadOnlySpan<Char> protocol, in Byte protocolId, in ProtocolVersion version) {
             if (protocol.Length != 4)

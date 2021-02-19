@@ -45,7 +45,7 @@ namespace Lapine.Protocol {
 
             value.Serialize(buffer);
             var modifiedBuffer = buffer.WrittenMemory.ToArray();
-            modifiedBuffer[modifiedBuffer.Length -1] = 0x00;
+            modifiedBuffer[^1] = 0x00;
 
             Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
         }

@@ -87,7 +87,7 @@ namespace Lapine {
         }
 
         [Theory]
-        [InlineData(false, new Byte[0], default(Object), new Byte[0])]
+        [InlineData(false, new Byte[0], default, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'t', 0x00 }, false, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'t', 0x01 }, true, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'b', 0x01 }, (SByte)0x01, new Byte[0])]

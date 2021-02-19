@@ -10,7 +10,7 @@ namespace Lapine {
 
         public UInt16 PingTimeout { get; }
 
-        readonly Ping _ping = new Ping();
+        readonly Ping _ping = new ();
 
         public FastestEndpointSelectionStrategy(UInt16 pingTimeout = DefaultPingTimeout) =>
             PingTimeout = pingTimeout;

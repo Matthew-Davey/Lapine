@@ -39,11 +39,11 @@ namespace Lapine {
             MaximumChannelCount       = maximumChannelCount;
         }
 
-        static public ConnectionConfiguration Default => new ConnectionConfiguration(
+        static public ConnectionConfiguration Default => new (
             endpoints: new [] { new IPEndPoint(IPAddress.Loopback, DefaultPort) }
         );
 
-        public ConnectionConfiguration WithEndpoints(params IPEndPoint[] endpoints) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithEndpoints(params IPEndPoint[] endpoints) => new (
             endpoints                : endpoints ?? throw new ArgumentNullException(nameof(endpoints)),
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -56,7 +56,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithEndpointSelectionStrategy(IEndpointSelectionStrategy endpointSelectionStrategy) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithEndpointSelectionStrategy(IEndpointSelectionStrategy endpointSelectionStrategy) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: endpointSelectionStrategy ?? throw new ArgumentNullException(nameof(endpointSelectionStrategy)),
             connectionTimeout        : ConnectionTimeout,
@@ -69,7 +69,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithConnectionTimeout(UInt16 connectionTimeout) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithConnectionTimeout(UInt16 connectionTimeout) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : connectionTimeout,
@@ -82,7 +82,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithAuthenticationStrategy(IAuthenticationStrategy authenticationStrategy) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithAuthenticationStrategy(IAuthenticationStrategy authenticationStrategy) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -95,7 +95,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithLocale(String locale) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithLocale(String locale) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -108,7 +108,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithPeerProperties(PeerProperties peerProperties) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithPeerProperties(PeerProperties peerProperties) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -121,7 +121,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithVirtualHost(String virtualHost) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithVirtualHost(String virtualHost) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -134,7 +134,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithHeartbeatFrequency(UInt16 heartbeatFrequency) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithHeartbeatFrequency(UInt16 heartbeatFrequency) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -147,7 +147,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithMaximumFrameSize(UInt32 maximumFrameSize) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithMaximumFrameSize(UInt32 maximumFrameSize) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,
@@ -160,7 +160,7 @@ namespace Lapine {
             maximumChannelCount      : MaximumChannelCount
         );
 
-        public ConnectionConfiguration WithMaximumChannelCount(UInt16 maximumChannelCount) => new ConnectionConfiguration(
+        public ConnectionConfiguration WithMaximumChannelCount(UInt16 maximumChannelCount) => new (
             endpoints                : Endpoints,
             endpointSelectionStrategy: EndpointSelectionStrategy,
             connectionTimeout        : ConnectionTimeout,

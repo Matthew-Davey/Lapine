@@ -10,7 +10,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteShortString(String.Empty); // reserved_1
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpen? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var reserved, out surplus)) {
+            if (buffer.ReadShortString(out var _, out surplus)) {
                 result = new ChannelOpen();
                 return true;
             }
@@ -28,7 +28,7 @@ namespace Lapine.Protocol.Commands {
             writer.WriteLongString(String.Empty); // reserved_1
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpenOk? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadLongString(out var reserved, out surplus)) {
+            if (buffer.ReadLongString(out var _, out surplus)) {
                 result = new ChannelOpenOk();
                 return true;
             }

@@ -8,7 +8,7 @@ namespace Lapine.Protocol {
         readonly Byte _revision;
 
         static public ProtocolVersion Default =>
-            new ProtocolVersion(0, 9, 1);
+            new (0, 9, 1);
 
         public ProtocolVersion(in Byte major, in Byte minor, in Byte revision) {
             _major    = major;

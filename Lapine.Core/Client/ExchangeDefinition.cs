@@ -18,7 +18,7 @@ namespace Lapine.Client {
             Arguments  = arguments;
         }
 
-        static public ExchangeDefinition Create(String name, String type = "topic") => new ExchangeDefinition(
+        static public ExchangeDefinition Create(String name, String type = "topic") => new (
             name      : name,
             type      : type,
             durability: Durability.Durable,
@@ -26,7 +26,7 @@ namespace Lapine.Client {
             arguments : new Dictionary<String, Object>()
         );
 
-        public ExchangeDefinition WithType(String type) => new ExchangeDefinition(
+        public ExchangeDefinition WithType(String type) => new (
             name      : Name,
             type      : type,
             durability: Durability,
@@ -34,7 +34,7 @@ namespace Lapine.Client {
             arguments : Arguments
         );
 
-        public ExchangeDefinition WithDurability(Durability durability) => new ExchangeDefinition(
+        public ExchangeDefinition WithDurability(Durability durability) => new (
             name      : Name,
             type      : Type,
             durability: durability,
@@ -42,7 +42,7 @@ namespace Lapine.Client {
             arguments : Arguments
         );
 
-        public ExchangeDefinition WithAutoDelete(Boolean autoDelete = true) => new ExchangeDefinition(
+        public ExchangeDefinition WithAutoDelete(Boolean autoDelete = true) => new (
             name      : Name,
             type      : Type,
             durability: Durability,
@@ -50,7 +50,7 @@ namespace Lapine.Client {
             arguments : Arguments
         );
 
-        public ExchangeDefinition WithArgument(String key, Object value) => new ExchangeDefinition(
+        public ExchangeDefinition WithArgument(String key, Object value) => new (
             name      : Name,
             type      : Type,
             durability: Durability,
