@@ -4,91 +4,30 @@ namespace Lapine {
 
     using static System.Runtime.InteropServices.RuntimeInformation;
 
-    public class PeerProperties {
-        public String? Product { get; }
-        public String? Version { get; }
-        public String? Platform { get; }
-        public String? Copyright { get; }
-        public String? Information { get; }
-        public String? ClientProvidedName { get; } // Used by RabbitMQ Management Console to identify the connection
-
-        public PeerProperties(String? product, String? version, String? platform, String? copyright, String? information, String? clientProvidedName = null) {
-            Product            = product;
-            Version            = version;
-            Platform           = platform;
-            Copyright          = copyright;
-            Information        = information;
-            ClientProvidedName = clientProvidedName ?? Product;
-        }
-
+    public sealed record PeerProperties(
+        String? Product,
+        String? Version,
+        String? Platform,
+        String? Copyright,
+        String? Information,
+        String? ClientProvidedName
+    ) {
         static public PeerProperties Default => new (
-            product    : "Lapine",
-            version    : "0.1.0",
-            platform   : OSDescription,
-            copyright  : "© Lapine Contributors 2019-2020",
-            information: "Licensed under the MIT License https://opensource.org/licenses/MIT"
+            Product           : "Lapine",
+            Version           : "0.1.0",
+            Platform          : OSDescription,
+            Copyright         : "© Lapine Contributors 2019-2021",
+            Information       : "Licensed under the MIT License https://opensource.org/licenses/MIT",
+            ClientProvidedName: "Lapine 0.1.0"
         );
 
-        static public PeerProperties Empty => new (
-            product    : null,
-            version    : null,
-            platform   : null,
-            copyright  : null,
-            information: null
-        );
-
-        public PeerProperties WithProduct(String product) => new (
-            product           : product,
-            version           : Version,
-            platform          : Platform,
-            copyright         : Copyright,
-            information       : Information,
-            clientProvidedName: ClientProvidedName
-        );
-
-        public PeerProperties WithVersion(String version) => new (
-            product           : Product,
-            version           : version,
-            platform          : Platform,
-            copyright         : Copyright,
-            information       : Information,
-            clientProvidedName: ClientProvidedName
-        );
-
-        public PeerProperties WithPlatform(String platform) => new (
-            product           : Product,
-            version           : Version,
-            platform          : platform,
-            copyright         : Copyright,
-            information       : Information,
-            clientProvidedName: ClientProvidedName
-        );
-
-        public PeerProperties WithCopyright(String copyright) => new (
-            product           : Product,
-            version           : Version,
-            platform          : Platform,
-            copyright         : copyright,
-            information       : Information,
-            clientProvidedName: ClientProvidedName
-        );
-
-        public PeerProperties WithInformation(String information) => new (
-            product           : Product,
-            version           : Version,
-            platform          : Platform,
-            copyright         : Copyright,
-            information       : information,
-            clientProvidedName: ClientProvidedName
-        );
-
-        public PeerProperties WithClientProvidedName(String clientProvidedName) => new (
-            product           : Product,
-            version           : Version,
-            platform          : Platform,
-            copyright         : Copyright,
-            information       : Information,
-            clientProvidedName: clientProvidedName
+        static public PeerProperties Empty => new(
+            Product           : null,
+            Version           : null,
+            Platform          : null,
+            Copyright         : null,
+            Information       : null,
+            ClientProvidedName: null
         );
 
         public IReadOnlyDictionary<String, Object> ToDictionary() => new Dictionary<String, Object> {

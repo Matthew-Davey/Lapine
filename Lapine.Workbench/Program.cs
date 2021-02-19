@@ -18,11 +18,12 @@
                 completion.SetResult(0);
             };
 
-            var connectionConfiguration = ConnectionConfiguration.Default
-                .WithPeerProperties(PeerProperties.Default
-                    .WithProduct("Lapine.Workbench")
-                    .WithClientProvidedName("Lapine.Workbench")
-                );
+            var connectionConfiguration = ConnectionConfiguration.Default with {
+                PeerProperties = PeerProperties.Default with {
+                    Product            = "Lapine.Workbench",
+                    ClientProvidedName = "Lapine.Workbench"
+                }
+            };
 
             var amqpClient = new AmqpClient(connectionConfiguration);
 
