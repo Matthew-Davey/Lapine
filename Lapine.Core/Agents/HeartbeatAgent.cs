@@ -5,10 +5,10 @@ namespace Lapine.Agents {
     using System.Threading.Tasks;
     using Lapine.Protocol;
     using Proto;
-    using Proto.Schedulers.SimpleScheduler;
+    using Proto.Timers;
 
     using static System.DateTimeOffset;
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class HeartbeatAgent : IActor {
         readonly PID _listener;
@@ -25,13 +25,12 @@ namespace Lapine.Agents {
                     _state.HeartbeatFrequency = frequency;
                     _state.MissedHeartbeats = 0;
                     _state.LastReceivedHeartbeat = DateTime.UtcNow;
-                    _state.Scheduler = new SimpleScheduler(context);
-                    _state.Scheduler.ScheduleTellRepeatedly(
+                    _state.Scheduler = new Scheduler(context);
+                    var cancellationTokenSource = _state.Scheduler.SendRepeatedly(
                         delay                  : TimeSpan.FromSeconds(frequency),
                         interval               : TimeSpan.FromSeconds(frequency),
                         target                 : context.Self,
-                        message                : (":beat"),
-                        cancellationTokenSource: out CancellationTokenSource cancellationTokenSource
+                        message                : (":beat")
                     );
                     _state.SchedulerCancellationTokenSource = cancellationTokenSource;
                     break;
@@ -53,7 +52,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
     }
 }

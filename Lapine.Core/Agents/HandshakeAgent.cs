@@ -4,11 +4,11 @@ namespace Lapine.Agents {
     using System.Threading.Tasks;
     using Lapine.Protocol.Commands;
     using Proto;
-    using Proto.Schedulers.SimpleScheduler;
+    using Proto.Timers;
 
     using static System.Math;
     using static System.Text.Encoding;
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class HandshakeAgent : IActor {
         readonly PID _listener;
@@ -30,15 +30,15 @@ namespace Lapine.Agents {
             switch (context.Message) {
                 case Started _: {
                     _behaviour.Become(AwaitConnectionStart);
-                    _state.TimeoutScheduler = new SimpleScheduler(context);
-                    _state.TimeoutScheduler.ScheduleTellOnce(
+                    _state.TimeoutScheduler = new Scheduler(context);
+                    _state.TimeoutScheduler.SendOnce(
                         delay  : TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout),
                         target : context.Self,
                         message: (":timeout")
                     );
-                    return Done;
+                    return CompletedTask;
                 }
-                default: return Done;
+                default: return CompletedTask;
             }
         }
 
@@ -47,19 +47,19 @@ namespace Lapine.Agents {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
                     context.Stop(context.Self!);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", ConnectionStart message): {
                     if (!message.Mechanisms.Contains(_connectionConfiguration.AuthenticationStrategy.Mechanism)) {
                         context.Send(_listener, (":handshake-failed"));
                         context.Stop(context.Self!);
-                        return Done;
+                        return CompletedTask;
                     }
 
                     if (!message.Locales.Contains(_connectionConfiguration.Locale)) {
                         context.Send(_listener, (":handshake-failed"));
                         context.Stop(context.Self!);
-                        return Done;
+                        return CompletedTask;
                     }
 
                     // TODO: Verify protocol version compatibility...
@@ -75,9 +75,9 @@ namespace Lapine.Agents {
                         locale        : _connectionConfiguration.Locale
                     )));
                     _behaviour.Become(AwaitConnectionSecureOrTune);
-                    return Done;
+                    return CompletedTask;
                 }
-                default: return Done;
+                default: return CompletedTask;
             }
         }
 
@@ -86,14 +86,14 @@ namespace Lapine.Agents {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
                     context.Stop(context.Self!);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", ConnectionSecure message): {
                     _state.AuthenticationStage++;
                     var challenge = UTF8.GetBytes(message.Challenge);
                     var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond(stage: _state.AuthenticationStage, challenge: challenge);
                     context.Send(_listener, (":transmit", new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", ConnectionTune message): {
                     _state.HeartbeatFrequency  = Min(message.Heartbeat, _connectionConfiguration.HeartbeatFrequency);
@@ -110,9 +110,9 @@ namespace Lapine.Agents {
                         virtualHost: _connectionConfiguration.VirtualHost
                     )));
                     _behaviour.Become(AwaitConnectionOpenOk);
-                    return Done;
+                    return CompletedTask;
                 }
-                default: return Done;
+                default: return CompletedTask;
             }
         }
 
@@ -121,14 +121,14 @@ namespace Lapine.Agents {
                 case (":timeout"): {
                     context.Send(_listener, (":handshake-failed"));
                     context.Stop(context.Self!);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", ConnectionOpenOk _): {
                     context.Send(_listener, (":handshake-completed", (UInt16)_state.MaximumChannelCount));
                     context.Stop(context.Self!);
-                    return Done;
+                    return CompletedTask;
                 }
-                default: return Done;
+                default: return CompletedTask;
             }
         }
     }

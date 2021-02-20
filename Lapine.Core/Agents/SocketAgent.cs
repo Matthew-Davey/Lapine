@@ -8,7 +8,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class SocketAgent : IActor {
         readonly PID _listener;
@@ -34,7 +34,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Disconnected(IContext context) {
@@ -51,7 +51,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Connected(IContext context) {
@@ -61,7 +61,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         void Transmit(ISerializable entity) {

@@ -1,13 +1,12 @@
 namespace Lapine.Agents {
     using System;
-    using System.Collections.Generic;
     using System.Dynamic;
     using System.Threading.Tasks;
     using Lapine.Client;
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class ChannelAgent : IActor {
         readonly PID _listener;
@@ -32,7 +31,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Closed(IContext context) {
@@ -44,7 +43,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task AwaitingChannelOpenOk(IContext context) {
@@ -55,7 +54,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Open(IContext context) {
@@ -87,7 +86,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task AwaitingExchangeDeclareOk(IContext context) {
@@ -105,7 +104,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task AwaitingChannelCloseOk(IContext context) {
@@ -117,7 +116,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
     }
 }

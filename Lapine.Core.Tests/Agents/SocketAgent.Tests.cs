@@ -12,7 +12,10 @@ namespace Lapine.Agents {
     using Xbehave;
     using Xunit;
 
+    using static System.Threading.Tasks.Task;
+
     public class SocketAgentTests : Faker, IDisposable {
+        readonly ActorSystem _system;
         readonly RootContext _context;
         readonly IList<Object> _sent;
         readonly PID _listener;
@@ -21,9 +24,10 @@ namespace Lapine.Agents {
         readonly Int32 _port;
 
         public SocketAgentTests() {
-            _context  = ActorSystem.Default.Root;
+            _system   = new ActorSystem();
+            _context  = _system.Root;
             _sent     = new List<Object>();
-            _listener = _context.Spawn(Props.FromFunc(_ => Actor.Done));
+            _listener = _context.Spawn(Props.FromFunc(_ => CompletedTask));
             _subject  = _context.Spawn(
                 Props.FromProducer(() => new SocketAgent(_listener))
                     .WithDispatcher(new SynchronousDispatcher())

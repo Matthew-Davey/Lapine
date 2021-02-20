@@ -5,7 +5,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class ChannelRouterAgent : IActor {
         readonly IDictionary<UInt16, PID> _channels;
@@ -19,21 +19,21 @@ namespace Lapine.Agents {
                     if (_channels.ContainsKey(channelId) == false) {
                         _channels.Add(channelId, channel);
                     }
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", RawFrame frame): {
                     if (_channels.ContainsKey(frame.Channel)) {
                         context.Forward(_channels[frame.Channel]);
                     }
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":channel-closed", UInt16 channelNumber): {
                     if (_channels.ContainsKey(channelNumber)) {
                         _channels.Remove(channelNumber);
                     }
-                    return Done;
+                    return CompletedTask;
                 }
-                default: return Done;
+                default: return CompletedTask;
             }
         }
     }

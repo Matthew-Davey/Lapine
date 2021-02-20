@@ -10,11 +10,12 @@ namespace Lapine.Agents.Middleware {
     using Proto.Mailbox;
     using Xunit;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     public class FramingMiddlewareTests : Faker {
         readonly UInt16 _channelNumber;
         readonly ManualResetEventSlim _messageReceivedSignal;
+        readonly ActorSystem _system;
         readonly RootContext _context;
         readonly PID _subject;
 
@@ -23,19 +24,20 @@ namespace Lapine.Agents.Middleware {
         public FramingMiddlewareTests() {
             _channelNumber = Random.UShort();
             _messageReceivedSignal = new  ManualResetEventSlim();
-            _context = ActorSystem.Default.Root;
+            _system = new ActorSystem();
+            _context = _system.Root;
             _subject = _context.Spawn(
                 Props.FromFunc(context => {
                     switch (context.Message) {
                         case SystemMessage _: {
-                            return Done;
+                            return CompletedTask;
                         }
                         case (":receive", ICommand message): {
                             _unwrappedMessage = message;
                             _messageReceivedSignal.Set();
-                            return Done;
+                            return CompletedTask;
                         }
-                        default: return Done;
+                        default: return CompletedTask;
                     }
                 })
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())

@@ -3,6 +3,8 @@ namespace Lapine.Client {
     using System.Threading.Tasks;
     using Proto;
 
+    using static System.Threading.Tasks.Task;
+
     public class Channel {
         readonly ActorSystem _system;
         readonly PID _agent;
@@ -29,7 +31,7 @@ namespace Lapine.Client {
                             break;
                         }
                     }
-                    return Actor.Done;
+                    return CompletedTask;
                 })
             );
 
@@ -58,7 +60,7 @@ namespace Lapine.Client {
                             break;
                         }
                     }
-                    return Actor.Done;
+                    return CompletedTask;
                 })
             );
 

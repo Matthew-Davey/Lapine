@@ -8,7 +8,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol;
     using Proto;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class AmqpClientAgent : IActor {
         readonly ConnectionConfiguration _connectionConfiguration;
@@ -32,7 +32,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Disconnected(IContext context) {
@@ -46,7 +46,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Connecting(IContext context) {
@@ -68,7 +68,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Connected(IContext context) {
@@ -105,7 +105,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         void SpawnSocketAgent(IContext context) =>

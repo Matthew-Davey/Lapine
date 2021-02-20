@@ -4,19 +4,19 @@ namespace Lapine.Client {
     using Lapine.Agents;
     using Lapine.Agents.Middleware;
     using Proto;
-    using Proto.Schedulers.SimpleScheduler;
+    using Proto.Timers;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     public class AmqpClient : IAsyncDisposable {
         readonly ActorSystem _system;
-        readonly ISimpleScheduler _scheduler;
+        readonly Scheduler _scheduler;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly PID _agent;
 
         public AmqpClient(ConnectionConfiguration connectionConfiguration) {
             _system = new ActorSystem();
-            _scheduler = new SimpleScheduler(_system.Root);
+            _scheduler = new Scheduler(_system.Root);
             _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
             _agent = _system.Root.SpawnNamed(
                 name: "amqp-client",
@@ -34,7 +34,7 @@ namespace Lapine.Client {
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
-                            _scheduler.ScheduleTellOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self, (":timeout"));
+                            _scheduler.SendOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self!, (":timeout"));
                             context.Send(_agent, (":connect", notify: context.Self));
                             break;
                         }
@@ -54,7 +54,7 @@ namespace Lapine.Client {
                             break;
                         }
                     }
-                    return Done;
+                    return CompletedTask;
                 })
                 .WithContextDecorator(LoggingContextDecorator.Create)
             );
@@ -79,7 +79,7 @@ namespace Lapine.Client {
                             break;
                         }
                     }
-                    return Done;
+                    return CompletedTask;
                 })
             );
 

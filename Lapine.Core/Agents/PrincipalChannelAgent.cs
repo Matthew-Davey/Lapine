@@ -7,7 +7,7 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static Proto.Actor;
+    using static System.Threading.Tasks.Task;
 
     class PrincipalChannelAgent : IActor {
         readonly Behavior _behaviour;
@@ -30,7 +30,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task AwaitConnectionStart(IContext context) {
@@ -46,7 +46,7 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Negotiating(IContext context) {
@@ -54,11 +54,11 @@ namespace Lapine.Agents {
                 case (":transmit", _): {
                     if (context.Parent != null)
                         context.Forward(context.Parent);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":receive", ICommand _): {
                     context.Forward(_state.HandshakeAgent);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":start-heartbeat-transmission", UInt16 frequency): {
                     _state.HeartbeatAgent = context.SpawnNamed(
@@ -67,21 +67,21 @@ namespace Lapine.Agents {
                             .WithContextDecorator(LoggingContextDecorator.Create)
                     );
                     context.Forward(_state.HeartbeatAgent);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":handshake-completed", UInt16 MaximumChannelCount): {
                     _behaviour.UnbecomeStacked();
                     if (context.Parent != null)
                         context.Forward(context.Parent);
                     _behaviour.Become(Open);
-                    return Done;
+                    return CompletedTask;
                 }
                 case (":authentication-failed"): {
                     context.Stop(context.Self!); // TODO: fail gracefully
-                    return Done;
+                    return CompletedTask;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
         Task Open(IContext context) {
@@ -108,9 +108,9 @@ namespace Lapine.Agents {
                     break;
                 }
             }
-            return Done;
+            return CompletedTask;
         }
 
-        Task Closed(IContext context) => Done;
+        Task Closed(IContext context) => CompletedTask;
     }
 }

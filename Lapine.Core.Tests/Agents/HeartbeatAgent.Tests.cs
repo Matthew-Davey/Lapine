@@ -8,16 +8,20 @@ namespace Lapine.Agents {
     using Xbehave;
     using Xunit;
 
+    using static System.Threading.Tasks.Task;
+
     public class HeartbeatAgentTests {
+        readonly ActorSystem _system;
         readonly RootContext _rootContext;
         readonly IList<Object> _sent;
         readonly PID _listener;
         readonly PID _subject;
 
         public HeartbeatAgentTests() {
-            _rootContext = ActorSystem.Default.Root;
+            _system      = new ActorSystem();
+            _rootContext = _system.Root;
             _sent        = new List<Object>();
-            _listener    = _rootContext.Spawn(Props.FromFunc(_ => Actor.Done));
+            _listener    = _rootContext.Spawn(Props.FromFunc(_ => CompletedTask));
             _subject     = _rootContext.Spawn(
                 Props.FromProducer(() => new HeartbeatAgent(_listener))
                     .WithDispatcher(new SynchronousDispatcher())
