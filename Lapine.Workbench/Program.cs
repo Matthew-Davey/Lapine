@@ -31,9 +31,10 @@
 
             var channel = await amqpClient.OpenChannel();
 
-            await channel.DeclareExchange(ExchangeDefinition.Create("test.exchange")
-                .WithType("topic")
-                .WithDurability(Durability.Durable));
+            await channel.DeclareExchange(ExchangeDefinition.Create("test.exchange") with {
+                Type       = "topic",
+                Durability = Durability.Durable
+            });
 
             Environment.ExitCode = await completion.Task;
 
