@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class QueuePurgeTests : Faker {
-        QueuePurge RandomSubject => new QueuePurge(
+        QueuePurge RandomSubject => new (
             queueName : Random.Word(),
             noWait    : Random.Bool()
         );
@@ -24,7 +24,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueuePurge.Deserialize(new Byte[0], out var _, out var _);
+            var result = QueuePurge.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -46,7 +46,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class QueuePurgeOkTests : Faker {
-        QueuePurgeOk RandomSubject => new QueuePurgeOk(
+        QueuePurgeOk RandomSubject => new (
             messageCount : Random.UInt()
         );
 
@@ -63,7 +63,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueuePurgeOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = QueuePurgeOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

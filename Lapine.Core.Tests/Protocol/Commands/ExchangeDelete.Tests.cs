@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ExchangeDeleteTests : Faker {
-        ExchangeDelete RandomSubject => new ExchangeDelete(
+        ExchangeDelete RandomSubject => new (
             exchangeName: Random.Word(),
             ifUnused    : Random.Bool(),
             noWait      : Random.Bool()
@@ -26,7 +26,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ExchangeDelete.Deserialize(new Byte[0], out var _, out var _);
+            var result = ExchangeDelete.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

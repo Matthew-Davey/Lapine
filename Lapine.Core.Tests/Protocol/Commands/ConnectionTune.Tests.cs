@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionTuneTests : Faker {
-        ConnectionTune RandomSubject => new ConnectionTune(channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
+        ConnectionTune RandomSubject => new (channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -22,7 +22,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionTune.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionTune.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ConnectionTuneOkTests : Faker {
-        ConnectionTuneOk RandomSubject => new ConnectionTuneOk(channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
+        ConnectionTuneOk RandomSubject => new (channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -61,7 +61,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionTuneOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionTuneOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

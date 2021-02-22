@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicCancelTests : Faker {
-        BasicCancel RandomSubject => new BasicCancel(
+        BasicCancel RandomSubject => new (
             consumerTag : Random.Word(),
             noWait      : Random.Bool()
         );
@@ -24,7 +24,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicCancel.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicCancel.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -46,7 +46,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class BasicCancelOkTests : Faker {
-        BasicCancelOk RandomSubject => new BasicCancelOk(
+        BasicCancelOk RandomSubject => new (
             consumerTag: Random.Word()
         );
 
@@ -63,7 +63,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicCancelOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicCancelOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

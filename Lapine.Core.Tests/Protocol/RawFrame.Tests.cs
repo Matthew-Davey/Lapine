@@ -21,7 +21,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = RawFrame.Deserialize(new Byte[0], out var _, out var _);
+            var result = RawFrame.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicPublishTests : Faker {
-        BasicPublish RandomSubject => new BasicPublish(
+        BasicPublish RandomSubject => new (
             exchangeName: Random.Word(),
             routingKey  : Random.Word(),
             mandatory   : Random.Bool(),
@@ -28,7 +28,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicPublish.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicPublish.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

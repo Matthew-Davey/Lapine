@@ -28,7 +28,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ProtocolHeader.Deserialize(new Byte[0], out var _, out var _);
+            var result = ProtocolHeader.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

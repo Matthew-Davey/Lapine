@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicAckTests : Faker {
-        BasicAck RandomSubject => new BasicAck(
+        BasicAck RandomSubject => new (
             deliveryTag: Random.ULong(),
             multiple   : Random.Bool()
         );
@@ -24,7 +24,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicAck.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicAck.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

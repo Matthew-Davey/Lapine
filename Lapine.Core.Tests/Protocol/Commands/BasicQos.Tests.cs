@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicQosTests : Faker {
-        BasicQos RandomSubject => new BasicQos(
+        BasicQos RandomSubject => new (
             prefetchSize : Random.UInt(),
             prefetchCount: Random.UShort(),
             global       : Random.Bool()
@@ -26,7 +26,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicQos.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicQos.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

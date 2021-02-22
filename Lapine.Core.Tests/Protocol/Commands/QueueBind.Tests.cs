@@ -7,7 +7,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class QueueBindTests : Faker {
-        QueueBind RandomSubject => new QueueBind(
+        QueueBind RandomSubject => new (
             queueName   : Random.Word(),
             exchangeName: Random.Word(),
             routingKey  : Random.Word(),
@@ -32,7 +32,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueueBind.Deserialize(new Byte[0], out var _, out var _);
+            var result = QueueBind.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionSecureTests : Faker {
-        ConnectionSecure RandomSubject => new ConnectionSecure(challenge: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
+        ConnectionSecure RandomSubject => new (challenge: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -20,7 +20,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionSecure.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionSecure.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -42,7 +42,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ConnectionSecureOkTests : Faker {
-        ConnectionSecureOk RandomSubject => new ConnectionSecureOk(response: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
+        ConnectionSecureOk RandomSubject => new (response: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -57,7 +57,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionSecureOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionSecureOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

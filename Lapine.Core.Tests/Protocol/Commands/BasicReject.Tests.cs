@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicRejectTests : Faker {
-        BasicReject RandomSubject => new BasicReject(
+        BasicReject RandomSubject => new (
             deliveryTag: Random.ULong(),
             requeue    : Random.Bool()
         );
@@ -24,7 +24,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicReject.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicReject.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ChannelFlowTests : Faker {
-        ChannelFlow RandomSubject => new ChannelFlow(
+        ChannelFlow RandomSubject => new (
             active: Random.Bool()
         );
 
@@ -22,7 +22,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ChannelFlow.Deserialize(new Byte[0], out var _, out var _);
+            var result = ChannelFlow.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ChannelFlowOkTests : Faker {
-        ChannelFlowOk RandomSubject => new ChannelFlowOk(
+        ChannelFlowOk RandomSubject => new (
             active: Random.Bool()
         );
 
@@ -61,7 +61,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ChannelFlowOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = ChannelFlowOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

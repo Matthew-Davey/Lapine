@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionCloseTests : Faker {
-        ConnectionClose RandomSubject => new ConnectionClose(
+        ConnectionClose RandomSubject => new (
             replyCode    : Random.UShort(),
             replyText    : Lorem.Sentence(wordCount: Random.Int(min: 1, max: 16)),
             failingMethod: (Random.UShort(), Random.UShort())
@@ -26,7 +26,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionClose.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionClose.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

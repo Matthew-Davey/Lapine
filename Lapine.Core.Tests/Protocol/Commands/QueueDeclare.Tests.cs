@@ -7,7 +7,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class QueueDeclareTests : Faker {
-        QueueDeclare RandomSubject => new QueueDeclare(
+        QueueDeclare RandomSubject => new (
             queueName : Random.Word(),
             passive   : Random.Bool(),
             durable   : Random.Bool(),
@@ -36,7 +36,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDeclare.Deserialize(new Byte[0], out var _, out var _);
+            var result = QueueDeclare.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -58,7 +58,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class QueueDeclareOkTests : Faker {
-        QueueDeclareOk RandomSubject => new QueueDeclareOk(
+        QueueDeclareOk RandomSubject => new (
             queueName   : Random.Word(),
             messageCount : Random.UInt(),
             consumerCount: Random.UInt()
@@ -79,7 +79,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDeclareOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = QueueDeclareOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

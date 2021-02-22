@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionOpenTests : Faker {
-        ConnectionOpen RandomSubject => new ConnectionOpen(virtualHost: Random.Word());
+        ConnectionOpen RandomSubject => new (virtualHost: Random.Word());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -20,7 +20,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionOpen.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionOpen.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

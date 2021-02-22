@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicGetTests : Faker {
-        BasicGet RandomSubject => new BasicGet(
+        BasicGet RandomSubject => new (
             queueName: Random.Word(),
             noAck    : Random.Bool()
         );
@@ -24,7 +24,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicGet.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicGet.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -63,7 +63,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class BasicGetOkTests : Faker {
-        BasicGetOk RandomSubject => new BasicGetOk(
+        BasicGetOk RandomSubject => new (
             deliveryTag : Random.ULong(),
             redelivered : Random.Bool(),
             exchangeName: Random.Word(),
@@ -88,7 +88,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicGetOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicGetOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

@@ -66,7 +66,7 @@ namespace Lapine.Agents {
 
                     _state.ServerProperties = message.ServerProperties;
                     _state.AuthenticationStage = 0;
-                    var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, new Byte[0]);
+                    var authenticationResponse = _connectionConfiguration.AuthenticationStrategy.Respond((Byte)_state.AuthenticationStage, Array.Empty<Byte>());
 
                     context.Send(_listener, (":transmit", new ConnectionStartOk(
                         peerProperties: _connectionConfiguration.PeerProperties.ToDictionary(),

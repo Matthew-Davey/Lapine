@@ -7,7 +7,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ExchangeDeclareTests : Faker {
-        ExchangeDeclare RandomSubject => new ExchangeDeclare(
+        ExchangeDeclare RandomSubject => new (
             exchangeName: Random.Word(),
             exchangeType: Random.Word(),
             passive     : Random.Bool(),
@@ -38,7 +38,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ExchangeDeclare.Deserialize(new Byte[0], out var _, out var _);
+            var result = ExchangeDeclare.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

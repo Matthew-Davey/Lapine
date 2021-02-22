@@ -73,7 +73,7 @@ namespace Lapine.Agents {
                 socket = _tcpListener.AcceptSocket();
             });
             "When the remote endpoint sends a frame".x(() => {
-                var frame = new RawFrame(FrameType.Heartbeat, 0, new Byte[0]);
+                var frame = new RawFrame(FrameType.Heartbeat, 0, Array.Empty<Byte>());
                 var writer = new ArrayBufferWriter<Byte>();
                 frame.Serialize(writer);
 
@@ -91,6 +91,7 @@ namespace Lapine.Agents {
         public void Dispose() {
             _tcpListener.Stop();
             _context.Stop(_subject);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class BasicReturnTests : Faker {
-        BasicReturn RandomSubject => new BasicReturn(
+        BasicReturn RandomSubject => new (
             replyCode   : Random.UShort(),
             replyText   : Random.Word(),
             exchangeName: Random.Word(),
@@ -28,7 +28,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = BasicReturn.Deserialize(new Byte[0], out var _, out var _);
+            var result = BasicReturn.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }

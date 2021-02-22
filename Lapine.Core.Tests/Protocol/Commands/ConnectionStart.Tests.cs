@@ -7,7 +7,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionStartTests : Faker {
-        ConnectionStart RandomSubject => new ConnectionStart(
+        ConnectionStart RandomSubject => new (
             version         : (Random.Byte(), Random.Byte()),
             serverProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
             mechanisms      : Make(Random.Number(1, 8), () => Random.AlphaNumeric(Random.Number(4, 24))).ToArray(),
@@ -29,7 +29,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionStart.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionStart.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
@@ -51,7 +51,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ConnectionStartOkTests : Faker {
-        ConnectionStartOk RandomSubject => new ConnectionStartOk(
+        ConnectionStartOk RandomSubject => new (
             peerProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
             mechanism     : Random.AlphaNumeric(Random.Number(4, 24)),
             response      : Random.AlphaNumeric(Random.Number(4, Int16.MaxValue)),
@@ -73,7 +73,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ConnectionStartOk.Deserialize(new Byte[0], out var _, out var _);
+            var result = ConnectionStartOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
 
             Assert.False(result);
         }
