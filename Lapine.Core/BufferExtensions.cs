@@ -1,5 +1,4 @@
-namespace Lapine
-{
+namespace Lapine {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
