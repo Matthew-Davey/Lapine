@@ -15,7 +15,7 @@ namespace Lapine.Protocol
 
         public ProtocolHeader(in ReadOnlySpan<Char> protocol, in Byte protocolId, in ProtocolVersion version) {
             if (protocol.Length != 4)
-                throw new ArgumentException(nameof(protocol), "value must be exactly four characters long");
+                throw new ArgumentException("value must be exactly four characters long", nameof(protocol));
 
             _protocol   = BitConverter.ToUInt32(ASCII.GetBytes(protocol.ToArray()));
             _protocolId = protocolId;
