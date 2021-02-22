@@ -492,14 +492,13 @@ namespace Lapine
             if (fieldArray is null)
                 throw new ArgumentNullException(nameof(fieldArray));
 
-            var arrayBuffer = new ArrayBufferWriter<Byte>();
-
-            fieldArray.Aggregate(seed: arrayBuffer as IBufferWriter<Byte>, (arrayBuffer, value) =>
-                arrayBuffer.WriteFieldValue(value)
+            var items = fieldArray.Aggregate(seed: new ArrayBufferWriter<Byte>(), (accumulator, value) =>
+                (ArrayBufferWriter<Byte>)accumulator.WriteFieldValue(value)
             );
 
-            return writer.WriteInt32BE((Int32)arrayBuffer.WrittenMemory.Length)
-                .WriteBytes(arrayBuffer.WrittenMemory.Span);
+            return writer
+                .WriteInt32BE((Int32)items.WrittenMemory.Length)
+                .WriteBytes(items.WrittenMemory.Span);
         }
 
         static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IReadOnlyDictionary<String, Object> fieldTable) {
@@ -509,15 +508,15 @@ namespace Lapine
             if (fieldTable is null)
                 throw new ArgumentNullException(nameof(fieldTable));
 
-            var tablebuffer = new ArrayBufferWriter<Byte>();
-
-            fieldTable.Aggregate(seed: tablebuffer as IBufferWriter<Byte>, (tablebuffer, field) =>
-                tablebuffer.WriteShortString(field.Key)
+            var rows = fieldTable.Aggregate(seed: new ArrayBufferWriter<Byte>(), (accumulator, field) =>
+                (ArrayBufferWriter<Byte>)accumulator
+                    .WriteShortString(field.Key)
                     .WriteFieldValue(field.Value)
             );
 
-            return writer.WriteUInt32BE((UInt32)tablebuffer.WrittenMemory.Length)
-                .WriteBytes(tablebuffer.WrittenMemory.Span);
+            return writer
+                .WriteUInt32BE((UInt32)rows.WrittenMemory.Length)
+                .WriteBytes(rows.WrittenMemory.Span);
         }
 
         static public IBufferWriter<Byte> WriteFieldValue(this IBufferWriter<Byte> writer, in Object field) =>
