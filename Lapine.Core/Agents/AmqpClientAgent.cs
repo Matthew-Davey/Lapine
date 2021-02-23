@@ -9,6 +9,7 @@ namespace Lapine.Agents {
     using Proto;
 
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.SocketAgent.Protocol;
 
     class AmqpClientAgent : IActor {
         readonly ConnectionConfiguration _connectionConfiguration;
@@ -51,17 +52,15 @@ namespace Lapine.Agents {
 
         Task Connecting(IContext context) {
             switch (context.Message) {
-                // If the socket agent terminates whilst we're in the connecting state, it indicates that connecting was unsuccessful.
-                // Restart the socket agent, and instruct it to try the next available endpoint...
-                case Terminated message when message.Who == _state.SocketAgent: {
-                    SpawnSocketAgent(context);
+                case ConnectionFailed failed: {
                     TryNextEndpoint(context, endpointsExhausted: () => {
                         context.Send(_state.ConnectionReadyListener, (":connection-failed"));
                         _behaviour.Become(Disconnected);
                     });
                     break;
                 }
-                case (":socket-connected"): {
+                case Connected connected: {
+                    context.Send(_state.SocketAgent, new Transmit(ProtocolHeader.Default));
                     SpawnChannelRouter(context);
                     SpawnPrincipalChannel(context);
                     _behaviour.Become(Connected);
@@ -73,12 +72,12 @@ namespace Lapine.Agents {
 
         Task Connected(IContext context) {
             switch (context.Message) {
-                case (":receive", RawFrame frame): {
-                    context.Forward(_state.ChannelRouter);
+                case FrameReceived received: {
+                    context.Send(_state.ChannelRouter, (":receive", received.Frame));
                     break;
                 }
                 case (":transmit", RawFrame frame): {
-                    context.Forward(_state.SocketAgent);
+                    context.Send(_state.SocketAgent, new Transmit(frame));
                     break;
                 }
                 case (":handshake-completed", UInt16 maximumChannelCount): {
@@ -111,7 +110,7 @@ namespace Lapine.Agents {
         void SpawnSocketAgent(IContext context) =>
             _state.SocketAgent = context.SpawnNamed(
                 name: "socket",
-                props: Props.FromProducer(() => new SocketAgent(context.Self!))
+                props: SocketAgent.Create()
                     .WithContextDecorator(LoggingContextDecorator.Create)
             );
 
@@ -151,7 +150,7 @@ namespace Lapine.Agents {
 
             if (_state.EndpointEnumerator.MoveNext()) {
                 var endpoint = _state.EndpointEnumerator.Current;
-                context.Send(_state.SocketAgent, (":connect", endpoint));
+                context.Send(_state.SocketAgent, new Connect(endpoint, _connectionConfiguration.ConnectionTimeout, TimeSpan.FromMilliseconds(20), context.Self!));
             }
             else {
                 endpointsExhausted?.Invoke();

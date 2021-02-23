@@ -32,7 +32,7 @@ namespace Lapine.Agents {
                     _behaviour.Become(AwaitConnectionStart);
                     _state.TimeoutScheduler = new Scheduler(context);
                     _state.TimeoutScheduler.SendOnce(
-                        delay  : TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout),
+                        delay  : _connectionConfiguration.ConnectionTimeout,
                         target : context.Self,
                         message: (":timeout")
                     );

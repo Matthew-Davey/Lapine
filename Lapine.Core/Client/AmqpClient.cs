@@ -34,7 +34,7 @@ namespace Lapine.Client {
                 props: Props.FromFunc(context => {
                     switch (context.Message) {
                         case Started _: {
-                            _scheduler.SendOnce(TimeSpan.FromMilliseconds(_connectionConfiguration.ConnectionTimeout), context.Self!, (":timeout"));
+                            _scheduler.SendOnce(_connectionConfiguration.ConnectionTimeout, context.Self!, (":timeout"));
                             context.Send(_agent, (":connect", notify: context.Self));
                             break;
                         }

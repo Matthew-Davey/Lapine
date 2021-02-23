@@ -7,7 +7,7 @@ namespace Lapine {
     public sealed record ConnectionConfiguration(
         IEnumerable<IPEndPoint> Endpoints,
         IEndpointSelectionStrategy EndpointSelectionStrategy,
-        UInt16 ConnectionTimeout,
+        TimeSpan ConnectionTimeout,
         IAuthenticationStrategy AuthenticationStrategy,
         String Locale,
         PeerProperties PeerProperties,
@@ -18,7 +18,7 @@ namespace Lapine {
     ) {
         public const UInt16 DefaultPort = 5672;
         public static IEndpointSelectionStrategy DefaultEndpointSelectionStrategy => new RandomEndpointSelectionStrategy();
-        public const UInt16 DefaultConnectionTimeout = 5000;
+        public static TimeSpan DefaultConnectionTimeout => TimeSpan.FromSeconds(5);
         public static IAuthenticationStrategy DefaultAuthenticationStrategy => new PlainAuthenticationStrategy();
         public const String DefaultLocale = "en_US";
         public const String DefaultVirtualHost = "/";

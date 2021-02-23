@@ -13,6 +13,7 @@ namespace Lapine.Agents {
     using Xunit;
 
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.SocketAgent.Protocol;
 
     public class SocketAgentTests : Faker, IDisposable {
         readonly ActorSystem _system;
@@ -29,7 +30,7 @@ namespace Lapine.Agents {
             _sent     = new List<Object>();
             _listener = _context.Spawn(Props.FromFunc(_ => CompletedTask));
             _subject  = _context.Spawn(
-                Props.FromProducer(() => new SocketAgent(_listener))
+                SocketAgent.Create()
                     .WithDispatcher(new SynchronousDispatcher())
                     .WithSenderMiddleware(next => (context, target, envelope) => {
                         _sent.Add(envelope.Message);
@@ -45,46 +46,35 @@ namespace Lapine.Agents {
         [Scenario(Timeout = 1000)]
         public void EstablishesConnection(Socket socket) {
             "When the agent is instructed to connect to a remote endpoint".x(() => {
-                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
+                _context.Send(_subject, new Connect(new IPEndPoint(IPAddress.Loopback, _port), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(20), _listener));
+            });
+            "Then is should publish a Connecting event".x(() => {
+                Assert.Contains(new Connecting(), _sent);
             });
             "Then it should establish a TCP connection".x(() => {
                 socket = _tcpListener.AcceptSocket();
                 Assert.True(socket.Connected);
             });
-            "And it should send a SocketConnected message".x(() => {
-                Assert.Contains(_sent, message => message switch {
-                    (":socket-connected") => true,
-                    _                     => false
-                });
-            });
-            "And it should transmit the protocol header immediately".x(() => {
-                var buffer = new Byte[8];
-                socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-                ProtocolHeader.Deserialize(buffer, out var result, out var _);
-
-                Assert.Equal(expected: ProtocolHeader.Default, actual: result);
+            "Then it should publish a Connected message".x(() => {
+                Assert.Contains(new Connected(), _sent);
             });
         }
 
         [Scenario]
         public void ReceivesIncomingFrames(Socket socket) {
             "Given the agent is connected to a remote endpoint".x(() => {
-                _context.Send(_subject, (":connect", new IPEndPoint(IPAddress.Loopback, _port)));
+                _context.Send(_subject, new Connect(new IPEndPoint(IPAddress.Loopback, _port), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(20), _listener));
                 socket = _tcpListener.AcceptSocket();
             });
             "When the remote endpoint sends a frame".x(() => {
-                var frame = new RawFrame(FrameType.Heartbeat, 0, Array.Empty<Byte>());
                 var writer = new ArrayBufferWriter<Byte>();
-                frame.Serialize(writer);
+                RawFrame.Heartbeat.Serialize(writer);
 
                 socket.Send(writer.WrittenSpan);
             });
-            "Then it should send an Inbound Frame message".x(async () => {
-                await Task.Delay(10);
-                Assert.Contains(_sent, message => message switch {
-                    (":receive", RawFrame _) => true,
-                    _                        => false
-                });
+            "Then it should publish a FrameReceived event".x(async () => {
+                await Task.Delay(100);
+                Assert.Contains(new FrameReceived(RawFrame.Heartbeat), _sent);
             });
         }
 
