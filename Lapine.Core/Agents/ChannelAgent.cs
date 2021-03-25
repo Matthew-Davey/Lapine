@@ -1,122 +1,118 @@
 namespace Lapine.Agents {
     using System;
-    using System.Dynamic;
     using System.Threading.Tasks;
+    using Lapine.Agents.Middleware;
     using Lapine.Client;
     using Lapine.Protocol.Commands;
     using Proto;
 
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.DispatcherAgent.Protocol;
+    using static Lapine.Agents.ChannelAgent.Protocol;
 
-    class ChannelAgent : IActor {
-        readonly PID _listener;
-        readonly UInt16 _channelNumber;
-        readonly Behavior _behaviour;
-        readonly dynamic _state;
-
-        public ChannelAgent(PID listener, UInt16 channelNumber) {
-            _listener      = listener;
-            _channelNumber = channelNumber;
-            _behaviour     = new Behavior(Unstarted);
-            _state         = new ExpandoObject();
+    static class ChannelAgent {
+        static public class Protocol {
+            public record Open(PID Listener, UInt16 ChannelId, PID TxD);
+            public record Opened(PID ChannelAgent);
+            public record Close(TaskCompletionSource Promise);
+            public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
         }
 
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
+        static public Props Create() =>
+            Props.FromProducer(() => new Actor())
+                .WithContextDecorator(LoggingContextDecorator.Create)
+                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
-        Task Unstarted(IContext context) {
-            switch (context.Message) {
-                case Started _: {
-                    _behaviour.Become(Closed);
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
+        record State(PID CommandDispatcher);
 
-        Task Closed(IContext context) {
-            switch (context.Message) {
-                case (":open", PID listener): {
-                    _state.ChannelOpenListener = listener;
-                    context.Send(_listener, (":transmit", new ChannelOpen()));
-                    _behaviour.Become(AwaitingChannelOpenOk);
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
+        class Actor : IActor {
+            readonly Behavior _behaviour;
 
-        Task AwaitingChannelOpenOk(IContext context) {
-            switch (context.Message) {
-                case (":receive", ChannelOpenOk message): {
-                    context.Send(_state.ChannelOpenListener, (":channel-opened", context.Self));
-                    _behaviour.Become(Open);
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
+            public Actor() =>
+                _behaviour = new Behavior(Closed);
 
-        Task Open(IContext context) {
-            switch (context.Message) {
-                case (":receive", ChannelClose message): {
-                    context.Send(_listener, (":transmit", new ChannelCloseOk()));
-                    _behaviour.Become(Closed);
-                    break;
-                }
-                case (":exchange-declare", ExchangeDefinition definition, PID listener): {
-                    _state.ExchangeDeclareListener = listener;
-                    context.Send(_listener, (":transmit", new ExchangeDeclare(
-                        exchangeName: definition.Name,
-                        exchangeType: definition.Type,
-                        passive: false,
-                        durable: definition.Durability == Durability.Durable,
-                        autoDelete: definition.AutoDelete,
-                        @internal: false,
-                        noWait: false,
-                        arguments: definition.Arguments
-                    )));
-                    _behaviour.Become(AwaitingExchangeDeclareOk);
-                    break;
-                }
-                case (":close", PID listener): {
-                    _state.ChannelCloseListener = listener;
-                    context.Send(_listener, (":transmit", new ChannelClose(0, "Channel closed by client", (0, 0))));
-                    _behaviour.Become(AwaitingChannelCloseOk);
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
 
-        Task AwaitingExchangeDeclareOk(IContext context) {
-            switch (context.Message) {
-                case (":receive", ExchangeDeclareOk _): {
-                    context.Send(_state.ExchangeDeclareListener, (":exchange-declared"));
-                    _behaviour.Become(Open);
-                    break;
+            Task Closed(IContext context) {
+                switch (context.Message) {
+                    case Open open: {
+                        var state = new State(
+                            CommandDispatcher: context.SpawnNamed(
+                                name: "dispatcher",
+                                props: DispatcherAgent.Create()
+                            )
+                        );
+                        context.Send(state.CommandDispatcher, new DispatchTo(open.TxD, open.ChannelId));
+                        context.Send(state.CommandDispatcher, new ChannelOpen());
+                        _behaviour.Become(Opening(state, open.Listener));
+                        break;
+                    }
                 }
-                case (":receive", ChannelClose message): {
-                    context.Send(_state.ExchangeDeclareListener, (":exchange-declare-failed", message.ReplyCode, message.ReplyText));
-                    context.Send(_listener, (":transmit", new ChannelCloseOk()));
-                    context.Send(_listener, (":channel-closed", _channelNumber));
-                    _behaviour.Become(Closed);
-                    break;
-                }
+                return CompletedTask;
             }
-            return CompletedTask;
-        }
 
-        Task AwaitingChannelCloseOk(IContext context) {
-            switch (context.Message) {
-                case (":receive", ChannelCloseOk _): {
-                    context.Send(_state.ChannelCloseListener, (":channel-closed", _channelNumber));
-                    context.Send(_listener, (":channel-closed", _channelNumber));
-                    _behaviour.Become(Closed);
-                    break;
-                }
-            }
-            return CompletedTask;
+            Receive Opening(State state, PID listener) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case ChannelOpenOk _: {
+                            context.Send(listener, new Opened(context.Self!));
+                            _behaviour.Become(Open(state));
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive Open(State state) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case Close close: {
+                            context.Send(state.CommandDispatcher, new ChannelClose(0, String.Empty, (0, 0)));
+                            _behaviour.Become(Closing(close.Promise));
+                            break;
+                        }
+                        case DeclareExchange declare: {
+                            context.Send(state.CommandDispatcher, new ExchangeDeclare(
+                                exchangeName: declare.Definition.Name,
+                                exchangeType: declare.Definition.Type,
+                                passive: false,
+                                durable: declare.Definition.Durability > Durability.Ephemeral,
+                                autoDelete: declare.Definition.AutoDelete,
+                                @internal: false,
+                                noWait: false,
+                                arguments: declare.Definition.Arguments
+                            ));
+                            _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(declare.Promise));
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            static Receive Closing(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case ChannelCloseOk _: {
+                            promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingExchangeDeclareOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case ExchangeDeclareOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
         }
     }
 }

@@ -19,6 +19,8 @@
             };
 
             var connectionConfiguration = ConnectionConfiguration.Default with {
+                HeartbeatFrequency = TimeSpan.FromSeconds(10),
+                ConnectionTimeout = TimeSpan.MaxValue,
                 PeerProperties = PeerProperties.Default with {
                     Product            = "Lapine.Workbench",
                     ClientProvidedName = "Lapine.Workbench"
@@ -29,11 +31,12 @@
 
             await amqpClient.ConnectAsync();
 
-            var channel = await amqpClient.OpenChannel();
+            var channel = await amqpClient.OpenChannelAsync();
 
-            await channel.DeclareExchange(ExchangeDefinition.Create("test.exchange") with {
+            await channel.DeclareExchangeAsync(ExchangeDefinition.Create("test.exchange") with {
                 Type       = "topic",
-                Durability = Durability.Durable
+                Durability = Durability.Ephemeral,
+                AutoDelete = true
             });
 
             Environment.ExitCode = await completion.Task;

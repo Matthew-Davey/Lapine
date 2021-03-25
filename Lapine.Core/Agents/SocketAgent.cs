@@ -16,30 +16,30 @@ namespace Lapine.Agents {
 
     static class SocketAgent {
         static public class Protocol {
-            public record Connect(IPEndPoint Endpoint, TimeSpan ConnectTimeout, TimeSpan PollInterval, PID Listener);
+            public record Connect(IPEndPoint Endpoint, TimeSpan ConnectTimeout, PID Listener);
             public record Connecting();
-            public record Connected();
+            public record Connected(PID TxD, PID RxD);
             public record ConnectionFailed(Exception Reason);
-            public record Disconnect();
-            public record Disconnected();
             public record Tune(UInt32 MaxFrameSize);
             public record Transmit(ISerializable Entity);
+            public record BeginPolling(PID FrameListener);
             public record FrameReceived(RawFrame Frame);
 
-            internal record TimeoutExpired(Socket Socket);
+            internal record TimeoutExpired();
             internal record Bind(Socket Socket);
-            internal record BeginPolling(Socket Socket, TimeSpan Interval, PID FrameListener);
             internal record Poll();
         }
 
         static public Props Create() =>
-            Props.FromProducer(() => new Actor());
+            Props.FromProducer(() => new Actor())
+                .WithContextDecorator(LoggingContextDecorator.Create);
 
         class Actor : IActor {
             readonly Behavior _behaviour;
 
-            public Actor() =>
+            public Actor() {
                 _behaviour = new Behavior(Disconnected);
+            }
 
             public Task ReceiveAsync(IContext context) =>
                 _behaviour.ReceiveAsync(context);
@@ -52,26 +52,25 @@ namespace Lapine.Agents {
                         socket.BeginConnect(connect.Endpoint, (asyncResult) => {
                             context.Send(context.Self!, asyncResult);
                         }, socket);
-                        var cancelTimeout = context.Scheduler().SendOnce(connect.ConnectTimeout, context.Self!, new TimeoutExpired(socket));
-                        _behaviour.Become(Connecting(connect.PollInterval, connect.Listener, cancelTimeout));
+                        var cancelTimeout = context.Scheduler().SendOnce(connect.ConnectTimeout, context.Self!, new TimeoutExpired());
+                        _behaviour.Become(Connecting(connect.Listener, socket, cancelTimeout));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            Receive Connecting(TimeSpan pollInterval, PID listener, CancellationTokenSource cancelTimeout) =>
+            Receive Connecting(PID listener, Socket socket, CancellationTokenSource cancelTimeout) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired timeout: {
-                            timeout.Socket.Close();
+                            socket.Close();
                             context.Send(listener, new ConnectionFailed(new TimeoutException()));
-                            _behaviour.Become(Disconnected);
+                            context.Stop(context.Self!);
                             break;
                         }
                         case IAsyncResult asyncResult: {
                             cancelTimeout.Cancel();
-                            var socket = (Socket)asyncResult.AsyncState!;
                             try {
                                 socket.EndConnect(asyncResult);
                                 var txd = context.SpawnNamed(
@@ -82,22 +81,18 @@ namespace Lapine.Agents {
                                 var rxd = context.SpawnNamed(
                                     name: "rxd",
                                     props: Props.FromProducer(() => new RxD())
-                                        //.WithContextDecorator(LoggingContextDecorator.Create)
+                                        .WithContextDecorator(LoggingContextDecorator.Create)
                                 );
-                                // The order here is quite important. The txd agent needs to be ready to transmit in
-                                // case the listener decides to transmit a frame in response to the Connected event.
-                                // But the rxd agent should not begin polling until the listener has been notified
-                                // of the Connected event to ensure that it is ready to receive inbound frames...
                                 context.Send(txd, new Bind(socket));
-                                context.Send(listener, new Connected());
-                                context.Send(rxd, new BeginPolling(socket, pollInterval, context.Self!));
+                                context.Send(rxd, new Bind(socket));
+                                context.Send(listener, new Connected(txd, rxd));
 
-                                _behaviour.Become(Connected(socket, listener, txd, rxd));
+                                _behaviour.Become(Connected(socket));
                             }
                             catch (SocketException error) {
                                 socket.Close();
                                 context.Send(listener, new ConnectionFailed(error));
-                                _behaviour.Become(Disconnected);
+                                context.Stop(context.Self!);
                             }
                             break;
                         }
@@ -105,29 +100,18 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive Connected(Socket socket, PID listener, PID txd, PID rxd) =>
+            static Receive Connected(Socket socket) =>
                 (IContext context) => {
                     switch (context.Message) {
-                        case Transmit _: {
-                            context.Forward(txd);
-                            break;
-                        }
-                        case FrameReceived received: {
-                            context.Forward(listener);
-                            break;
-                        }
                         case Tune x: {
-                            context.Forward(txd);
-                            context.Forward(rxd);
+                            foreach (var child in context.Children) {
+                                context.Forward(child);
+                            }
                             break;
                         }
-                        case Terminated _:
-                        case Disconnect disconnect: {
+                        case Restarting:
+                        case Stopping _: {
                             socket.Close();
-                            context.Send(listener, new Disconnected());
-                            context.Stop(txd);
-                            context.Stop(rxd);
-                            _behaviour.Become(Disconnected);
                             break;
                         }
                     }
@@ -139,12 +123,12 @@ namespace Lapine.Agents {
             readonly Behavior _behaviour;
 
             public TxD() =>
-                _behaviour = new Behavior(Waiting);
+                _behaviour = new Behavior(Unbound);
 
             public Task ReceiveAsync(IContext context) =>
                 _behaviour.ReceiveAsync(context);
 
-            Task Waiting(IContext context) {
+            Task Unbound(IContext context) {
                 switch (context.Message) {
                     case Bind bind: {
                         _behaviour.Become(Ready(bind.Socket));
@@ -176,54 +160,70 @@ namespace Lapine.Agents {
         }
 
         class RxD : IActor {
+            static readonly TimeSpan PollingInterval = TimeSpan.FromMilliseconds(10);
+
             readonly Behavior _behaviour;
 
             public RxD() =>
-                _behaviour = new Behavior(Waiting);
+                _behaviour = new Behavior(Unbound);
 
             public Task ReceiveAsync(IContext context) =>
                 _behaviour.ReceiveAsync(context);
 
-            Task Waiting(IContext context) {
+            Task Unbound(IContext context) {
                 switch (context.Message) {
-                    case BeginPolling poll: {
-                        context.Scheduler().SendOnce(poll.Interval, context.Self!, new Poll());
-                        _behaviour.Become(Polling(poll.Socket, poll.Interval, poll.FrameListener));
+                    case Bind bind: {
+                        _behaviour.Become(Ready(bind.Socket));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            static Receive Polling(Socket socket, TimeSpan interval, PID frameListener) {
+            Receive Ready(Socket socket) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case BeginPolling poll: {
+                            context.Scheduler().SendOnce(PollingInterval, context.Self!, new Poll());
+                            _behaviour.Become(Polling(socket, poll.FrameListener));
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            static Receive Polling(Socket socket, PID frameListener) {
                 // The socket receive buffer is considerably smaller than the max frame size, so we accumulate
                 // received bytes in the frame buffer until we can deserialize one or more AMQP frames...
-                var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize].AsMemory(), 0);
+                var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
 
                 return (IContext context) => {
                     switch (context.Message) {
                         case Poll poll: {
-                                if (socket.Available == 0) {
-                                    context.Scheduler().SendOnce(interval, context.Self!, poll);
-                                    break;
-                                }
+                            socket.BeginReceive(frameBuffer, tail, 128, SocketFlags.None, asyncResult => {
+                                context.Send(context.Self!, asyncResult);
+                            }, null);
+                            break;
+                        }
+                        case IAsyncResult asyncResult: {
+                            tail += socket.EndReceive(asyncResult);
 
-                                tail += socket.Receive(frameBuffer[tail..].Span);
-
-                                var remaining = (ReadOnlySpan<Byte>)frameBuffer[..tail].Span;
-                                while (RawFrame.Deserialize(remaining, out var frame, out remaining)) {
+                            if (tail > 0) {
+                                while (RawFrame.Deserialize(frameBuffer.AsSpan(0, tail), out var frame, out var remaining)) {
                                     context.Send(frameListener, new FrameReceived(frame));
+                                    remaining.CopyTo(frameBuffer); // Move any bytes that were not consumed to the front of the frame buffer...
+                                    tail = remaining.Length;
                                 }
-                                remaining.CopyTo(frameBuffer.Span); // Move any bytes that were not consumed to the front of the frame buffer...
-                                tail = remaining.Length;
 
-                                context.Send(context.Self!, poll);
-                                break;
+                                context.Send(context.Self!, new Poll());
+                            }
+                            else {
+                                context.Scheduler().SendOnce(PollingInterval, context.Self!, new Poll());
+                            }
+                            break;
                         }
                         case Tune tune: {
-                            var newFrameBuffer = new Byte[tune.MaxFrameSize];
-                            frameBuffer[..tail].CopyTo(newFrameBuffer);
-                            frameBuffer = newFrameBuffer;
+                            Array.Resize(ref frameBuffer, (Int32)tune.MaxFrameSize);
                             break;
                         }
                     }

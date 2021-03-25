@@ -60,6 +60,9 @@ namespace Lapine.Protocol {
                 if (terminator != FrameTerminator)
                     throw new FramingErrorException();
 
+                if (Enum.IsDefined((FrameType)type) == false)
+                    throw new FramingErrorException();
+
                 result = new RawFrame((FrameType)type, channel, payload.ToArray());
                 return true;
             }

@@ -2,88 +2,39 @@ namespace Lapine.Client {
     using System;
     using System.Threading.Tasks;
     using Lapine.Agents;
-    using Lapine.Agents.Middleware;
     using Proto;
-    using Proto.Timers;
 
-    using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.RabbitClientAgent.Protocol;
 
     public class AmqpClient : IAsyncDisposable {
         readonly ActorSystem _system;
-        readonly Scheduler _scheduler;
         readonly ConnectionConfiguration _connectionConfiguration;
         readonly PID _agent;
 
         public AmqpClient(ConnectionConfiguration connectionConfiguration) {
             _system = new ActorSystem();
-            _scheduler = new Scheduler(_system.Root);
-            _connectionConfiguration = connectionConfiguration ?? throw new ArgumentNullException(nameof(connectionConfiguration));
+            _connectionConfiguration = connectionConfiguration;
             _agent = _system.Root.SpawnNamed(
                 name: "amqp-client",
-                props: Props.FromProducer(() => new AmqpClientAgent(_connectionConfiguration))
-                    .WithContextDecorator(LoggingContextDecorator.Create)
-                    .WithChildSupervisorStrategy(new AllForOneStrategy((pid, reason) => SupervisorDirective.Stop, 1, TimeSpan.FromSeconds(1)))
+                props: RabbitClientAgent.Create()
             );
         }
 
-        public Task ConnectAsync() {
-            var onReady = new TaskCompletionSource<Boolean>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-            _system.Root.SpawnPrefix(
-                prefix: "cmd-connect",
-                props: Props.FromFunc(context => {
-                    switch (context.Message) {
-                        case Started _: {
-                            _scheduler.SendOnce(_connectionConfiguration.ConnectionTimeout, context.Self!, (":timeout"));
-                            context.Send(_agent, (":connect", notify: context.Self));
-                            break;
-                        }
-                        case (":connection-ready"): {
-                            onReady.SetResult(true);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case (":connection-failed"): {
-                            onReady.SetException(new Exception());
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case (":timeout"): {
-                            onReady.SetException(new TimeoutException());
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                })
-                .WithContextDecorator(LoggingContextDecorator.Create)
-            );
-
-            return onReady.Task;
+        public async ValueTask ConnectAsync(TimeSpan? timeout = default) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new Connect(
+                Configuration: _connectionConfiguration with {
+                    ConnectionTimeout = timeout ?? _connectionConfiguration.ConnectionTimeout
+                }, promise
+            ));
+            await promise.Task;
         }
 
-        public Task<Channel> OpenChannel() {
-            var onOpen = new TaskCompletionSource<Channel>(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async ValueTask<Channel> OpenChannelAsync() {
+            var promise = new TaskCompletionSource<PID>();
+            _system.Root.Send(_agent, new OpenChannel(promise));
 
-            _system.Root.SpawnPrefix(
-                prefix: "cmd-open-channel",
-                props: Props.FromFunc(context => {
-                    switch (context.Message) {
-                        case Started _: {
-                            context.Send(_agent, (":open-channel", context.Self));
-                            break;
-                        }
-                        case (":channel-opened", PID channel): {
-                            onOpen.SetResult(new Channel(_system, channel));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                })
-            );
-
-            return onOpen.Task;
+            return new Channel(_system, await promise.Task);
         }
 
         public async ValueTask DisposeAsync() =>
