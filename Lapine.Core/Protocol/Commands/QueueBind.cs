@@ -22,14 +22,16 @@ namespace Lapine.Protocol.Commands {
         }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteShortString(QueueName)
+            writer.WriteUInt16BE(0) // reserved-1
+                .WriteShortString(QueueName)
                 .WriteShortString(ExchangeName)
                 .WriteShortString(RoutingKey)
                 .WriteBoolean(NoWait)
                 .WriteFieldTable(Arguments);
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueBind? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var queueName, out surplus) &&
+            if (buffer.ReadUInt32BE(out var _, out surplus) &&
+                surplus.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadShortString(out var routingKey, out surplus) &&
                 surplus.ReadBoolean(out var noWait, out surplus) &&

@@ -42,6 +42,7 @@
                 Durability = Durability.Ephemeral,
                 AutoDelete = true
             });
+            await channel.BindQueueAsync("test.exchange", "test.queue");
 
             Environment.ExitCode = await completion.Task;
 

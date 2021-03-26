@@ -1,5 +1,6 @@
 namespace Lapine.Client {
     using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using Proto;
 
@@ -29,6 +30,12 @@ namespace Lapine.Client {
         public async ValueTask DeclareQueueAsync(QueueDefinition definition) {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new DeclareQueue(definition, promise));
+            await promise.Task;
+        }
+
+        public async ValueTask BindQueueAsync(String exchange, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new BindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>(), promise));
             await promise.Task;
         }
     }
