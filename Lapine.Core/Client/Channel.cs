@@ -51,6 +51,12 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
+        public async ValueTask UnbindQueueAsync(String exchangem, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new UnbindQueue(exchangem, queue, routingKey, arguments ?? new Dictionary<String, Object>(), promise));
+            await promise.Task;
+        }
+
         public async ValueTask PurgeQueueAsync(String queue) {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new PurgeQueue(queue, promise));

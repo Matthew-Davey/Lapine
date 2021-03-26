@@ -32,7 +32,6 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 
 #### Channel
 - [x] Open
-- [ ] Flow
 - [x] Close
 
 #### Exchange
@@ -42,7 +41,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 #### Queue
 - [x] Declare
 - [x] Bind
-- [ ] Unbind
+- [x] Unbind
 - [x] Purge
 - [x] Delete
 

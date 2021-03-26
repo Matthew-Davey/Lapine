@@ -21,6 +21,7 @@ namespace Lapine.Agents {
             public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TaskCompletionSource Promise);
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
+            public record UnbindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
             public record PurgeQueue(String Queue, TaskCompletionSource Promise);
         }
 
@@ -135,6 +136,16 @@ namespace Lapine.Agents {
                             _behaviour.BecomeStacked(AwaitingQueueBindOk(bind.Promise));
                             break;
                         }
+                        case UnbindQueue unbind: {
+                            context.Send(state.CommandDispatcher, new QueueUnbind(
+                                queueName   : unbind.Queue,
+                                exchangeName: unbind.Exchange,
+                                routingKey  : unbind.RoutingKey,
+                                arguments   : unbind.Arguments
+                            ));
+                            _behaviour.BecomeStacked(AwaitingQueueUnbindOk(unbind.Promise));
+                            break;
+                        }
                         case PurgeQueue purge: {
                             context.Send(state.CommandDispatcher, new QueuePurge(
                                 queueName: purge.Queue,
@@ -211,6 +222,18 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case QueueBindOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingQueueUnbindOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case QueueUnbindOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;

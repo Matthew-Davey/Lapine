@@ -45,7 +45,8 @@
             await channel.BindQueueAsync("test.exchange", "test.queue");
 
             await Task.Delay(10000);
-            await channel.PurgeQueueAsync("test.queue");
+
+            await channel.UnbindQueueAsync("test.exchange", "test.queue");
 
             Environment.ExitCode = await completion.Task;
 
