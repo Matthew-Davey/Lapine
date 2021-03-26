@@ -3,7 +3,7 @@ A C# client library for the Advanced Message Queueing Protocol (AMQP) v0.9.1
 
 ![.NET Core](https://github.com/Matthew-Davey/Lapine/workflows/.NET%20Core/badge.svg?branch=develop)
 
-## Project Status (2020-10-14)
+## Project Status (2021-03-26)
 Lapine is in the early stages of development and is **definitely not** suitable for use in your project(s) yet.
 
 ## Implementation Status
@@ -43,7 +43,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Declare
 - [x] Bind
 - [ ] Unbind
-- [ ] Purge
+- [x] Purge
 - [x] Delete
 
 #### Basic

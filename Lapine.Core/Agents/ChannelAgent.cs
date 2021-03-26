@@ -21,6 +21,7 @@ namespace Lapine.Agents {
             public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TaskCompletionSource Promise);
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
+            public record PurgeQueue(String Queue, TaskCompletionSource Promise);
         }
 
         static public Props Create() =>
@@ -134,6 +135,14 @@ namespace Lapine.Agents {
                             _behaviour.BecomeStacked(AwaitingQueueBindOk(bind.Promise));
                             break;
                         }
+                        case PurgeQueue purge: {
+                            context.Send(state.CommandDispatcher, new QueuePurge(
+                                queueName: purge.Queue,
+                                noWait   : false
+                            ));
+                            _behaviour.BecomeStacked(AwaitingQueuePurgeOk(purge.Promise));
+                            break;
+                        }
                     }
                     return CompletedTask;
                 };
@@ -202,6 +211,18 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case QueueBindOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingQueuePurgeOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case QueuePurgeOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;

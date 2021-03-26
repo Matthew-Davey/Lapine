@@ -50,5 +50,11 @@ namespace Lapine.Client {
             _system.Root.Send(_agent, new BindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>(), promise));
             await promise.Task;
         }
+
+        public async ValueTask PurgeQueueAsync(String queue) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new PurgeQueue(queue, promise));
+            await promise.Task;
+        }
     }
 }
