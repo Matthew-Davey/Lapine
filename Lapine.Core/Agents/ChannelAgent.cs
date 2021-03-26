@@ -17,6 +17,7 @@ namespace Lapine.Agents {
             public record Opened(PID ChannelAgent);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
+            public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition, TaskCompletionSource Promise);
             public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
         }
@@ -79,36 +80,45 @@ namespace Lapine.Agents {
                             context.Send(state.CommandDispatcher, new ExchangeDeclare(
                                 exchangeName: declare.Definition.Name,
                                 exchangeType: declare.Definition.Type,
-                                passive: false,
-                                durable: declare.Definition.Durability > Durability.Ephemeral,
-                                autoDelete: declare.Definition.AutoDelete,
-                                @internal: false,
-                                noWait: false,
-                                arguments: declare.Definition.Arguments
+                                passive     : false,
+                                durable     : declare.Definition.Durability > Durability.Ephemeral,
+                                autoDelete  : declare.Definition.AutoDelete,
+                                @internal   : false,
+                                noWait      : false,
+                                arguments   : declare.Definition.Arguments
                             ));
                             _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(declare.Promise));
                             break;
                         }
+                        case DeleteExchange delete: {
+                            context.Send(state.CommandDispatcher, new ExchangeDelete(
+                                exchangeName: delete.Exchange,
+                                ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
+                                noWait      : false
+                            ));
+                            _behaviour.BecomeStacked(AwaitingExchangeDeleteOk(delete.Promise));
+                            break;
+                        }
                         case DeclareQueue declare: {
                             context.Send(state.CommandDispatcher, new QueueDeclare(
-                                queueName: declare.Definition.Name,
-                                passive: false,
-                                durable: declare.Definition.Durability > Durability.Ephemeral,
-                                exclusive: declare.Definition.Exclusive,
+                                queueName : declare.Definition.Name,
+                                passive   : false,
+                                durable   : declare.Definition.Durability > Durability.Ephemeral,
+                                exclusive : declare.Definition.Exclusive,
                                 autoDelete: declare.Definition.AutoDelete,
-                                noWait: false,
-                                arguments: declare.Definition.Arguments
+                                noWait    : false,
+                                arguments : declare.Definition.Arguments
                             ));
                             _behaviour.BecomeStacked(AwaitingQueueDeclareOk(declare.Promise));
                             break;
                         }
                         case BindQueue bind: {
                             context.Send(state.CommandDispatcher, new QueueBind(
-                                queueName: bind.Queue,
+                                queueName   : bind.Queue,
                                 exchangeName: bind.Exchange,
-                                routingKey: bind.RoutingKey,
-                                noWait: false,
-                                arguments: bind.Arguments
+                                routingKey  : bind.RoutingKey,
+                                noWait      : false,
+                                arguments   : bind.Arguments
                             ));
                             _behaviour.BecomeStacked(AwaitingQueueBindOk(bind.Promise));
                             break;
@@ -133,6 +143,18 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case ExchangeDeclareOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingExchangeDeleteOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case ExchangeDeleteOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;

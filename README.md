@@ -37,7 +37,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 
 #### Exchange
 - [x] Declare
-- [ ] Delete
+- [x] Delete
 
 #### Queue
 - [x] Declare

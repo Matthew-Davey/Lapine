@@ -27,6 +27,12 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
+        public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new DeleteExchange(exchange, condition, promise));
+            await promise.Task;
+        }
+
         public async ValueTask DeclareQueueAsync(QueueDefinition definition) {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new DeclareQueue(definition, promise));

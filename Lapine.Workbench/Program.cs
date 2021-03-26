@@ -44,6 +44,9 @@
             });
             await channel.BindQueueAsync("test.exchange", "test.queue");
 
+            await Task.Delay(10000);
+            await channel.DeleteExchangeAsync("test.exchange");
+
             Environment.ExitCode = await completion.Task;
 
             await channel.Close();
