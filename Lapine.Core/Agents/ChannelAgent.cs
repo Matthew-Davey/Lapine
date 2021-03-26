@@ -19,6 +19,7 @@ namespace Lapine.Agents {
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
             public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition, TaskCompletionSource Promise);
             public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
+            public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TaskCompletionSource Promise);
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
         }
 
@@ -112,6 +113,16 @@ namespace Lapine.Agents {
                             _behaviour.BecomeStacked(AwaitingQueueDeclareOk(declare.Promise));
                             break;
                         }
+                        case DeleteQueue delete: {
+                            context.Send(state.CommandDispatcher, new QueueDelete(
+                                queueName: delete.Queue,
+                                ifUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
+                                ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
+                                noWait   : false
+                            ));
+                            _behaviour.BecomeStacked(AwaitingQueueDeleteOk(delete.Promise));
+                            break;
+                        }
                         case BindQueue bind: {
                             context.Send(state.CommandDispatcher, new QueueBind(
                                 queueName   : bind.Queue,
@@ -167,6 +178,18 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case QueueDeclareOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingQueueDeleteOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case QueueDeleteOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;

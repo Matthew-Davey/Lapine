@@ -46,6 +46,7 @@
 
             await Task.Delay(10000);
             await channel.DeleteExchangeAsync("test.exchange");
+            await channel.DeleteQueueAsync("test.queue");
 
             Environment.ExitCode = await completion.Task;
 

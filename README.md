@@ -44,7 +44,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Bind
 - [ ] Unbind
 - [ ] Purge
-- [ ] Delete
+- [x] Delete
 
 #### Basic
 - [ ] Publish
