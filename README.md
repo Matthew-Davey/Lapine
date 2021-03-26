@@ -41,7 +41,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 
 #### Queue
 - [x] Declare
-- [ ] Bind
+- [x] Bind
 - [ ] Unbind
 - [ ] Purge
 - [ ] Delete
@@ -62,3 +62,21 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [ ] Select
 - [ ] Commit
 - [ ] Rollback
+
+#### RabbitMQ Extensions
+- [ ] Publisher Confirms
+- [ ] Consumer Cancel
+- [ ] Consumer Prefetch
+- [ ] Consumer Priorities
+- [ ] Direct Reply-to
+- [ ] Blocked Connections
+- [ ] Basic Nack
+- [ ] Exchange To Exchange Binding
+- [ ] Alternate Exchanges
+- [ ] Sender Routing
+- [ ] TTL
+- [ ] Dead Lettering
+- [ ] Queue Length Limits
+- [ ] Priority Queues
+- [ ] Auth Failure
+- [ ] Quorum Queues
