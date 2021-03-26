@@ -15,11 +15,13 @@ namespace Lapine.Protocol.Commands {
         }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteShortString(QueueName)
+            writer.WriteUInt16BE(0) // reserved-1
+                .WriteShortString(QueueName)
                 .WriteBoolean(NoAck);
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGet? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var queueName, out surplus) &&
+            if (buffer.ReadUInt16BE(out _, out surplus) &&
+                surplus.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadBoolean(out var noAck, out surplus))
             {
                 result = new BasicGet(queueName, noAck);
