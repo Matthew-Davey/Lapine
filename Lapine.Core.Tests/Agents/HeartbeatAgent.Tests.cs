@@ -44,7 +44,7 @@ namespace Lapine.Agents {
             });
             "Then 3 heartbeat frames should have been transmitted".x(() => {
                 Assert.Equal(expected: 3, actual: _sent.Where(message => message switch {
-                    SocketAgent.Protocol.Transmit transmit when transmit.Entity is RawFrame frame && frame.Type == FrameType.Heartbeat => true,
+                    RawFrame frame when frame.Type == FrameType.Heartbeat => true,
                     _ => false
                 }).Count());
             });

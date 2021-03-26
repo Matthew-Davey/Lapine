@@ -90,8 +90,8 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionStartOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    SocketAgent.Protocol.Transmit transmit when transmit.Entity is RawFrame frame && frame.Type == FrameType.Method => true,
-                    _ => false
+                    ConnectionStartOk _ => true,
+                    _                   => false
                 });
             });
         }
@@ -118,14 +118,13 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionTuneOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    SocketAgent.Protocol.Transmit transmit when transmit.Entity is RawFrame frame && frame.Type == FrameType.Method => true,
-                    _ => false
+                    ConnectionTuneOk _ => true,
+                    _                  => false
                 });
             });
             "And it should send a ConnectionOpen message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    //(":transmit", ConnectionOpen x) when x.VirtualHost == ConnectionConfiguration.DefaultVirtualHost => true,
-                    SocketAgent.Protocol.Transmit transmit when transmit.Entity is RawFrame frame && frame.Type == FrameType.Method => true,
+                    ConnectionOpen open when open.VirtualHost == ConnectionConfiguration.DefaultVirtualHost => true,
                     _ => false
                 });
             });
