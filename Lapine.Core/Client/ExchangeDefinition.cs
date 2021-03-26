@@ -10,11 +10,11 @@ namespace Lapine.Client {
         IReadOnlyDictionary<String, Object> Arguments
     ) {
         static public ExchangeDefinition Create(String name, String type = "topic") => new (
-            Name: name,
-            Type: type,
+            Name      : name,
+            Type      : type,
             Durability: Durability.Durable,
             AutoDelete: false,
-            Arguments: new Dictionary<String, Object>()
+            Arguments : new Dictionary<String, Object>()
         );
     };
 }

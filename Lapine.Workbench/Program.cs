@@ -38,6 +38,10 @@
                 Durability = Durability.Ephemeral,
                 AutoDelete = true
             });
+            await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
+                Durability = Durability.Ephemeral,
+                AutoDelete = true
+            });
 
             Environment.ExitCode = await completion.Task;
 

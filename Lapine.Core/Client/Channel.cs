@@ -25,5 +25,11 @@ namespace Lapine.Client {
             _system.Root.Send(_agent, new DeclareExchange(definition, promise));
             await promise.Task;
         }
+
+        public async ValueTask DeclareQueueAsync(QueueDefinition definition) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new DeclareQueue(definition, promise));
+            await promise.Task;
+        }
     }
 }

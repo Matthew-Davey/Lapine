@@ -16,8 +16,8 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Method framing - Queue class
 - [x] Method framing - Basic class
 - [x] Method framing - Transaction class
-- [ ] Header framing
-- [ ] Content framing
+- [ ] Content Header framing
+- [ ] Content Body framing
 - [x] Heartbeat framing
 
 #### Connection
@@ -40,7 +40,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [ ] Delete
 
 #### Queue
-- [ ] Declare
+- [x] Declare
 - [ ] Bind
 - [ ] Unbind
 - [ ] Purge

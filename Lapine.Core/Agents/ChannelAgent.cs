@@ -16,6 +16,7 @@ namespace Lapine.Agents {
             public record Opened(PID ChannelAgent);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
+            public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
         }
 
         static public Props Create() =>
@@ -86,6 +87,19 @@ namespace Lapine.Agents {
                             _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(declare.Promise));
                             break;
                         }
+                        case DeclareQueue declare: {
+                            context.Send(state.CommandDispatcher, new QueueDeclare(
+                                queueName: declare.Definition.Name,
+                                passive: false,
+                                durable: declare.Definition.Durability > Durability.Ephemeral,
+                                exclusive: declare.Definition.Exclusive,
+                                autoDelete: declare.Definition.AutoDelete,
+                                noWait: false,
+                                arguments: declare.Definition.Arguments
+                            ));
+                            _behaviour.BecomeStacked(AwaitingQueueDeclareOk(declare.Promise));
+                            break;
+                        }
                     }
                     return CompletedTask;
                 };
@@ -106,6 +120,18 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case ExchangeDeclareOk _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingQueueDeclareOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case QueueDeclareOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;

@@ -26,12 +26,14 @@ namespace Lapine.Protocol.Commands {
         }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteShortString(QueueName)
+            writer.WriteUInt16BE(0) // reserved-1 'ticket'
+                .WriteShortString(QueueName)
                 .WriteBits(Passive, Durable, Exclusive, AutoDelete, NoWait)
                 .WriteFieldTable(Arguments);
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeclare? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadShortString(out var queueName, out surplus) &&
+            if (buffer.ReadUInt16BE(out var _, out surplus) &&
+                surplus.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadBits(out var bits, out surplus) &&
                 surplus.ReadFieldTable(out var arguments, out surplus))
             {
