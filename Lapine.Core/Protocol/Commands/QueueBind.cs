@@ -30,7 +30,7 @@ namespace Lapine.Protocol.Commands {
                 .WriteFieldTable(Arguments);
 
         static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueBind? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadUInt32BE(out var _, out surplus) &&
+            if (buffer.ReadUInt16BE(out var _, out surplus) &&
                 surplus.ReadShortString(out var queueName, out surplus) &&
                 surplus.ReadShortString(out var exchangeName, out surplus) &&
                 surplus.ReadShortString(out var routingKey, out surplus) &&

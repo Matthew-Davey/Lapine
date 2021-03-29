@@ -17,7 +17,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>(8);
+            var buffer = new ArrayBufferWriter<Byte>(10);
             var value  = RandomSubject;
 
             value.Serialize(buffer);

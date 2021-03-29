@@ -50,7 +50,17 @@ namespace Lapine.Agents {
                             break;
                         }
                         case ICommand command: {
-                            var frame = RawFrame.Wrap(channelId, command);
+                            var frame = RawFrame.Wrap(in channelId, command);
+                            context.Send(txd, new Transmit(frame));
+                            break;
+                        }
+                        case ContentHeader contentHeader: {
+                            var frame = RawFrame.Wrap(in channelId, contentHeader);
+                            context.Send(txd, new Transmit(frame));
+                            break;
+                        }
+                        case ReadOnlyMemory<Byte> body: {
+                            var frame = RawFrame.Wrap(in channelId, body.Span);
                             context.Send(txd, new Transmit(frame));
                             break;
                         }

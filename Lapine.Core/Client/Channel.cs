@@ -2,6 +2,7 @@ namespace Lapine.Client {
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Lapine.Protocol;
     using Proto;
 
     using static Lapine.Agents.ChannelAgent.Protocol;
@@ -60,6 +61,12 @@ namespace Lapine.Client {
         public async ValueTask PurgeQueueAsync(String queue) {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new PurgeQueue(queue, promise));
+            await promise.Task;
+        }
+
+        public async ValueTask PublishAsync(String exchange, String routingKey, Boolean mandatory, Boolean immediate, BasicProperties properties, ReadOnlyMemory<Byte> payload) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new Publish(exchange, routingKey, mandatory, immediate, properties, payload, promise));
             await promise.Task;
         }
     }

@@ -46,7 +46,10 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Delete
 
 #### Basic
-- [ ] Publish
+- [x] Publish
+  - [ ] Mandatory
+  - [ ] Immediate
+  - [ ] Large messages (> MaxFrameSize)
 - [ ] Qos
 - [ ] Get
 - [ ] Consume

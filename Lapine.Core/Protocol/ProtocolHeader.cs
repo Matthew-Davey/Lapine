@@ -1,5 +1,4 @@
-namespace Lapine.Protocol
-{
+namespace Lapine.Protocol {
     using System;
     using System.Buffers;
 

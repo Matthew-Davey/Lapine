@@ -8,6 +8,8 @@ namespace Lapine {
     using static System.Buffers.Binary.BinaryPrimitives;
     using static System.Text.Encoding;
 
+    // ref: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Read.cs
+    // ref: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Write.cs
     static class BufferExtensions {
         static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Boolean[]? result, out ReadOnlySpan<Byte> surplus) {
             if (buffer.Length < 1) {

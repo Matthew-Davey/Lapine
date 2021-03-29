@@ -40,6 +40,22 @@ namespace Lapine.Protocol {
             return new RawFrame(FrameType.Method, in channel, in payload);
         }
 
+        static public RawFrame Wrap(in UInt16 channel, in ContentHeader contentHeader) {
+            var payloadWriter = new ArrayBufferWriter<Byte>();
+            payloadWriter.WriteSerializable(contentHeader);
+            var payload = payloadWriter.WrittenMemory;
+
+            return new RawFrame(FrameType.Header, in channel, in payload);
+        }
+
+        static public RawFrame Wrap(in UInt16 channel, in ReadOnlySpan<Byte> content) {
+            var payloadWriter = new ArrayBufferWriter<Byte>();
+            payloadWriter.WriteBytes(in content);
+            var payload = payloadWriter.WrittenMemory;
+
+            return new RawFrame(FrameType.Body, in channel, in payload);
+        }
+
         static public RawFrame Heartbeat =>
             new (FrameType.Heartbeat, channel: 0, Array.Empty<Byte>());
 

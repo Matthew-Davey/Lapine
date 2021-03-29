@@ -35,7 +35,7 @@ namespace Lapine.Protocol {
             var modifiedBuffer = buffer.WrittenMemory.ToArray();
             modifiedBuffer[0] = Random.Byte(min: 10);
 
-            Assert.Throws<ProtocolErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
+            Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
         }
 
         [Fact]

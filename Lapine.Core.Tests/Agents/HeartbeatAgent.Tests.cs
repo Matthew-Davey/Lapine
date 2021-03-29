@@ -42,11 +42,11 @@ namespace Lapine.Agents {
             "And we wait for 3 heartbeat durations".x(async () => {
                 await Task.Delay(36);
             });
-            "Then 3 heartbeat frames should have been transmitted".x(() => {
-                Assert.Equal(expected: 3, actual: _sent.Where(message => message switch {
+            "Then at least 3 heartbeat frames should have been transmitted".x(() => {
+                Assert.True(_sent.Count(message => message switch {
                     RawFrame frame when frame.Type == FrameType.Heartbeat => true,
                     _ => false
-                }).Count());
+                }) > 3);
             });
         }
 

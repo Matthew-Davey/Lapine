@@ -2,7 +2,10 @@
     using System;
     using System.Threading.Tasks;
     using Lapine.Client;
+    using Lapine.Protocol;
     using Microsoft.Extensions.Logging;
+
+    using static System.Text.Encoding;
 
     class Program {
         static async Task Main() {
@@ -43,6 +46,14 @@
                 AutoDelete = true
             });
             await channel.BindQueueAsync("test.exchange", "test.queue");
+
+            var body = UTF8.GetBytes("test message").AsMemory();
+            var properties = BasicProperties.Empty with {
+                ContentType     = "text/plain",
+                ContentEncoding = "UTF-8",
+                Timestamp       = (UInt64)DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+            await channel.PublishAsync("test.exchange", "#", false, false, properties, body);
 
             await Task.Delay(10000);
 
