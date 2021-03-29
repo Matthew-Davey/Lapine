@@ -43,10 +43,10 @@ namespace Lapine.Agents {
                 await Task.Delay(36);
             });
             "Then at least 3 heartbeat frames should have been transmitted".x(() => {
-                Assert.True(_sent.Count(message => message switch {
+                Assert.True(3 <= _sent.Count(message => message switch {
                     RawFrame frame when frame.Type == FrameType.Heartbeat => true,
                     _ => false
-                }) > 3);
+                }));
             });
         }
 

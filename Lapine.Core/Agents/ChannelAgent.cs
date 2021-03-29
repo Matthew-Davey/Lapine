@@ -24,7 +24,7 @@ namespace Lapine.Agents {
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
             public record UnbindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
             public record PurgeQueue(String Queue, TaskCompletionSource Promise);
-            public record Publish(String Exchange, String RoutingKey, Boolean Mandatory, Boolean Immediate, BasicProperties Properties, ReadOnlyMemory<Byte> Payload, TaskCompletionSource Promise);
+            public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Payload) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
         }
 
         static public Props Create() =>
@@ -157,11 +157,17 @@ namespace Lapine.Agents {
                             break;
                         }
                         case Publish publish: {
-                            context.Send(state.Dispatcher, new BasicPublish(publish.Exchange, publish.RoutingKey, false, false));
-                            context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Payload.Length, publish.Properties));
-                            context.Send(state.Dispatcher, publish.Payload);
+                            context.Send(state.Dispatcher, new BasicPublish(publish.Exchange, publish.RoutingKey, publish.Mandatory, publish.Immediate));
+                            context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Message.Payload.Length, publish.Message.Properties));
+                            context.Send(state.Dispatcher, publish.Message.Payload);
 
-                            publish.Promise.SetResult(); // Using async here in anticipation of supporting publisher confirms later...
+                            if (publish.Mandatory || publish.Immediate) {
+                                _behaviour.Become(AwaitingBasicReturn(publish.Promise));
+                                break;
+                            }
+                            else {
+                                publish.Promise.SetResult();
+                            }
                             break;
                         }
                     }
@@ -259,6 +265,23 @@ namespace Lapine.Agents {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
                             break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingBasicReturn(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case BasicReturn @return: {
+                            promise.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                        case ICommand _: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            return _behaviour.ReceiveAsync(context);
                         }
                     }
                     return CompletedTask;

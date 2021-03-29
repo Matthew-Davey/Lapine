@@ -64,9 +64,11 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
-        public async ValueTask PublishAsync(String exchange, String routingKey, Boolean mandatory, Boolean immediate, BasicProperties properties, ReadOnlyMemory<Byte> payload) {
+        public async ValueTask PublishAsync(String exchange, String routingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None) {
             var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new Publish(exchange, routingKey, mandatory, immediate, properties, payload, promise));
+            var mandatory = routingFlags.HasFlag(RoutingFlags.Mandatory);
+            var immediate = routingFlags.HasFlag(RoutingFlags.Immediate);
+            _system.Root.Send(_agent, new Publish(exchange, routingKey, message, mandatory, immediate, promise));
             await promise.Task;
         }
     }

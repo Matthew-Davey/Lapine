@@ -47,8 +47,8 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 
 #### Basic
 - [x] Publish
-  - [ ] Mandatory
-  - [ ] Immediate
+  - [x] Mandatory
+  - [x] Immediate (Unsupported in RabbitMQ)
   - [ ] Large messages (> MaxFrameSize)
 - [ ] Qos
 - [ ] Get

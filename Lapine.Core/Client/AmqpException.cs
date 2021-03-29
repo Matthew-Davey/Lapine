@@ -9,7 +9,7 @@ namespace Lapine.Client {
         static internal AmqpException Create(UInt16 replyCode, String message) =>
             replyCode switch {
                 // 311 content-too-large
-                // 312 no-route
+                312 => new UnroutableException(message.Replace("NO_ROUTE", String.Empty)),
                 // 313 no-consumers
                 // 320 connection-forced
                 // 402 invalid-path
@@ -28,5 +28,17 @@ namespace Lapine.Client {
                 // 541 internal-error
                 _ => new AmqpException(message)
             };
+    }
+
+    public class UnroutableException : AmqpException {
+        public UnroutableException(String message) : base(message) {
+            // Intentionally empty...
+        }
+    }
+
+    public class PreconditionFailedException : AmqpException {
+        public PreconditionFailedException(String message) : base(message) {
+            // Intentionally empty...
+        }
     }
 }
