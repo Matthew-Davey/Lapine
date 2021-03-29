@@ -27,18 +27,21 @@ namespace Lapine.Agents {
             public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Payload) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
         }
 
-        static public Props Create() =>
-            Props.FromProducer(() => new Actor())
+        static public Props Create(UInt32 maxFrameSize) =>
+            Props.FromProducer(() => new Actor(maxFrameSize))
                 .WithContextDecorator(LoggingContextDecorator.Create)
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
         record State(PID Dispatcher);
 
         class Actor : IActor {
+            readonly UInt32 _maxFrameSize;
             readonly Behavior _behaviour;
 
-            public Actor() =>
-                _behaviour = new Behavior(Closed);
+            public Actor(UInt32 maxFrameSize) {
+                _maxFrameSize = maxFrameSize;
+                _behaviour    = new Behavior(Closed);
+            }
 
             public Task ReceiveAsync(IContext context) =>
                 _behaviour.ReceiveAsync(context);
@@ -159,7 +162,10 @@ namespace Lapine.Agents {
                         case Publish publish: {
                             context.Send(state.Dispatcher, new BasicPublish(publish.Exchange, publish.RoutingKey, publish.Mandatory, publish.Immediate));
                             context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Message.Payload.Length, publish.Message.Properties));
-                            context.Send(state.Dispatcher, publish.Message.Payload);
+
+                            foreach (var payload in publish.Message.Payload.Split((Int32)_maxFrameSize)) {
+                                context.Send(state.Dispatcher, payload);
+                            }
 
                             if (publish.Mandatory || publish.Immediate) {
                                 _behaviour.Become(AwaitingBasicReturn(publish.Promise));

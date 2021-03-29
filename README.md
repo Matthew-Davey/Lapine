@@ -49,7 +49,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Publish
   - [x] Mandatory
   - [x] Immediate (Unsupported in RabbitMQ)
-  - [ ] Large messages (> MaxFrameSize)
+  - [x] Large messages (> MaxFrameSize)
 - [ ] Qos
 - [ ] Get
 - [ ] Consume

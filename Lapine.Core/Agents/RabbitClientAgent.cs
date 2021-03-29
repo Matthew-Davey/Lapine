@@ -215,7 +215,7 @@ namespace Lapine.Agents {
                             var channelId = state.AvailableChannelIds[0];
                             var channelAgent = context.SpawnNamed(
                                 name: $"channel_{channelId}",
-                                props: ChannelAgent.Create()
+                                props: ChannelAgent.Create(state.ConnectionConfiguration.MaximumFrameSize)
                             );
                             context.Send(state.FrameRouter, new AddRoutee(channelId, channelAgent));
                             context.Send(channelAgent, new Open(context.Self!, channelId, state.TxD!));

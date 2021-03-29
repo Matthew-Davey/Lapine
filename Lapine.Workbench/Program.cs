@@ -45,15 +45,15 @@
                 Durability = Durability.Ephemeral,
                 AutoDelete = true
             });
-            //await channel.BindQueueAsync("test.exchange", "test.queue");
+            await channel.BindQueueAsync("test.exchange", "test.queue");
 
-            var body = UTF8.GetBytes("test message").AsMemory();
+            var body = new Byte[connectionConfiguration.MaximumFrameSize * 3 + 100].AsMemory();
             var properties = BasicProperties.Empty with {
                 ContentType     = "text/plain",
                 ContentEncoding = "UTF-8",
                 Timestamp       = (UInt64)DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
-            await channel.PublishAsync("test.exchange", "#", (properties, body), RoutingFlags.Mandatory);
+            await channel.PublishAsync("test.exchange", "#", (properties, body));
 
             await Task.Delay(10000);
 
