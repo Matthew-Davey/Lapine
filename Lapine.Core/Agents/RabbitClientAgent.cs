@@ -113,6 +113,7 @@ namespace Lapine.Agents {
                                 _behaviour.Become(Connecting(state with { RemainingEndpoints = state.RemainingEndpoints[1..], AccumulatedFailures = state.AccumulatedFailures.Add(failed.Reason) }));
                             }
                             else {
+                                state.CancelTimeout.Cancel();
                                 state.Promise.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
                                 context.Stop(state.SocketAgent);
                                 _behaviour.Become(Disconnected);
@@ -134,7 +135,6 @@ namespace Lapine.Agents {
                                     props: DispatcherAgent.Create()
                                 )
                             );
-
 
                             context.Send(connected.RxD, new SocketAgent.Protocol.BeginPolling(negotiatingState.FrameRouter));
                             context.Send(negotiatingState.FrameRouter, new AddRoutee(0, negotiatingState.HandshakeAgent));
@@ -181,6 +181,7 @@ namespace Lapine.Agents {
                             break;
                         }
                         case HandshakeFailed failed: {
+                            state.CancelTimeout.Cancel();
                             state.Promise.SetException(failed.Reason);
                             _behaviour.Become(Disconnected);
                             break;

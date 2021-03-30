@@ -48,10 +48,11 @@
             await channel.BindQueueAsync("test.exchange", "test.queue");
 
             var body = new Byte[connectionConfiguration.MaximumFrameSize * 3 + 100].AsMemory();
-            var properties = BasicProperties.Empty with {
+            var properties = MessageProperties.Empty with {
                 ContentType     = "text/plain",
                 ContentEncoding = "UTF-8",
-                Timestamp       = (UInt64)DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                DeliveryMode    = DeliveryMode.Persistent,
+                Timestamp       = DateTimeOffset.UtcNow
             };
             await channel.PublishAsync("test.exchange", "#", (properties, body));
 

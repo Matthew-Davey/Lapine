@@ -124,7 +124,7 @@ namespace Lapine.Agents {
             });
             "And it should send a ConnectionOpen message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    ConnectionOpen open when open.VirtualHost == ConnectionConfiguration.DefaultVirtualHost => true,
+                    ConnectionOpen { VirtualHost: ConnectionConfiguration.DefaultVirtualHost } => true,
                     _ => false
                 });
             });

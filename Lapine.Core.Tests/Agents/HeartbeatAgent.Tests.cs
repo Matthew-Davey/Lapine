@@ -44,7 +44,7 @@ namespace Lapine.Agents {
             });
             "Then at least 3 heartbeat frames should have been transmitted".x(() => {
                 Assert.True(3 <= _sent.Count(message => message switch {
-                    RawFrame frame when frame.Type == FrameType.Heartbeat => true,
+                    RawFrame { Type: FrameType.Heartbeat } => true,
                     _ => false
                 }));
             });
