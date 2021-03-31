@@ -4,20 +4,19 @@ namespace Lapine {
 
     static class MemoryExtensions {
         static public IEnumerable<ReadOnlyMemory<Byte>> Split(this ReadOnlyMemory<Byte> value, Int32 stride) {
-            while (value.Length > 0) {
+            do {
                 switch (value.Length) {
                     case var length when length <= stride: {
                         yield return value;
                         yield break;
                     }
                     case var length when length > stride: {
-                        var segment = value.Slice(0, stride);
-                        yield return segment;
+                        yield return value[..stride];
                         value = value[stride..];
-                        break;
+                        continue;
                     }
                 }
-            }
+            } while (value.Length > 0);
         }
     }
 }

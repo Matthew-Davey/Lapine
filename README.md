@@ -16,9 +16,10 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [x] Method framing - Queue class
 - [x] Method framing - Basic class
 - [x] Method framing - Transaction class
-- [ ] Content Header framing
-- [ ] Content Body framing
+- [x] Content Header framing
+- [x] Content Body framing
 - [x] Heartbeat framing
+- [ ] Error handling
 
 #### Connection
 - [x] Protocol negotiation

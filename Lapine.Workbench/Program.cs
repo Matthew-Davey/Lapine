@@ -2,7 +2,6 @@
     using System;
     using System.Threading.Tasks;
     using Lapine.Client;
-    using Lapine.Protocol;
     using Microsoft.Extensions.Logging;
 
     using static System.Text.Encoding;
@@ -47,10 +46,10 @@
             });
             await channel.BindQueueAsync("test.exchange", "test.queue");
 
-            var body = new Byte[connectionConfiguration.MaximumFrameSize * 3 + 100].AsMemory();
+            var body = UTF8.GetBytes("test message").AsMemory();
             var properties = MessageProperties.Empty with {
                 ContentType     = "text/plain",
-                ContentEncoding = "UTF-8",
+                ContentEncoding = UTF8.WebName,
                 DeliveryMode    = DeliveryMode.Persistent,
                 Timestamp       = DateTimeOffset.UtcNow
             };

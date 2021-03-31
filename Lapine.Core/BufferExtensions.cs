@@ -81,14 +81,15 @@ namespace Lapine {
         }
 
         static public Boolean ReadDouble(in this ReadOnlySpan<Byte> buffer, out Double result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadBytes(sizeof(Double), out var rawBytes, out surplus)) {
-                result = BitConverter.ToDouble(rawBytes);
-                return true;
-            }
-            else {
+            if (buffer.Length < sizeof(Double)) {
                 result = default;
+                surplus = default;
                 return false;
             }
+
+            result = ReadDoubleBigEndian(buffer);
+            surplus = buffer[sizeof(Double)..];
+            return true;
         }
 
         static public Boolean ReadFieldArray(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IList<Object>? result, out ReadOnlySpan<Byte> surplus) {
@@ -173,7 +174,7 @@ namespace Lapine {
                     }
                     break;
                 }
-                case 'U': { // short-int
+                case 's': { // short-int
                     if (surplus.ReadInt16BE(out var value, out surplus)) {
                         result = value;
                         return true;
@@ -230,21 +231,22 @@ namespace Lapine {
                     break;
                 }
                 case 'D': { // decimal-value
-                    result = default(Decimal); // TODO: read and decode decimal-value
+                    result = default(Decimal); // TODO: read and decode decimal-value (see: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Read.cs#L45)
                     surplus = surplus[5..];
                     return true;
-                }
-                case 's': { // short-string
-                    if (surplus.ReadShortString(out var value, out surplus)) {
-                        result = value;
-                        return true;
-                    }
-                    break;
                 }
                 case 'S': { // long-string
                     if (surplus.ReadLongString(out var value, out surplus)) {
                         result = value;
                         return true;
+                    }
+                    break;
+                }
+                case 'x': { // byte-array
+                    if (surplus.ReadUInt32BE(out var length, out surplus) &&
+                        surplus.ReadBytes(length, out var value, out surplus)) {
+                            result = value.ToArray();
+                            return true;
                     }
                     break;
                 }
@@ -263,7 +265,7 @@ namespace Lapine {
                     break;
                 }
                 case 'V': { // no-field
-                    result = new Object();
+                    result = DBNull.Value;
                     return true;
                 }
                 case 'F': { // field-table
@@ -367,14 +369,15 @@ namespace Lapine {
         }
 
         static public Boolean ReadSingle(in this ReadOnlySpan<Byte> buffer, out Single result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadBytes(sizeof(Single), out var rawBytes, out surplus)) {
-                result = BitConverter.ToSingle(rawBytes);
-                return true;
-            }
-            else {
+            if (buffer.Length < sizeof(Single)) {
                 result = default;
+                surplus = default;
                 return false;
             }
+
+            result = ReadSingleBigEndian(buffer);
+            surplus = buffer[sizeof(Single)..];
+            return true;
         }
 
         static public Boolean ReadUInt8(in this ReadOnlySpan<Byte> buffer, out Byte result, out ReadOnlySpan<Byte> surplus) {
@@ -483,8 +486,15 @@ namespace Lapine {
             return writer;
         }
 
-        static public IBufferWriter<Byte> WriteDouble(this IBufferWriter<Byte> writer, in Double value) =>
-            writer.WriteBytes(BitConverter.GetBytes(value));
+        static public IBufferWriter<Byte> WriteDouble(this IBufferWriter<Byte> writer, in Double value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Double));
+            WriteDoubleBigEndian(buffer, value);
+            writer.Advance(sizeof(Double));
+            return writer;
+        }
 
         static public IBufferWriter<Byte> WriteFieldArray(this IBufferWriter<Byte> writer, IList<Object> fieldArray) {
             if (writer is null)
@@ -502,7 +512,7 @@ namespace Lapine {
                 .WriteBytes(items.WrittenMemory.Span);
         }
 
-        static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IReadOnlyDictionary<String, Object> fieldTable) {
+        static public IBufferWriter<Byte> WriteFieldTable(this IBufferWriter<Byte> writer, IEnumerable<KeyValuePair<String, Object>> fieldTable) {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
 
@@ -521,14 +531,11 @@ namespace Lapine {
         }
 
         static public IBufferWriter<Byte> WriteFieldValue(this IBufferWriter<Byte> writer, in Object field) =>
-            // TODO: investigate correctness of these prefixes. Current values are based on amqp0-9-1.pdf pages 31/32, but
-            // https://github.com/rabbitmq/rabbitmq-server/blob/v3.5.x/src/rabbit_binary_parser.erl#L41 indicates otherwise
-            // (specifically suggests that 's' is 16 bit unsigned int)
             field switch {
                 Boolean        value => writer.WriteChar('t').WriteBoolean(value),
                 SByte          value => writer.WriteChar('b').WriteInt8(value),
                 Byte           value => writer.WriteChar('B').WriteUInt8(value),
-                Int16          value => writer.WriteChar('U').WriteInt16BE(value),
+                Int16          value => writer.WriteChar('s').WriteInt16BE(value),
                 UInt16         value => writer.WriteChar('u').WriteUInt16BE(value),
                 Int32          value => writer.WriteChar('I').WriteInt32BE(value),
                 UInt32         value => writer.WriteChar('i').WriteUInt32BE(value),
@@ -538,11 +545,12 @@ namespace Lapine {
                 Double         value => writer.WriteChar('d').WriteDouble(value),
                 //Decimal        value => writer.WriteChar('D').WriteDecimal(value), // TODO: encode and write decimal-value
                 String         value => writer.WriteChar('S').WriteLongString(value),
+                Byte[]         value => writer.WriteChar('x').WriteUInt32BE((UInt32)value.Length).WriteBytes(value),
                 Object[]       value => writer.WriteChar('A').WriteFieldArray(value),
                 DateTimeOffset value => writer.WriteChar('T').WriteUInt64BE((UInt64)value.ToUnixTimeSeconds()),
                 DateTime       value => writer.WriteChar('T').WriteUInt64BE((UInt64)new DateTimeOffset(value).ToUnixTimeSeconds()),
-                IReadOnlyDictionary<String, Object> value => writer.WriteChar('F').WriteFieldTable(value),
-                //null                 => writer.WriteChar('V'), // TODO: what does 'V' mean?
+                IEnumerable<KeyValuePair<String, Object>> value => writer.WriteChar('F').WriteFieldTable(value),
+                null                 => writer.WriteChar('V'),
                 _ => writer // TODO: unsupported data type present in table...
         };
 
@@ -615,8 +623,15 @@ namespace Lapine {
                 .WriteBytes(UTF8.GetBytes(value));
         }
 
-        static public IBufferWriter<Byte> WriteSingle(this IBufferWriter<Byte> writer, in Single value) =>
-            writer.WriteBytes(BitConverter.GetBytes(value));
+        static public IBufferWriter<Byte> WriteSingle(this IBufferWriter<Byte> writer, in Single value) {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            var buffer = writer.GetSpan(sizeof(Single));
+            WriteSingleBigEndian(buffer, value);
+            writer.Advance(sizeof(Single));
+            return writer;
+        }
 
         static public IBufferWriter<Byte> WriteUInt8(this IBufferWriter<Byte> writer, in Byte value) {
             if (writer is null)
