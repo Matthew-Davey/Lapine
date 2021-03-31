@@ -36,6 +36,29 @@ namespace Lapine.Client {
             ClusterId      : null
         );
 
+        static internal MessageProperties FromBasicProperties(BasicProperties properties) => Empty with {
+            ContentType     = properties.ContentType,
+            ContentEncoding = properties.ContentEncoding,
+            Headers         = properties.Headers?.ToImmutableDictionary(),
+            DeliveryMode    = (DeliveryMode?)properties.DeliveryMode,
+            Priority        = properties.Priority,
+            CorrelationId   = properties.CorrelationId,
+            ReplyTo         = properties.ReplyTo,
+            Expiration      = properties.Expiration switch {
+                null         => null,
+                String value => TimeSpan.Parse(value)
+            },
+            MessageId       = properties.MessageId,
+            Timestamp       = properties.Timestamp switch {
+                null         => null,
+                UInt64 value => DateTimeOffset.FromUnixTimeSeconds((Int64)value)
+            },
+            Type            = properties.Type,
+            UserId          = properties.UserId,
+            AppId           = properties.AppId,
+            ClusterId       = properties.ClusterId
+        };
+
         internal BasicProperties ToBasicProperties() => BasicProperties.Empty with {
             ContentType     = ContentType,
             ContentEncoding = ContentEncoding,

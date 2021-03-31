@@ -1,5 +1,6 @@
 namespace Lapine.Agents {
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
@@ -24,13 +25,16 @@ namespace Lapine.Agents {
             public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
             public record UnbindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
             public record PurgeQueue(String Queue, TaskCompletionSource Promise);
-            public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Payload) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
+            public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
+            public record GetMessage(String Queue, Boolean Ack, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise);
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
             Props.FromProducer(() => new Actor(maxFrameSize))
                 .WithContextDecorator(LoggingContextDecorator.Create)
-                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
+                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
+                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
 
         record State(PID Dispatcher);
 
@@ -161,10 +165,10 @@ namespace Lapine.Agents {
                         }
                         case Publish publish: {
                             context.Send(state.Dispatcher, new BasicPublish(publish.Exchange, publish.RoutingKey, publish.Mandatory, publish.Immediate));
-                            context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Message.Payload.Length, publish.Message.Properties));
+                            context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Message.Body.Length, publish.Message.Properties));
 
-                            foreach (var payload in publish.Message.Payload.Split((Int32)_maxFrameSize)) {
-                                context.Send(state.Dispatcher, payload);
+                            foreach (var segment in publish.Message.Body.Split((Int32)_maxFrameSize)) {
+                                context.Send(state.Dispatcher, segment);
                             }
 
                             if (publish.Mandatory || publish.Immediate) {
@@ -174,6 +178,11 @@ namespace Lapine.Agents {
                             else {
                                 publish.Promise.SetResult();
                             }
+                            break;
+                        }
+                        case GetMessage get: {
+                            context.Send(state.Dispatcher, new BasicGet(get.Queue, !get.Ack));
+                            _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get.Promise));
                             break;
                         }
                     }
@@ -292,6 +301,64 @@ namespace Lapine.Agents {
                     }
                     return CompletedTask;
                 };
+
+            Receive AwaitingGetOkOrEmpty(TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case BasicGetEmpty _: {
+                            promise.SetResult(null);
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                        case BasicGetOk ok: {
+                            var deliveryInfo = new DeliveryInfo(ok.DeliveryTag, ok.Redelivered, ok.ExchangeName, ok.RoutingKey, ok.MessageCount);
+
+                            _behaviour.UnbecomeStacked();
+                            _behaviour.BecomeStacked(AwaitingContentHeader(deliveryInfo, promise));
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingContentHeader(DeliveryInfo delivery, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) {
+                return (IContext context) => {
+                    switch (context.Message) {
+                        case ContentHeader header: {
+                            if (header.BodySize == 0) {
+                                promise.SetResult((delivery, header.Properties, Array.Empty<Byte>()));
+                                _behaviour.UnbecomeStacked();
+                            }
+                            else {
+                                _behaviour.UnbecomeStacked();
+                                _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, promise));
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+            }
+
+            Receive AwaitingContentBody(DeliveryInfo delivery, ContentHeader header, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) {
+                var buffer = new ArrayBufferWriter<Byte>((Int32)header.BodySize);
+                return (IContext context) => {
+                    switch (context.Message) {
+                        case ReadOnlyMemory<Byte> bodySegment: {
+                            buffer.Write(bodySegment.Span);
+
+                            if ((UInt64)buffer.WrittenCount >= header.BodySize) {
+                                promise.SetResult((delivery, header.Properties, buffer.WrittenMemory));
+                                _behaviour.UnbecomeStacked();
+                            }
+
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+            }
         }
     }
 }

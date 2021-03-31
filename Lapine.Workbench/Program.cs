@@ -45,6 +45,7 @@
                 AutoDelete = true
             });
             await channel.BindQueueAsync("test.exchange", "test.queue");
+            await channel.PurgeQueueAsync("test.queue");
 
             var body = UTF8.GetBytes("test message").AsMemory();
             var properties = MessageProperties.Empty with {
@@ -56,6 +57,8 @@
             await channel.PublishAsync("test.exchange", "#", (properties, body));
 
             await Task.Delay(10000);
+
+            var message = await channel.GetMessage("test.queue", false);
 
             await channel.UnbindQueueAsync("test.exchange", "test.queue");
 

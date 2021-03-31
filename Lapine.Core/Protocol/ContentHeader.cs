@@ -13,6 +13,9 @@ namespace Lapine.Protocol {
             _properties = properties;
         }
 
+        public UInt64 BodySize => _bodySize;
+        public BasicProperties Properties => _properties;
+
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(_classId)
                 .WriteUInt16BE(0) // weight

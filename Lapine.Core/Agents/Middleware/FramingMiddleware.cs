@@ -109,6 +109,28 @@ namespace Lapine.Agents.Middleware {
                 }
             };
 
+        static public Func<Receiver, Receiver> UnwrapInboundContentHeaderFrames() =>
+            next => (context, envelope) => {
+                if (envelope.Message is FrameReceived received && received.Frame.Type == FrameType.Header) {
+                    return ContentHeader.Deserialize(received.Frame.Payload.Span, out var contentHeader, out var _)
+                        ? next(context, envelope.WithMessage(contentHeader))
+                        : next(context, envelope);
+                }
+                else {
+                    return next(context, envelope);
+                }
+            };
+
+        static public Func<Receiver, Receiver> UnwrapInboundContentBodyFrames() =>
+            next => (context, envelope) => {
+                if (envelope.Message is FrameReceived received && received.Frame.Type == FrameType.Body) {
+                    return next(context, envelope.WithMessage(received.Frame.Payload));
+                }
+                else {
+                    return next(context, envelope);
+                }
+            };
+
         static public Func<Sender, Sender> WrapOutboundCommands(UInt16 channel) =>
             next => (context, pid, envelope) => envelope.Message switch {
                 ICommand command      => next(context, pid, envelope.WithMessage(new Transmit(RawFrame.Wrap(in channel, in command)))),

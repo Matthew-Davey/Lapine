@@ -200,7 +200,7 @@ namespace Lapine.Agents {
                 return (IContext context) => {
                     switch (context.Message) {
                         case Poll poll: {
-                            socket.BeginReceive(frameBuffer, tail, 128, SocketFlags.None, asyncResult => {
+                            socket.BeginReceive(frameBuffer, tail, Math.Min(128, frameBuffer.Length - tail), SocketFlags.None, asyncResult => {
                                 context.Send(context.Self!, asyncResult);
                             }, null);
                             break;

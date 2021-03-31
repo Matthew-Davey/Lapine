@@ -52,7 +52,7 @@ Lapine is in the early stages of development and is **definitely not** suitable 
   - [x] Immediate (Unsupported in RabbitMQ)
   - [x] Large messages (> MaxFrameSize)
 - [ ] Qos
-- [ ] Get
+- [x] Get
 - [ ] Consume
 - [ ] Deliver
 - [ ] Ack

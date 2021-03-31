@@ -2,6 +2,7 @@ namespace Lapine.Client {
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Lapine.Protocol;
     using Proto;
 
     using static Lapine.Agents.ChannelAgent.Protocol;
@@ -69,6 +70,15 @@ namespace Lapine.Client {
             var immediate = routingFlags.HasFlag(RoutingFlags.Immediate);
             _system.Root.Send(_agent, new Publish(exchange, routingKey, (message.Properties.ToBasicProperties(), message.Payload), mandatory, immediate, promise));
             await promise.Task;
+        }
+
+        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessage(String queue, Boolean ack) {
+            var promise = new TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>();
+            _system.Root.Send(_agent, new GetMessage(queue, ack, promise));
+            return await promise.Task switch {
+                null => null,
+                (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
+            };
         }
     }
 }

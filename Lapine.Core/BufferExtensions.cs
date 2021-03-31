@@ -51,8 +51,8 @@ namespace Lapine {
                 return false;
             }
 
-            result  = buffer[0..(UInt16)number];
-            surplus = buffer[(UInt16)number..];
+            result  = buffer[0..(Int32)number];
+            surplus = buffer[(Int32)number..];
             return true;
         }
 
