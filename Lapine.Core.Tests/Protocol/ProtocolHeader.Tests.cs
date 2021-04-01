@@ -21,7 +21,7 @@ namespace Lapine.Protocol {
             var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
 
             value.Serialize(buffer);
-            ProtocolHeader.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+            ProtocolHeader.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
             Assert.Equal(expected: value, actual: deserialized);
         }
@@ -42,7 +42,7 @@ namespace Lapine.Protocol {
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
 
-            ProtocolHeader.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+            ProtocolHeader.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
 
             Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
             Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
