@@ -2,17 +2,11 @@
     using System;
     using System.Threading.Tasks;
     using Lapine.Client;
-    using Microsoft.Extensions.Logging;
 
     using static System.Text.Encoding;
 
     class Program {
         static async Task Main() {
-            Lapine.Log.LoggerFactory = LoggerFactory.Create(config => {
-                config.AddConsole();
-                config.SetMinimumLevel(LogLevel.Debug);
-            });
-
             var completion = new TaskCompletionSource<Int32>();
 
             Console.CancelKeyPress += (_, args) => {

@@ -24,7 +24,6 @@ namespace Lapine.Agents {
 
         static public Props Create() =>
             Props.FromProducer(() => new Actor())
-                .WithContextDecorator(LoggingContextDecorator.Create)
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
         class Actor : IActor {

@@ -2,7 +2,6 @@ namespace Lapine.Agents {
     using System;
     using System.Collections.Immutable;
     using System.Threading.Tasks;
-    using Lapine.Agents.Middleware;
     using Proto;
 
     using static System.Threading.Tasks.Task;
@@ -16,8 +15,7 @@ namespace Lapine.Agents {
         }
 
         static public Props Create() =>
-            Props.FromProducer(() => new Actor())
-                .WithContextDecorator(LoggingContextDecorator.Create);
+            Props.FromProducer(() => new Actor());
 
         class Actor : IActor {
             readonly Behavior _behaviour;

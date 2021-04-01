@@ -31,7 +31,6 @@ namespace Lapine.Agents {
 
         static public Props Create(UInt32 maxFrameSize) =>
             Props.FromProducer(() => new Actor(maxFrameSize))
-                .WithContextDecorator(LoggingContextDecorator.Create)
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
