@@ -21,11 +21,11 @@ namespace Lapine.Protocol {
                 ReplyTo         = Random.Utf16String(),
                 Timestamp       = Random.ULong(),
                 Type            = Random.Utf16String(),
-                UserId          = Internet.UserName()
+                UserId          = Random.Utf16String()
             };
 
             value.Serialize(buffer);
-            BasicProperties.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+            BasicProperties.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
             Assert.Equal(expected: value, actual: deserialized);
         }
@@ -60,7 +60,7 @@ namespace Lapine.Protocol {
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
 
-            BasicProperties.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+            BasicProperties.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
 
             Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
             Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));

@@ -130,12 +130,5 @@ namespace Lapine.Agents.Middleware {
                     return next(context, envelope);
                 }
             };
-
-        static public Func<Sender, Sender> WrapOutboundCommands(UInt16 channel) =>
-            next => (context, pid, envelope) => envelope.Message switch {
-                ICommand command      => next(context, pid, envelope.WithMessage(new Transmit(RawFrame.Wrap(in channel, in command)))),
-                ProtocolHeader header => next(context, pid, envelope.WithMessage(new Transmit(header))),
-                _                     => next(context, pid, envelope)
-            };
     }
 }

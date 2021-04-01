@@ -2,12 +2,12 @@ namespace Lapine.Protocol {
     using System;
     using System.Buffers;
 
-    public struct ContentHeader : ISerializable {
+    readonly struct ContentHeader : ISerializable {
         readonly UInt16 _classId;
         readonly UInt64 _bodySize;
         readonly BasicProperties _properties;
 
-        public ContentHeader(UInt16 classId, UInt64 bodySize, BasicProperties properties) {
+        public ContentHeader(in UInt16 classId, in UInt64 bodySize, in BasicProperties properties) {
             _classId    = classId;
             _bodySize   = bodySize;
             _properties = properties;

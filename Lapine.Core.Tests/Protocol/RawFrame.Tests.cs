@@ -11,7 +11,7 @@ namespace Lapine.Protocol {
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
             value.Serialize(buffer);
-            RawFrame.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+            RawFrame.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
             Assert.Equal(expected: value.Channel, actual: deserialized.Channel);
             Assert.Equal(expected: value.Payload.ToArray(), actual: deserialized.Payload.ToArray());
@@ -59,7 +59,7 @@ namespace Lapine.Protocol {
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
 
-            RawFrame.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+            RawFrame.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
 
             Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
             Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
