@@ -76,8 +76,8 @@ namespace Lapine {
 
         [Theory]
         [InlineData(false, new Byte[0], default(Double), new Byte[0])]
-        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F }, 1D, new Byte[0])]
-        [InlineData(true, new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00 }, 1D, new Byte[] { 0x00 })]
+        [InlineData(true, new Byte[] { 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 1D, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 1D, new Byte[] { 0x00 })]
         static public void ReadDouble(in Boolean expectedResult, in Byte[] input, in Double expectedValue, in Byte[] expectedSurplus) {
             var result = BufferExtensions.ReadDouble(input, out var value, out var surplus);
 
@@ -92,15 +92,14 @@ namespace Lapine {
         [InlineData(true, new Byte[] { (Byte)'t', 0x01 }, true, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'b', 0x01 }, (SByte)0x01, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'B', 0x01 }, (Byte)0x01, new Byte[0])]
-        [InlineData(true, new Byte[] { (Byte)'U', 0x00, 0x01 }, (Int16)1, new Byte[0])]
+        [InlineData(true, new Byte[] { (Byte)'s', 0x00, 0x01 }, (Int16)1, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'u', 0x00, 0x01 }, (UInt16)1, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'I', 0x00, 0x00, 0x00, 0x01 }, (Int32)1, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'i', 0x00, 0x00, 0x00, 0x01 }, (UInt32)1, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'L', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }, (Int64)1, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'l', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }, (UInt64)1, new Byte[0])]
-        [InlineData(true, new Byte[] { (Byte)'f', 0x00, 0x00, 0x80, 0x3F }, 1f, new Byte[0])]
-        [InlineData(true, new Byte[] { (Byte)'d', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F }, 1d, new Byte[0])]
-        [InlineData(true, new Byte[] { (Byte)'s', 0x04, 0x74, 0x65, 0x73, 0x74 }, "test", new Byte[0])]
+        [InlineData(true, new Byte[] { (Byte)'f', 0x3F, 0x80, 0x00, 0x00 }, 1f, new Byte[0])]
+        [InlineData(true, new Byte[] { (Byte)'d', 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 1d, new Byte[0])]
         [InlineData(true, new Byte[] { (Byte)'S', 0x00, 0x00, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74 }, "test", new Byte[0])]
         // TODO: decimal, field-array, timestamp, no-field, field-table
         static public void ReadFieldValue(in Boolean expectedResult, Byte[] input, Object expectedValue, Byte[] expectedSurplus) {
@@ -198,8 +197,8 @@ namespace Lapine {
 
         [Theory]
         [InlineData(false, new Byte[0], default(Single), new Byte[0])]
-        [InlineData(true, new Byte[] { 0x00, 0x00, 0x80, 0x3F }, (Single)1, new Byte[0])]
-        [InlineData(true, new Byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00 }, (Single)1, new Byte[] { 0x00 })]
+        [InlineData(true, new Byte[] { 0x3F, 0x80, 0x00, 0x00 }, (Single)1, new Byte[0])]
+        [InlineData(true, new Byte[] { 0x3F, 0x80, 0x00, 0x00, 0x00 }, (Single)1, new Byte[] { 0x00 })]
         static public void ReadSingle(in Boolean expectedResult, in Byte[] input, in Single expectedValue, in Byte[] expectedSurplus) {
             var result = BufferExtensions.ReadSingle(input, out var value, out var surplus);
 
