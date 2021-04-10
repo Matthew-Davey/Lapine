@@ -16,7 +16,11 @@ Target.create "Build" (fun _ ->
 )
 
 Target.create "Test" (fun _ ->
-    DotNet.test id ""
+    DotNet.test id "Lapine.Core.Tests/Lapine.Core.Tests.csproj"
+)
+
+Target.create "IntegrationTest" (fun _ ->
+    DotNet.test id "Lapine.Core.IntegrationTests/Lapine.Core.IntegrationTests.csproj"
 )
 
 "Clean"
