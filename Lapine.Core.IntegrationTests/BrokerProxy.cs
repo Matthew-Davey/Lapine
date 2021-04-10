@@ -47,15 +47,15 @@ namespace Lapine {
         /// Gets the IP address of the running broker.
         /// </summary>
         public async ValueTask<IPAddress> GetIPAddressAsync() {
-            var result = await Cli.Wrap("docker")
+            var process = await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("inspect")
-                    .Add("--format=\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"", escape: false)
-                    .Add(_container!))
+                    .Add(_container)
+                    .Add("--format=\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync();
 
-            return IPAddress.Parse(result.StandardOutput.TrimEnd());
+            return IPAddress.Parse(process.StandardOutput.TrimEnd());
         }
 
         /// <summary>
@@ -69,25 +69,28 @@ namespace Lapine {
             };
         }
 
-        public async ValueTask<IList<Connection>> GetConnectionsAsync() {
-            var result = await Cli.Wrap("docker")
-                .WithArguments($"exec {_container} rabbitmqctl list_connections user state client_properties --formatter json")
+        public async IAsyncEnumerable<Connection> GetConnectionsAsync() {
+            var process = await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add("list_connections user state client_properties", escape: false)
+                    .Add("--formatter json", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync();
 
-            var json = JArray.Parse(result.StandardOutput);
-            var results = new List<Connection>();
-            foreach (var token in json) {
-                var user = token.SelectToken("$.user").Value<String>();
-                var state = token.SelectToken("$.state").Value<String>();
-                var product = token.SelectToken("$.client_properties[0][2]").Value<String>();
-                var version = token.SelectToken("$.client_properties[1][2]").Value<String>();
-                var name = token.SelectToken("$.client_properties[5][2]").Value<String>();
+            var connections = JArray.Parse(process.StandardOutput);
 
-                results.Add(new Connection(user, state, product, version, name));
+            foreach (var connection in connections) {
+                var user    = (String)connection.SelectToken("$.user");
+                var state   = (String)connection.SelectToken("$.state");
+                var product = (String)connection.SelectToken("$.client_properties[0][2]");
+                var version = (String)connection.SelectToken("$.client_properties[1][2]");
+                var name    = (String)connection.SelectToken("$.client_properties[5][2]");
+
+                yield return new Connection(user, state, product, version, name);
             }
-
-            return results;
         }
 
         public async ValueTask DisposeAsync() {
