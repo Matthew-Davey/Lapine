@@ -15,15 +15,14 @@ namespace Lapine {
         private BrokerProxy(String containerId) =>
             _container = containerId;
 
-        static public async ValueTask<BrokerProxy> StartAsync() {
+        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion) {
             // Start a RabbitMQ container...
             var process = await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("run")
                     .Add("--detach")
-                    .Add($"--publish 5672:5672", escape: false)
                     .Add("--rm")
-                    .Add("rabbitmq:3.8-alpine"))
+                    .Add($"rabbitmq:{brokerVersion}"))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync();
 

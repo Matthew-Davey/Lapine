@@ -1,4 +1,5 @@
 namespace Lapine {
+    using System;
     using Lapine.Client;
     using Bogus;
     using FluentAssertions;
@@ -6,9 +7,11 @@ namespace Lapine {
 
     public class ConnectionTests : Faker {
         [Scenario]
-        public void ConnectToLocalBrokerAsGuest(AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration) {
+        [Example("3.8-alpine")]
+        [Example("3.7-alpine")]
+        public void ConnectToLocalBrokerAsGuest(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration) {
             "Given a running broker".x(async () => {
-                broker = await BrokerProxy.StartAsync();
+                broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client configured to connect to the broker".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
