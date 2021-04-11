@@ -62,5 +62,37 @@ namespace Lapine {
                 connections.Should().BeEmpty();
             });
         }
+
+        [Scenario]
+        [Example("3.8-alpine")]
+        [Example("3.7-alpine")]
+        public void ConnectToVirtualHost(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String virtualHost) {
+            "Given a running broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has a virtual host configured".x(async () => {
+                await broker.AddVirtualHost(virtualHost = Random.AlphaNumeric(8));
+                await broker.SetPermissions(virtualHost, "guest");
+            });
+            "And a client configured to connect to the broker".x(async () => {
+                connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
+                    VirtualHost = virtualHost
+                };
+                subject = new AmqpClient(connectionConfiguration);
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client attempts to connect".x(async () => {
+                await subject.ConnectAsync();
+            });
+            "Then the broker should report the connected client".x(async () => {
+                var connections = await broker.GetConnections().ToListAsync();
+
+                connections.Should().Contain(new BrokerProxy.Connection(
+                    AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
+                    User          : "guest",
+                    State         : BrokerProxy.ConnectionState.Running,
+                    PeerProperties: connectionConfiguration.PeerProperties
+                ));
+            });
+        }
     }
 }

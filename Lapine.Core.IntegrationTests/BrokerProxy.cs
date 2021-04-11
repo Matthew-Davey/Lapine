@@ -110,6 +110,28 @@ namespace Lapine {
             }
         }
 
+        public async ValueTask AddVirtualHost(String virtualHost) {
+            await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add($"add_vhost {virtualHost}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteAsync();
+        }
+
+        public async ValueTask SetPermissions(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") {
+            await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add($"set_permissions -p {virtualHost} {user} {configure} {write} {read}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteAsync();
+        }
+
         public async ValueTask DisposeAsync() {
             await Cli.Wrap("docker")
                 .WithArguments($"stop {_container}")
