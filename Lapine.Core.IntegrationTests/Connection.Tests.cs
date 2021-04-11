@@ -17,9 +17,12 @@ namespace Lapine {
             "And a client configured to connect to the broker".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
                     PeerProperties = PeerProperties.Empty with {
-                        Product            = Commerce.Product(),
+                        ClientProvidedName = Random.AlphaNumeric(16),
+                        Copyright          = $"Copyright © {Date.Past():yyyy} {Company.CompanyName()}",
+                        Information        = Lorem.Sentence(),
+                        Platform           = Lorem.Sentence(),
+                        Product            = Commerce.ProductName(),
                         Version            = System.Semver(),
-                        ClientProvidedName = Random.AlphaNumeric(16)
                     }
                 };
                 subject = new AmqpClient(connectionConfiguration);
@@ -28,14 +31,13 @@ namespace Lapine {
                 await subject.ConnectAsync();
             });
             "Then the broker should report the connected client".x(async () => {
-                var connections = await broker.GetConnectionsAsync().ToListAsync();
+                var connections = await broker.GetConnections().ToListAsync();
 
                 connections.Should().Contain(new BrokerProxy.Connection(
-                    User:    "guest",
-                    State:   "running",
-                    Product: connectionConfiguration.PeerProperties.Product,
-                    Version: connectionConfiguration.PeerProperties.Version,
-                    Name:    connectionConfiguration.PeerProperties.ClientProvidedName
+                    AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
+                    User          : "guest",
+                    State         : BrokerProxy.ConnectionState.Running,
+                    PeerProperties: connectionConfiguration.PeerProperties
                 ));
             });
         }
@@ -55,7 +57,7 @@ namespace Lapine {
                 await subject.DisposeAsync();
             });
             "Then the broker should report no open connections".x(async () => {
-                var connections = await broker.GetConnectionsAsync().ToListAsync();
+                var connections = await broker.GetConnections().ToListAsync();
 
                 connections.Should().BeEmpty();
             });

@@ -8,7 +8,19 @@ namespace Lapine {
     using Newtonsoft.Json.Linq;
 
     public class BrokerProxy : IAsyncDisposable {
-        public record Connection(String User, String State, String? Product, String? Version, String? Name);
+        public enum ConnectionState {
+            Starting,
+            Tuning,
+            Opening,
+            Running,
+            Flow,
+            Blocking,
+            Blocked,
+            Closing,
+            Closed
+        }
+
+        public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
 
         readonly String _container;
 
@@ -69,13 +81,13 @@ namespace Lapine {
             };
         }
 
-        public async IAsyncEnumerable<Connection> GetConnectionsAsync() {
+        public async IAsyncEnumerable<Connection> GetConnections() {
             var process = await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
                     .Add("rabbitmqctl")
-                    .Add("list_connections user state client_properties", escape: false)
+                    .Add("list_connections auth_mechanism user state client_properties", escape: false)
                     .Add("--formatter json", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync();
@@ -83,13 +95,18 @@ namespace Lapine {
             var connections = JArray.Parse(process.StandardOutput);
 
             foreach (var connection in connections) {
-                var user    = (String)connection.SelectToken("$.user");
-                var state   = (String)connection.SelectToken("$.state");
-                var product = (String)connection.SelectToken("$.client_properties[0][2]");
-                var version = (String)connection.SelectToken("$.client_properties[1][2]");
-                var name    = (String)connection.SelectToken("$.client_properties[5][2]");
+                var authMechanism = (String)connection.SelectToken("$.auth_mechanism");
+                var user          = (String)connection.SelectToken("$.user");
+                var state         = Enum.Parse<ConnectionState>((String)connection.SelectToken("$.state"), ignoreCase: true);
 
-                yield return new Connection(user, state, product, version, name);
+                yield return new Connection(authMechanism, user, state, PeerProperties.Empty with {
+                    Product            = (String)connection.SelectToken("$.client_properties[0][2]"),
+                    Version            = (String)connection.SelectToken("$.client_properties[1][2]"),
+                    Platform           = (String)connection.SelectToken("$.client_properties[2][2]"),
+                    Copyright          = (String)connection.SelectToken("$.client_properties[3][2]"),
+                    Information        = (String)connection.SelectToken("$.client_properties[4][2]"),
+                    ClientProvidedName = (String)connection.SelectToken("$.client_properties[5][2]")
+                });
             }
         }
 
