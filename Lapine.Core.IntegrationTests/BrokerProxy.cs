@@ -110,6 +110,17 @@ namespace Lapine {
             }
         }
 
+        public async ValueTask AddUser(String username, String password) {
+            await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add($"add_user {username} {password}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteAsync();
+        }
+
         public async ValueTask AddVirtualHost(String virtualHost) {
             await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments

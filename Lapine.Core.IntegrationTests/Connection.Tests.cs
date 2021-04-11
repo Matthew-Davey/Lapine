@@ -45,6 +45,38 @@ namespace Lapine {
         [Scenario]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
+        public void ConnectToLocalBrokerAsUser(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String username, String password) {
+            "Given a running broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has a configured user".x(async () => {
+                await broker.AddUser(username = Person.UserName, password = Random.Utf16String(16));
+                await broker.SetPermissions("/", username);
+            });
+            "And a client configured to connect to the broker as that user".x(async () => {
+                connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
+                    AuthenticationStrategy = new PlainAuthenticationStrategy(username, password)
+                };
+                subject = new AmqpClient(connectionConfiguration);
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client attempts to connect".x(async () => {
+                await subject.ConnectAsync();
+            });
+            "Then the broker should report the connected client".x(async () => {
+                var connections = await broker.GetConnections().ToListAsync();
+
+                connections.Should().Contain(new BrokerProxy.Connection(
+                    AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
+                    User          : username,
+                    State         : BrokerProxy.ConnectionState.Running,
+                    PeerProperties: connectionConfiguration.PeerProperties
+                ));
+            });
+        }
+
+        [Scenario]
+        [Example("3.8-alpine")]
+        [Example("3.7-alpine")]
         public void DisconnectFromLocalBroker(String brokerVersion, AmqpClient subject, BrokerProxy broker) {
             "Given a running broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
