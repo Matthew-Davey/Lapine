@@ -27,6 +27,7 @@ namespace Lapine.Agents {
             public record PurgeQueue(String Queue, TaskCompletionSource Promise);
             public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
             public record GetMessage(String Queue, Boolean Ack, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise);
+            public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
@@ -182,6 +183,11 @@ namespace Lapine.Agents {
                         case GetMessage get: {
                             context.Send(state.Dispatcher, new BasicGet(get.Queue, !get.Ack));
                             _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get.Promise));
+                            break;
+                        }
+                        case SetPrefetchLimit prefetch: {
+                            context.Send(state.Dispatcher, new BasicQos(0, prefetch.Limit, prefetch.Global));
+                            _behaviour.BecomeStacked(AwaitingBasicQosOk(prefetch.Promise));
                             break;
                         }
                     }
@@ -358,6 +364,18 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
             }
+
+            Receive AwaitingBasicQosOk(TaskCompletionSource promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case BasicQosOk ok: {
+                            promise.SetResult();
+                            _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
         }
     }
 }

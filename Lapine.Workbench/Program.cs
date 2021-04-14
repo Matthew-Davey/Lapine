@@ -28,6 +28,7 @@ namespace Lapine.Workbench {
             await amqpClient.ConnectAsync();
 
             var channel = await amqpClient.OpenChannelAsync();
+            await channel.SetPrefetchLimit(1, PrefetchLimitScope.Channel);
 
             await channel.DeclareExchangeAsync(ExchangeDefinition.Create("test.exchange") with {
                 Type       = "topic",

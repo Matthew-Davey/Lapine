@@ -1,6 +1,7 @@
 namespace Lapine.Client {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Threading.Tasks;
     using Lapine.Protocol;
     using Proto;
@@ -79,6 +80,16 @@ namespace Lapine.Client {
                 null => null,
                 (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
             };
+        }
+
+        public async ValueTask SetPrefetchLimit(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new SetPrefetchLimit(limit, scope switch {
+                PrefetchLimitScope.Consumer => false,
+                PrefetchLimitScope.Channel  => true,
+                _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
+            }, promise));
+            await promise.Task;
         }
     }
 }
