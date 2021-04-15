@@ -5,6 +5,7 @@ namespace Lapine {
     using Bogus;
     using FluentAssertions;
     using Xbehave;
+    using Xunit;
 
     public class ConnectionTests : Faker {
         [Scenario]
@@ -71,6 +72,27 @@ namespace Lapine {
                     State         : BrokerProxy.ConnectionState.Running,
                     PeerProperties: connectionConfiguration.PeerProperties
                 ));
+            });
+        }
+
+        [Scenario]
+        [Example("3.8-alpine")]
+        [Example("3.7-alpine")]
+        public void ConnectToLocalBrokerWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, Exception connectionError) {
+            "Given a running broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And a client configured to connect to the broker as an invalid user".x(async () => {
+                connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
+                    AuthenticationStrategy = new PlainAuthenticationStrategy(Person.UserName, Random.Utf16String(16))
+                };
+                subject = new AmqpClient(connectionConfiguration);
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client attempts to connect".x(async () => {
+                connectionError = await Record.ExceptionAsync(async () => await subject.ConnectAsync());
+            });
+            "Then the client should have thrown a connection error".x(() => {
+                connectionError.Should().NotBeNull();
             });
         }
 

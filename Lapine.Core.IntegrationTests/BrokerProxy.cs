@@ -73,13 +73,10 @@ namespace Lapine {
         /// <summary>
         /// Gets a `ConnectionConfiguration` instance which is pre-configured to connect to the broker.
         /// </summary>
-        public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() {
-            var ip = await GetIPAddressAsync();
-
-            return ConnectionConfiguration.Default with {
-                Endpoints = new [] { new IPEndPoint(ip, 5672) }
+        public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() =>
+            ConnectionConfiguration.Default with {
+                Endpoints = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) }
             };
-        }
 
         public async IAsyncEnumerable<Connection> GetConnections() {
             var process = await Cli.Wrap("docker")
@@ -110,7 +107,7 @@ namespace Lapine {
             }
         }
 
-        public async ValueTask AddUser(String username, String password) {
+        public async ValueTask AddUser(String username, String password) =>
             await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -119,9 +116,8 @@ namespace Lapine {
                     .Add($"add_user {username} {password}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteAsync();
-        }
 
-        public async ValueTask AddVirtualHost(String virtualHost) {
+        public async ValueTask AddVirtualHost(String virtualHost) =>
             await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -130,9 +126,8 @@ namespace Lapine {
                     .Add($"add_vhost {virtualHost}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteAsync();
-        }
 
-        public async ValueTask SetPermissions(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") {
+        public async ValueTask SetPermissions(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") =>
             await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -141,13 +136,11 @@ namespace Lapine {
                     .Add($"set_permissions -p {virtualHost} {user} {configure} {write} {read}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteAsync();
-        }
 
-        public async ValueTask DisposeAsync() {
+        public async ValueTask DisposeAsync() =>
             await Cli.Wrap("docker")
                 .WithArguments($"stop {_container}")
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteAsync();
-        }
     }
 }
