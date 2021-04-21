@@ -3,6 +3,7 @@ namespace Lapine.Agents {
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
+    using Lapine.Client;
     using Lapine.Protocol;
     using Lapine.Protocol.Commands;
     using Proto;

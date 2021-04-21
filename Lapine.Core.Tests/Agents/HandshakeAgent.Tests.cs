@@ -1,7 +1,7 @@
 namespace Lapine.Agents {
     using System;
     using System.Collections.Generic;
-    using Lapine.Protocol;
+    using Lapine.Client;
     using Lapine.Protocol.Commands;
     using Proto;
     using Proto.Mailbox;

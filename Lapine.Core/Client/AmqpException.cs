@@ -30,13 +30,13 @@ namespace Lapine.Client {
             };
     }
 
-    public class UnroutableException : AmqpException {
+    sealed class UnroutableException : AmqpException {
         public UnroutableException(String message) : base(message) {
             // Intentionally empty...
         }
     }
 
-    public class PreconditionFailedException : AmqpException {
+    sealed class PreconditionFailedException : AmqpException {
         public PreconditionFailedException(String message) : base(message) {
             // Intentionally empty...
         }

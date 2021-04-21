@@ -11,7 +11,7 @@ namespace Lapine.Agents {
 
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.SocketAgent.Protocol;
-    using static Lapine.ConnectionConfiguration;
+    using static Lapine.Client.ConnectionConfiguration;
 
     static class SocketAgent {
         static public class Protocol {

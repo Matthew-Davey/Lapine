@@ -5,7 +5,7 @@ namespace Lapine.Agents {
     using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
-    using Lapine.Agents.Middleware;
+    using Lapine.Client;
     using Proto;
     using Proto.Timers;
 

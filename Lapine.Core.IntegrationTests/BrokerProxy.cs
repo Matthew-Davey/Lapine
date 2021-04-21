@@ -3,6 +3,7 @@ namespace Lapine {
     using System.Collections.Generic;
     using System.Net;
     using System.Threading.Tasks;
+    using Lapine.Client;
     using CliWrap;
     using CliWrap.Buffered;
     using Newtonsoft.Json.Linq;

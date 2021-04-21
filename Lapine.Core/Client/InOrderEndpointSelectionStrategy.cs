@@ -1,4 +1,4 @@
-namespace Lapine {
+namespace Lapine.Client {
     using System.Collections.Generic;
     using System.Net;
 
