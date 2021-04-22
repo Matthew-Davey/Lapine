@@ -99,7 +99,7 @@ namespace Lapine.Agents {
                                 noWait      : false,
                                 arguments   : declare.Definition.Arguments
                             ));
-                            _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(declare.Promise));
+                            _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(state, declare.Promise));
                             break;
                         }
                         case DeleteExchange delete: {
@@ -206,12 +206,20 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive AwaitingExchangeDeclareOk(TaskCompletionSource promise) =>
+            Receive AwaitingExchangeDeclareOk(State state, TaskCompletionSource promise) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case ExchangeDeclareOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                        case ChannelClose close: {
+                            context.Send(state.Dispatcher, new ChannelCloseOk());
+                            var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
+                            promise.SetException(exception);
+                            _behaviour.Become(Closed);
+
                             break;
                         }
                     }

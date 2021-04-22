@@ -7,15 +7,8 @@ namespace Lapine.Workbench {
 
     class Program {
         static async Task Main() {
-            var completion = new TaskCompletionSource<Int32>();
-
-            Console.CancelKeyPress += (_, args) => {
-                args.Cancel = true;
-                completion.SetResult(0);
-            };
-
             var connectionConfiguration = ConnectionConfiguration.Default with {
-                HeartbeatFrequency = TimeSpan.FromSeconds(10),
+                HeartbeatFrequency = TimeSpan.FromSeconds(60),
                 ConnectionTimeout = TimeSpan.MaxValue,
                 PeerProperties = PeerProperties.Default with {
                     Product            = "Lapine.Workbench",
@@ -35,29 +28,32 @@ namespace Lapine.Workbench {
                 Durability = Durability.Ephemeral,
                 AutoDelete = true
             });
-            await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
-                Durability = Durability.Ephemeral,
+            await channel.DeclareExchangeAsync(ExchangeDefinition.Create("test.exchange") with {
+                Type       = "topic",
+                Durability = Durability.Durable,
                 AutoDelete = true
             });
-            await channel.BindQueueAsync("test.exchange", "test.queue");
-            await channel.PurgeQueueAsync("test.queue");
+            // await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
+            //     Durability = Durability.Ephemeral,
+            //     AutoDelete = true
+            // });
+            // await channel.BindQueueAsync("test.exchange", "test.queue");
+            // await channel.PurgeQueueAsync("test.queue");
 
-            var body = UTF8.GetBytes("test message").AsMemory();
-            var properties = MessageProperties.Empty with {
-                ContentType     = "text/plain",
-                ContentEncoding = UTF8.WebName,
-                DeliveryMode    = DeliveryMode.Persistent,
-                Timestamp       = DateTimeOffset.UtcNow
-            };
-            await channel.PublishAsync("test.exchange", "#", (properties, body));
+            // var body = UTF8.GetBytes("test message").AsMemory();
+            // var properties = MessageProperties.Empty with {
+            //     ContentType     = "text/plain",
+            //     ContentEncoding = UTF8.WebName,
+            //     DeliveryMode    = DeliveryMode.Persistent,
+            //     Timestamp       = DateTimeOffset.UtcNow
+            // };
+            // await channel.PublishAsync("test.exchange", "#", (properties, body));
 
-            await Task.Delay(10000);
+            // await Task.Delay(10000);
 
-            var message = await channel.GetMessage("test.queue", false);
+            // var message = await channel.GetMessage("test.queue", false);
 
-            await channel.UnbindQueueAsync("test.exchange", "test.queue");
-
-            Environment.ExitCode = await completion.Task;
+            // await channel.UnbindQueueAsync("test.exchange", "test.queue");
 
             await channel.Close();
 
