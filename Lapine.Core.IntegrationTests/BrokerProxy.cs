@@ -2,6 +2,7 @@ namespace Lapine {
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Diagnostics;
     using System.Net;
     using System.Threading.Tasks;
     using Lapine.Client;
@@ -77,7 +78,11 @@ namespace Lapine {
         /// </summary>
         public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() =>
             ConnectionConfiguration.Default with {
-                Endpoints = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) }
+                Endpoints          = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
+                HeartbeatFrequency = Debugger.IsAttached switch {
+                    true  => TimeSpan.Zero, // Zero disables heartbeats - see https://www.rabbitmq.com/heartbeats.html#heartbeats-timeout
+                    false => ConnectionConfiguration.DefaultHeartbeatFrequency
+                }
             };
 
         public async IAsyncEnumerable<Connection> GetConnections() {
