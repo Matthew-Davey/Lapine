@@ -9,14 +9,14 @@ namespace Lapine.Client {
         static internal AmqpException Create(UInt16 replyCode, String message) =>
             replyCode switch {
                 // 311 content-too-large
-                312 => new UnroutableException(message.Replace("NO_ROUTE", String.Empty)),
+                312 => new UnroutableException(message),
                 // 313 no-consumers
                 // 320 connection-forced
                 // 402 invalid-path
-                // 403 access-refused
+                403 => new AccessRefusedException(message),
                 // 404 not-found
                 // 405 resource-locked
-                406 => new PreconditionFailedException(message.Replace("PRECONDITION_FAILED - ", String.Empty)),
+                406 => new PreconditionFailedException(message),
                 // 501 frame-error
                 // 502 syntax-error
                 // 503 command-invalid
@@ -31,14 +31,20 @@ namespace Lapine.Client {
     }
 
     sealed class UnroutableException : AmqpException {
-        public UnroutableException(String message) : base(message) {
-            // Intentionally empty...
+        public UnroutableException(String message)
+            : base(message.Replace("NO_ROUTE", String.Empty)) {
+        }
+    }
+
+    sealed class AccessRefusedException : AmqpException {
+        public AccessRefusedException(String message)
+            : base(message.Replace("ACCESS_REFUSED -", String.Empty)) {
         }
     }
 
     sealed class PreconditionFailedException : AmqpException {
-        public PreconditionFailedException(String message) : base(message) {
-            // Intentionally empty...
+        public PreconditionFailedException(String message)
+            : base(message.Replace("PRECONDITION_FAILED - ", String.Empty)) {
         }
     }
 }
