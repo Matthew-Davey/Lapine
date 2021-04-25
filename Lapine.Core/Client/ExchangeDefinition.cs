@@ -1,6 +1,7 @@
 namespace Lapine.Client {
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
 
     public sealed record ExchangeDefinition(
         String Name,
@@ -14,7 +15,7 @@ namespace Lapine.Client {
             Type      : type,
             Durability: Durability.Durable,
             AutoDelete: false,
-            Arguments : new Dictionary<String, Object>()
+            Arguments : ImmutableDictionary<String, Object>.Empty
         );
     };
 }

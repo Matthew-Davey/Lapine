@@ -1,6 +1,7 @@
 namespace Lapine {
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Net;
     using System.Threading.Tasks;
     using Lapine.Client;
@@ -105,6 +106,42 @@ namespace Lapine {
                     Information        = (String)connection.SelectToken("$.client_properties[4][2]"),
                     ClientProvidedName = (String)connection.SelectToken("$.client_properties[5][2]")
                 });
+            }
+        }
+
+        public async IAsyncEnumerable<ExchangeDefinition> GetExchanges() {
+            var process = await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add("list_exchanges name type durable auto_delete arguments", escape: false)
+                    .Add("--formatter json", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync();
+
+            var exchanges = JArray.Parse(process.StandardOutput);
+
+            foreach (var exchange in exchanges) {
+                var name       = (String)exchange.SelectToken("$.name");
+                var type       = (String)exchange.SelectToken("$.type");
+                var durable    = (Boolean)exchange.SelectToken("$.durable");
+                var autoDelete = (Boolean)exchange.SelectToken("$.auto_delete");
+                var arguments  = exchange.SelectToken("$.arguments");
+
+                yield return ExchangeDefinition.Create(name) with {
+                    Type       = type,
+                    AutoDelete = autoDelete,
+                    Durability = durable switch {
+                        true  => Durability.Durable,
+                        false => Durability.Ephemeral
+                    },
+                    Arguments  = arguments switch {
+                        JArray arr when arr.Count == 0 => ImmutableDictionary<String, Object>.Empty,
+                        JObject obj                    => obj.ToObject<Dictionary<String, Object>>(),
+                        _                              => throw new Exception("Unexpected rabbitmqctl output")
+                    },
+                };
             }
         }
 
