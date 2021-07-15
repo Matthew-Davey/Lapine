@@ -12,6 +12,7 @@ namespace Lapine.Agents {
     using static System.Math;
     using static System.Text.Encoding;
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.HandshakeAgent.Protocol;
 
     static class HandshakeAgent {
@@ -40,7 +41,7 @@ namespace Lapine.Agents {
                 switch (context.Message) {
                     case BeginHandshake handshake: {
                         context.Scheduler().SendOnce(handshake.ConnectionConfiguration.ConnectionTimeout, context.Self!, new TimeoutExpired());
-                        context.Send(handshake.Dispatcher, ProtocolHeader.Default);
+                        context.Send(handshake.Dispatcher, Dispatch.ProtocolHeader(ProtocolHeader.Default));
                         _behaviour.Become(AwaitConnectionStart(handshake.ConnectionConfiguration, handshake.Listener, handshake.Dispatcher));
                         break;
                     }
@@ -73,12 +74,12 @@ namespace Lapine.Agents {
 
                             var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(0, Array.Empty<Byte>());
 
-                            context.Send(dispatcher, new ConnectionStartOk(
+                            context.Send(dispatcher, Dispatch.Command(new ConnectionStartOk(
                                 peerProperties: connectionConfiguration.PeerProperties.ToDictionary(),
                                 mechanism     : connectionConfiguration.AuthenticationStrategy.Mechanism,
                                 response      : UTF8.GetString(authenticationResponse),
                                 locale        : connectionConfiguration.Locale
-                            ));
+                            )));
                             _behaviour.Become(AwaitConnectionSecureOrTune(connectionConfiguration, listener, dispatcher, message.ServerProperties, 0));
                             return CompletedTask;
                         }
@@ -97,7 +98,7 @@ namespace Lapine.Agents {
                         case ConnectionSecure message: {
                             var challenge = UTF8.GetBytes(message.Challenge);
                             var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(stage: ++authenticationStage, challenge: challenge);
-                            context.Send(dispatcher, new ConnectionSecureOk(UTF8.GetString(authenticationResponse)));
+                            context.Send(dispatcher, Dispatch.Command(new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
                             _behaviour.Become(AwaitConnectionSecureOrTune(connectionConfiguration, listener, dispatcher, serverProperties, authenticationStage));
                             return CompletedTask;
                         }
@@ -106,14 +107,14 @@ namespace Lapine.Agents {
                             var maximumFrameSize    = Min(message.FrameMax, connectionConfiguration.MaximumFrameSize);
                             var maximumChannelCount = Min(message.ChannelMax, connectionConfiguration.MaximumChannelCount);
 
-                            context.Send(dispatcher, new ConnectionTuneOk(
+                            context.Send(dispatcher, Dispatch.Command(new ConnectionTuneOk(
                                 channelMax: maximumChannelCount,
                                 frameMax  : maximumFrameSize,
                                 heartbeat : heartbeatFrequency
-                            ));
-                            context.Send(dispatcher, new ConnectionOpen(
+                            )));
+                            context.Send(dispatcher, Dispatch.Command(new ConnectionOpen(
                                 virtualHost: connectionConfiguration.VirtualHost
-                            ));
+                            )));
                             _behaviour.Become(AwaitConnectionOpenOk(listener, maximumChannelCount, maximumFrameSize, TimeSpan.FromSeconds(heartbeatFrequency), serverProperties));
                             return CompletedTask;
                         }

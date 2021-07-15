@@ -12,6 +12,22 @@ namespace Lapine.Agents {
     static class DispatcherAgent {
         static public class Protocol {
             public record DispatchTo(PID TxD, UInt16 ChannelId);
+            public record Dispatch(Object Entity) {
+                static public Dispatch ProtocolHeader(ProtocolHeader protocolHeader) =>
+                    new (protocolHeader);
+
+                static public Dispatch Frame(RawFrame frame) =>
+                    new (frame);
+
+                static public Dispatch Command(ICommand command) =>
+                    new (command);
+
+                static public Dispatch ContentHeader(ContentHeader header) =>
+                    new (header);
+
+                static public Dispatch ContentBody(ReadOnlyMemory<Byte> body) =>
+                    new (body);
+            }
         }
 
         static public Props Create() =>
@@ -39,25 +55,25 @@ namespace Lapine.Agents {
             static Receive Dispatching(UInt16 channelId, PID txd) =>
                 (IContext context) => {
                     switch (context.Message) {
-                        case ProtocolHeader header: {
+                        case Dispatch { Entity: ProtocolHeader header }: {
                             context.Send(txd, new Transmit(header));
                             break;
                         }
-                        case RawFrame frame: {
+                        case Dispatch { Entity: RawFrame frame }: {
                             context.Send(txd, new Transmit(frame));
                             break;
                         }
-                        case ICommand command: {
+                        case Dispatch { Entity: ICommand command }: {
                             var frame = RawFrame.Wrap(in channelId, command);
                             context.Send(txd, new Transmit(frame));
                             break;
                         }
-                        case ContentHeader contentHeader: {
+                        case Dispatch { Entity: ContentHeader contentHeader }: {
                             var frame = RawFrame.Wrap(in channelId, contentHeader);
                             context.Send(txd, new Transmit(frame));
                             break;
                         }
-                        case ReadOnlyMemory<Byte> body: {
+                        case Dispatch { Entity: ReadOnlyMemory<Byte> body }: {
                             var frame = RawFrame.Wrap(in channelId, body.Span);
                             context.Send(txd, new Transmit(frame));
                             break;

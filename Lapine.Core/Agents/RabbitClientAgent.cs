@@ -219,19 +219,21 @@ namespace Lapine.Agents {
                             );
                             context.Send(state.FrameRouter, new AddRoutee(channelId, channelAgent));
                             context.Send(channelAgent, new Open(context.Self!, channelId, state.TxD!));
-                            _behaviour.Become(OpeningChannel(state, openChannel.Promise));
+                            _behaviour.Become(OpeningChannel(channelId, state, openChannel.Promise));
                             break;
                         };
                     }
                     return CompletedTask;
                 };
 
-            Receive OpeningChannel(ConnectedState state, TaskCompletionSource<PID> promise) =>
+            Receive OpeningChannel(UInt16 channelId, ConnectedState state, TaskCompletionSource<PID> promise) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case Opened opened: {
                             promise.SetResult(opened.ChannelAgent);
-                            _behaviour.Become(Connected(state with { AvailableChannelIds = state.AvailableChannelIds!.RemoveAt(0) }));
+                            _behaviour.Become(Connected(state with {
+                                AvailableChannelIds = state.AvailableChannelIds.Remove(channelId)
+                            }));
                             break;
                         }
                     }

@@ -10,6 +10,7 @@ namespace Lapine.Agents {
     using Xunit;
 
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.HeartbeatAgent.Protocol;
 
     public class HeartbeatAgentTests {
@@ -44,7 +45,7 @@ namespace Lapine.Agents {
             });
             "Then at least 3 heartbeat frames should have been transmitted".x(() => {
                 Assert.True(3 <= _sent.Count(message => message switch {
-                    RawFrame { Type: FrameType.Heartbeat } => true,
+                    Dispatch { Entity: RawFrame { Type: FrameType.Heartbeat } } => true,
                     _ => false
                 }));
             });

@@ -6,13 +6,15 @@ namespace Lapine.Agents {
     using Proto;
     using Proto.Timers;
 
+    using static System.DateTime;
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.HeartbeatAgent.Protocol;
+    using static Lapine.Agents.SocketAgent.Protocol;
 
     static class HeartbeatAgent {
         static public class Protocol {
             public record StartHeartbeat(PID Dispatcher, TimeSpan Frequency, PID Listener);
-            public record StopHeartbeat();
             public record RemoteFlatline();
 
             internal record Beat();
@@ -34,32 +36,31 @@ namespace Lapine.Agents {
                 switch (context.Message) {
                     case StartHeartbeat start: {
                         var cancelHeartbeat = context.Scheduler().RequestRepeatedly(start.Frequency, start.Frequency, context.Self!, new Beat());
-                        _behaviour.Become(Beating(start.Frequency, cancelHeartbeat, start.Dispatcher, start.Listener, DateTime.UtcNow));
+                        _behaviour.Become(Beating(start.Frequency, cancelHeartbeat, start.Dispatcher, start.Listener, UtcNow));
                         break;
                     };
                 }
                 return CompletedTask;
             }
 
-            Receive Beating(TimeSpan frequency, CancellationTokenSource cancelHeartbeat, PID dispatcher, PID listener, DateTime lastRemoteHeartbeat) =>
+            static Receive Beating(TimeSpan frequency, CancellationTokenSource cancelHeartbeat, PID dispatcher, PID listener, DateTime lastRemoteHeartbeat) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case Beat _: {
-                            context.Send(dispatcher, RawFrame.Heartbeat);
+                            context.Send(dispatcher, Dispatch.Frame(RawFrame.Heartbeat));
 
-                            if ((DateTime.UtcNow - lastRemoteHeartbeat) > (frequency * 3)) {
+                            if ((UtcNow - lastRemoteHeartbeat) > (frequency * 3)) {
                                 context.Send(listener, new RemoteFlatline());
                             }
 
                             break;
                         }
-                        case StopHeartbeat _: {
-                            cancelHeartbeat.Cancel();
-                            _behaviour.Become(Idle);
+                        case FrameReceived { Frame: { Type: FrameType.Heartbeat } }: {
+                            lastRemoteHeartbeat = UtcNow;
                             break;
                         }
-                        case SocketAgent.Protocol.FrameReceived received when received.Frame.Type == FrameType.Heartbeat: {
-                            _behaviour.Become(Beating(frequency, cancelHeartbeat, dispatcher, listener, DateTime.UtcNow));
+                        case Stopping _: {
+                            cancelHeartbeat.Cancel();
                             break;
                         }
                     }

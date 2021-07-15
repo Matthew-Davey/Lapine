@@ -60,7 +60,7 @@ namespace Lapine.Agents {
                             )
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
-                        context.Send(state.Dispatcher, new ChannelOpen());
+                        context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
                         _behaviour.Become(Opening(state, open.Listener));
                         break;
                     }
@@ -84,12 +84,12 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case Close close: {
-                            context.Send(state.Dispatcher, new ChannelClose(0, String.Empty, (0, 0)));
+                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
                             _behaviour.Become(AwaitingChannelCloseOk(close.Promise));
                             break;
                         }
                         case DeclareExchange declare: {
-                            context.Send(state.Dispatcher, new ExchangeDeclare(
+                            context.Send(state.Dispatcher, Dispatch.Command(new ExchangeDeclare(
                                 exchangeName: declare.Definition.Name,
                                 exchangeType: declare.Definition.Type,
                                 passive     : false,
@@ -98,21 +98,21 @@ namespace Lapine.Agents {
                                 @internal   : false,
                                 noWait      : false,
                                 arguments   : declare.Definition.Arguments
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(state, declare.Promise));
                             break;
                         }
                         case DeleteExchange delete: {
-                            context.Send(state.Dispatcher, new ExchangeDelete(
+                            context.Send(state.Dispatcher, Dispatch.Command(new ExchangeDelete(
                                 exchangeName: delete.Exchange,
                                 ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
                                 noWait      : false
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingExchangeDeleteOk(delete.Promise));
                             break;
                         }
                         case DeclareQueue declare: {
-                            context.Send(state.Dispatcher, new QueueDeclare(
+                            context.Send(state.Dispatcher, Dispatch.Command(new QueueDeclare(
                                 queueName : declare.Definition.Name,
                                 passive   : false,
                                 durable   : declare.Definition.Durability > Durability.Ephemeral,
@@ -120,55 +120,64 @@ namespace Lapine.Agents {
                                 autoDelete: declare.Definition.AutoDelete,
                                 noWait    : false,
                                 arguments : declare.Definition.Arguments
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingQueueDeclareOk(declare.Promise));
                             break;
                         }
                         case DeleteQueue delete: {
-                            context.Send(state.Dispatcher, new QueueDelete(
+                            context.Send(state.Dispatcher, Dispatch.Command(new QueueDelete(
                                 queueName: delete.Queue,
                                 ifUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
                                 ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
                                 noWait   : false
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingQueueDeleteOk(delete.Promise));
                             break;
                         }
                         case BindQueue bind: {
-                            context.Send(state.Dispatcher, new QueueBind(
+                            context.Send(state.Dispatcher, Dispatch.Command(new QueueBind(
                                 queueName   : bind.Queue,
                                 exchangeName: bind.Exchange,
                                 routingKey  : bind.RoutingKey,
                                 noWait      : false,
                                 arguments   : bind.Arguments
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingQueueBindOk(bind.Promise));
                             break;
                         }
                         case UnbindQueue unbind: {
-                            context.Send(state.Dispatcher, new QueueUnbind(
+                            context.Send(state.Dispatcher, Dispatch.Command(new QueueUnbind(
                                 queueName   : unbind.Queue,
                                 exchangeName: unbind.Exchange,
                                 routingKey  : unbind.RoutingKey,
                                 arguments   : unbind.Arguments
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingQueueUnbindOk(unbind.Promise));
                             break;
                         }
                         case PurgeQueue purge: {
-                            context.Send(state.Dispatcher, new QueuePurge(
+                            context.Send(state.Dispatcher, Dispatch.Command(new QueuePurge(
                                 queueName: purge.Queue,
                                 noWait   : false
-                            ));
+                            )));
                             _behaviour.BecomeStacked(AwaitingQueuePurgeOk(purge.Promise));
                             break;
                         }
                         case Publish publish: {
-                            context.Send(state.Dispatcher, new BasicPublish(publish.Exchange, publish.RoutingKey, publish.Mandatory, publish.Immediate));
-                            context.Send(state.Dispatcher, new ContentHeader(0x3C, (UInt64)publish.Message.Body.Length, publish.Message.Properties));
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicPublish(
+                                exchangeName: publish.Exchange,
+                                routingKey  : publish.RoutingKey,
+                                mandatory   : publish.Mandatory,
+                                immediate   : publish.Immediate
+                            )));
+                            context.Send(state.Dispatcher, Dispatch.ContentHeader(new ContentHeader(
+                                classId   : 0x3C,
+                                bodySize  : (UInt64)publish.Message.Body.Length,
+                                properties: publish.Message.Properties
+                            )));
 
                             foreach (var segment in publish.Message.Body.Split((Int32)_maxFrameSize)) {
-                                context.Send(state.Dispatcher, segment);
+                                context.Send(state.Dispatcher, Dispatch.ContentBody(segment));
                             }
 
                             if (publish.Mandatory || publish.Immediate) {
@@ -181,12 +190,16 @@ namespace Lapine.Agents {
                             break;
                         }
                         case GetMessage get: {
-                            context.Send(state.Dispatcher, new BasicGet(get.Queue, !get.Ack));
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicGet(get.Queue, !get.Ack)));
                             _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get.Promise));
                             break;
                         }
                         case SetPrefetchLimit prefetch: {
-                            context.Send(state.Dispatcher, new BasicQos(0, prefetch.Limit, prefetch.Global));
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicQos(
+                                prefetchSize : 0,
+                                prefetchCount: prefetch.Limit,
+                                global       : prefetch.Global
+                            )));
                             _behaviour.BecomeStacked(AwaitingBasicQosOk(prefetch.Promise));
                             break;
                         }
@@ -215,7 +228,7 @@ namespace Lapine.Agents {
                             break;
                         }
                         case ChannelClose close: {
-                            context.Send(state.Dispatcher, new ChannelCloseOk());
+                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
                             var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
                             promise.SetException(exception);
                             _behaviour.Become(Closed);

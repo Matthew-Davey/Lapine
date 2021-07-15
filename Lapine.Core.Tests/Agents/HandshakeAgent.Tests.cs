@@ -9,6 +9,7 @@ namespace Lapine.Agents {
     using Xunit;
 
     using static System.Threading.Tasks.Task;
+    using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.HandshakeAgent.Protocol;
 
     public class HandshakeAgentTests {
@@ -90,8 +91,8 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionStartOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    ConnectionStartOk _ => true,
-                    _                   => false
+                    Dispatch { Entity: ConnectionStartOk } => true,
+                    _ => false
                 });
             });
         }
@@ -118,13 +119,13 @@ namespace Lapine.Agents {
             });
             "Then it should send a ConnectionTuneOk message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    ConnectionTuneOk _ => true,
-                    _                  => false
+                    Dispatch { Entity: ConnectionTuneOk } => true,
+                    _ => false
                 });
             });
             "And it should send a ConnectionOpen message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    ConnectionOpen { VirtualHost: ConnectionConfiguration.DefaultVirtualHost } => true,
+                    Dispatch { Entity: ConnectionOpen { VirtualHost: ConnectionConfiguration.DefaultVirtualHost } } => true,
                     _ => false
                 });
             });
