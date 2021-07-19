@@ -157,6 +157,7 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case HandshakeCompleted completed: {
                             state.CancelTimeout.Cancel();
+                            context.Send(state.FrameRouter, new RemoveRoutee(0, state.HandshakeAgent));
                             context.Stop(state.HandshakeAgent);
                             var availableChannels = Enumerable.Range(1, completed.MaxChannelCount)
                                 .Select(channelId => (UInt16)channelId)

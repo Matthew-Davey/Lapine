@@ -17,7 +17,7 @@ namespace Lapine.Client {
             _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         }
 
-        public async ValueTask Close() {
+        public async ValueTask CloseAsync() {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new Close(promise));
             await promise.Task;
@@ -73,7 +73,7 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
-        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessage(String queue, Boolean ack) {
+        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Boolean ack) {
             var promise = new TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>();
             _system.Root.Send(_agent, new GetMessage(queue, ack, promise));
             return await promise.Task switch {
@@ -82,7 +82,7 @@ namespace Lapine.Client {
             };
         }
 
-        public async ValueTask SetPrefetchLimit(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {
+        public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {
             var promise = new TaskCompletionSource();
             _system.Root.Send(_agent, new SetPrefetchLimit(limit, scope switch {
                 PrefetchLimitScope.Consumer => false,
@@ -90,6 +90,12 @@ namespace Lapine.Client {
                 _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
             }, promise));
             await promise.Task;
+        }
+
+        public async ValueTask<String> ConsumeAsync(String queue, Acknowledgements acknowledgements, Boolean exclusive, IReadOnlyDictionary<String, Object> arguments, MessageHandler handler) {
+            var promise = new TaskCompletionSource<String>();
+            _system.Root.Send(_agent, new Consume(queue, acknowledgements, exclusive, arguments, handler, promise));
+            return await promise.Task;
         }
     }
 }

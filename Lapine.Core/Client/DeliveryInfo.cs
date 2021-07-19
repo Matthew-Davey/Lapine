@@ -5,7 +5,7 @@ namespace Lapine.Client {
         UInt64 DeliveryTag,
         Boolean Redelivered,
         String Exchange,
-        String RoutingKey,
-        UInt32 MessageCount
+        String? RoutingKey,
+        UInt32? MessageCount
     );
 }

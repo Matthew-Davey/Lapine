@@ -2,6 +2,7 @@ namespace Lapine.Agents {
     using System;
     using System.Buffers;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
     using Lapine.Client;
@@ -12,6 +13,7 @@ namespace Lapine.Agents {
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.ChannelAgent.Protocol;
+    using static Lapine.Agents.ConsumerAgent.Protocol;
 
     static class ChannelAgent {
         static public class Protocol {
@@ -28,6 +30,7 @@ namespace Lapine.Agents {
             public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
             public record GetMessage(String Queue, Boolean Ack, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise);
             public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
+            public record Consume(String Queue, Acknowledgements Acknowledgements, Boolean Exclusive, IReadOnlyDictionary<String, Object> Arguments, MessageHandler Handler, TaskCompletionSource<String> Promise);
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
@@ -36,7 +39,7 @@ namespace Lapine.Agents {
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
 
-        record State(PID Dispatcher);
+        record State(PID Dispatcher, IImmutableDictionary<String, PID> Consumers);
 
         class Actor : IActor {
             readonly UInt32 _maxFrameSize;
@@ -57,7 +60,8 @@ namespace Lapine.Agents {
                             Dispatcher: context.SpawnNamed(
                                 name: "dispatcher",
                                 props: DispatcherAgent.Create()
-                            )
+                            ),
+                            Consumers: ImmutableDictionary<String, PID>.Empty
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
                         context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
@@ -93,9 +97,9 @@ namespace Lapine.Agents {
                                 exchangeName: declare.Definition.Name,
                                 exchangeType: declare.Definition.Type,
                                 passive     : false,
-                                durable     : declare.Definition.Durability > Durability.Ephemeral,
+                                durable     : declare.Definition.Durability > Durability.Transient,
                                 autoDelete  : declare.Definition.AutoDelete,
-                                @internal   : false,
+                                @internal   : declare.Definition.Internal,
                                 noWait      : false,
                                 arguments   : declare.Definition.Arguments
                             )));
@@ -115,7 +119,7 @@ namespace Lapine.Agents {
                             context.Send(state.Dispatcher, Dispatch.Command(new QueueDeclare(
                                 queueName : declare.Definition.Name,
                                 passive   : false,
-                                durable   : declare.Definition.Durability > Durability.Ephemeral,
+                                durable   : declare.Definition.Durability > Durability.Transient,
                                 exclusive : declare.Definition.Exclusive,
                                 autoDelete: declare.Definition.AutoDelete,
                                 noWait    : false,
@@ -201,6 +205,35 @@ namespace Lapine.Agents {
                                 global       : prefetch.Global
                             )));
                             _behaviour.BecomeStacked(AwaitingBasicQosOk(prefetch.Promise));
+                            break;
+                        }
+                        case Consume consume: {
+                            var consumerTag = $"{Guid.NewGuid()}";
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicConsume(
+                                queueName  : consume.Queue,
+                                consumerTag: consumerTag,
+                                noLocal    : false,
+                                noAck      : consume.Acknowledgements switch {
+                                    Acknowledgements.Auto   => true,
+                                    _ => false
+                                },
+                                exclusive  : consume.Exclusive,
+                                noWait     : false,
+                                arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
+                            )));
+                            _behaviour.BecomeStacked(AwaitingConsumeOk(state, consumerTag, consume.Handler, consume.Promise));
+                            break;
+                        }
+                        case BasicDeliver deliver: {
+                            var deliveryInfo = new DeliveryInfo(deliver.DeliveryTag, deliver.Redelivered, deliver.ExchangeName, null, null);
+
+                            if (state.Consumers.ContainsKey(deliver.ConsumerTag)) {
+                                var consumer = state.Consumers[deliver.ConsumerTag];
+                                _behaviour.BecomeStacked(AwaitingContentHeader(deliveryInfo, consumer));
+                            }
+                            else {
+                                // TODO: No handler....
+                            }
                             break;
                         }
                     }
@@ -351,14 +384,16 @@ namespace Lapine.Agents {
                 return (IContext context) => {
                     switch (context.Message) {
                         case ContentHeader header: {
-                            if (header.BodySize == 0) {
-                                promise.SetResult((delivery, header.Properties, Array.Empty<Byte>()));
-                                _behaviour.UnbecomeStacked();
-                            }
-                            else {
-                                _behaviour.UnbecomeStacked();
-                                _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, promise));
-                                break;
+                            _behaviour.UnbecomeStacked();
+                            switch (header.BodySize) {
+                                case 0: {
+                                    promise.SetResult((delivery, header.Properties, Memory<Byte>.Empty));
+                                    break;
+                                }
+                                default: {
+                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, promise));
+                                    break;
+                                }
                             }
                             break;
                         }
@@ -397,6 +432,66 @@ namespace Lapine.Agents {
                     }
                     return CompletedTask;
                 };
+
+            Receive AwaitingConsumeOk(State state, String consumerTag, MessageHandler handler, TaskCompletionSource<String> promise) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case BasicConsumeOk ok: {
+                            var consumer = context.SpawnNamed(
+                                name: $"consumer_{consumerTag}",
+                                props: ConsumerAgent.Create()
+                            );
+                            context.Send(consumer, new Start(consumerTag, handler, state.Dispatcher));
+                            _behaviour.Become(Open(state with {
+                                Consumers = state.Consumers.Add(consumerTag, consumer)
+                            }));
+                            promise.SetResult(consumerTag);
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingContentHeader(DeliveryInfo delivery, PID consumer) =>
+                (IContext context) => {
+                    switch (context.Message) {
+                        case ContentHeader header: {
+                            _behaviour.UnbecomeStacked();
+                            switch (header.BodySize) {
+                                case 0: {
+                                    context.Send(consumer, new HandleEmptyMessage(delivery, header.Properties));
+                                    break;
+                                }
+                                default: {
+                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, consumer, header.Properties, header.BodySize));
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+
+            Receive AwaitingContentBody(DeliveryInfo delivery, PID consumer, BasicProperties properties, UInt64 expectedSize) {
+                var buffer = new MemoryBufferWriter<Byte>((Int32)expectedSize);
+
+                return (IContext context) => {
+                    switch (context.Message) {
+                        case ReadOnlyMemory<Byte> segment: {
+                            buffer.Write(segment.Span);
+                            if ((UInt64)buffer.WrittenCount >= expectedSize) {
+                                var body = buffer.WrittenMemory;
+                                context.Send(consumer, new HandleMessage(delivery, properties, body, buffer));
+                                _behaviour.UnbecomeStacked();
+                            }
+                            break;
+                        }
+                    }
+
+                    return CompletedTask;
+                };
+            }
         }
     }
 }

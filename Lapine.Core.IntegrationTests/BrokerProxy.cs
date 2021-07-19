@@ -134,17 +134,16 @@ namespace Lapine {
                 var autoDelete = (Boolean)exchange.SelectToken("$.auto_delete");
                 var arguments  = exchange.SelectToken("$.arguments");
 
-                yield return ExchangeDefinition.Create(name) with {
-                    Type       = type,
+                yield return ExchangeDefinition.Create(name, type) with {
                     AutoDelete = autoDelete,
                     Durability = durable switch {
                         true  => Durability.Durable,
-                        false => Durability.Ephemeral
+                        false => Durability.Transient
                     },
                     Arguments  = arguments switch {
-                        JArray arr when arr.Count == 0 => ImmutableDictionary<String, Object>.Empty,
-                        JObject obj                    => obj.ToObject<Dictionary<String, Object>>(),
-                        _                              => throw new Exception("Unexpected rabbitmqctl output")
+                        JArray { Count: 0 } => ImmutableDictionary<String, Object>.Empty,
+                        JObject obj         => obj.ToObject<Dictionary<String, Object>>(),
+                        _                   => throw new Exception("Unexpected rabbitmqctl output")
                     },
                 };
             }

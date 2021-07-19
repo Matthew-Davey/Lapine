@@ -11,6 +11,7 @@ namespace Lapine.Agents {
     static class FrameRouterAgent {
         static public class Protocol {
             public record AddRoutee(UInt16 ChannelId, PID Routee);
+            public record RemoveRoutee(UInt16 ChannelId, PID Routee);
             public record Reset();
         }
 
@@ -35,6 +36,12 @@ namespace Lapine.Agents {
                                 false => routees.Add(add.ChannelId, ImmutableHashSet<PID>.Empty.Add(add.Routee))
                             };
                             _behaviour.Become(Routing(newRoutees));
+                            break;
+                        }
+                        case RemoveRoutee remove: {
+                            if (routees.ContainsKey(remove.ChannelId)) {
+                                _behaviour.Become(Routing(routees.SetItem(remove.ChannelId, routees[remove.ChannelId].Remove(remove.Routee))));
+                            }
                             break;
                         }
                         case Reset _: {

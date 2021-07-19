@@ -9,8 +9,8 @@ namespace Lapine.Workbench {
         static async Task Main() {
             var connectionConfiguration = ConnectionConfiguration.Default with {
                 HeartbeatFrequency = TimeSpan.FromSeconds(60),
-                ConnectionTimeout = TimeSpan.MaxValue,
-                PeerProperties = PeerProperties.Default with {
+                ConnectionTimeout  = TimeSpan.MaxValue,
+                PeerProperties     = PeerProperties.Default with {
                     Product            = "Lapine.Workbench",
                     ClientProvidedName = "Lapine.Workbench"
                 }
@@ -21,23 +21,17 @@ namespace Lapine.Workbench {
             await amqpClient.ConnectAsync();
 
             var channel = await amqpClient.OpenChannelAsync();
-            await channel.SetPrefetchLimit(1, PrefetchLimitScope.Channel);
 
-            await channel.DeclareExchangeAsync(ExchangeDefinition.Create("test.exchange") with {
-                Type       = "topic",
-                Durability = Durability.Ephemeral,
+            await channel.DeclareExchangeAsync(ExchangeDefinition.Direct("test.exchange") with {
+                Durability = Durability.Transient,
                 AutoDelete = true
             });
-            await channel.DeclareExchangeAsync(ExchangeDefinition.Create("test.exchange") with {
-                Type       = "topic",
-                Durability = Durability.Durable,
+            await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
+                Durability = Durability.Transient,
                 AutoDelete = true
             });
-            // await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
-            //     Durability = Durability.Ephemeral,
-            //     AutoDelete = true
-            // });
-            // await channel.BindQueueAsync("test.exchange", "test.queue");
+            await channel.BindQueueAsync("test.exchange", "test.queue");
+            await channel.SetPrefetchLimitAsync(100, PrefetchLimitScope.Consumer);
             // await channel.PurgeQueueAsync("test.queue");
 
             // var body = UTF8.GetBytes("test message").AsMemory();
@@ -49,13 +43,20 @@ namespace Lapine.Workbench {
             // };
             // await channel.PublishAsync("test.exchange", "#", (properties, body));
 
+            string consumerTag = await channel.ConsumeAsync("test.queue", Acknowledgements.Manual, exclusive: true, arguments: null, (DeliveryInfo deliveryInfo, MessageProperties properties, ReadOnlyMemory<Byte> body) => {
+                Console.WriteLine(UTF8.GetString(body.Span));
+                return Task.CompletedTask;
+            });
+
+            await Task.Delay(TimeSpan.FromMilliseconds(-1));
+
             // await Task.Delay(10000);
 
             // var message = await channel.GetMessage("test.queue", false);
 
             // await channel.UnbindQueueAsync("test.exchange", "test.queue");
 
-            await channel.Close();
+            await channel.CloseAsync();
 
             await amqpClient.DisposeAsync();
         }

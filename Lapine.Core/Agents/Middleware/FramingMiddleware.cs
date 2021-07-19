@@ -9,8 +9,7 @@ namespace Lapine.Agents.Middleware {
     static class FramingMiddleware {
         static public Func<Receiver, Receiver> UnwrapInboundMethodFrames() =>
             next => (context, envelope) => {
-                if (envelope.Message is FrameReceived received &&
-                    received.Frame.Type is FrameType.Method &&
+                if (envelope.Message is FrameReceived { Frame: { Type: FrameType.Method } } received &&
                     received.Frame.Payload.Span.ReadMethodHeader(out var methodHeader, out var buffer))
                 {
                     return methodHeader switch {
@@ -111,7 +110,7 @@ namespace Lapine.Agents.Middleware {
 
         static public Func<Receiver, Receiver> UnwrapInboundContentHeaderFrames() =>
             next => (context, envelope) => {
-                if (envelope.Message is FrameReceived received && received.Frame.Type == FrameType.Header) {
+                if (envelope.Message is FrameReceived { Frame: { Type: FrameType.Header } } received) {
                     return ContentHeader.Deserialize(received.Frame.Payload.Span, out var contentHeader, out var _)
                         ? next(context, envelope.WithMessage(contentHeader))
                         : next(context, envelope);
@@ -123,7 +122,7 @@ namespace Lapine.Agents.Middleware {
 
         static public Func<Receiver, Receiver> UnwrapInboundContentBodyFrames() =>
             next => (context, envelope) => {
-                if (envelope.Message is FrameReceived received && received.Frame.Type == FrameType.Body) {
+                if (envelope.Message is FrameReceived { Frame: { Type: FrameType.Body } } received) {
                     return next(context, envelope.WithMessage(received.Frame.Payload));
                 }
                 else {

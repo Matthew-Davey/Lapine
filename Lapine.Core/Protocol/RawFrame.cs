@@ -37,6 +37,7 @@ namespace Lapine.Protocol {
                 .WriteSerializable(command);
             var payload = payloadWriter.WrittenMemory;
 
+            // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
             return new RawFrame(FrameType.Method, in channel, in payload);
         }
 
@@ -45,6 +46,7 @@ namespace Lapine.Protocol {
             payloadWriter.WriteSerializable(contentHeader);
             var payload = payloadWriter.WrittenMemory;
 
+            // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
             return new RawFrame(FrameType.Header, in channel, in payload);
         }
 
@@ -53,6 +55,7 @@ namespace Lapine.Protocol {
             payloadWriter.WriteBytes(in content);
             var payload = payloadWriter.WrittenMemory;
 
+            // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
             return new RawFrame(FrameType.Body, in channel, in payload);
         }
 

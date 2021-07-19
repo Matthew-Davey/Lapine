@@ -3,7 +3,7 @@ A C# client library for the Advanced Message Queueing Protocol (AMQP) v0.9.1
 
 ![.NET Core](https://github.com/Matthew-Davey/Lapine/workflows/.NET%20Core/badge.svg?branch=develop)
 
-## Project Status (2021-04-14)
+## Project Status (2021-07-19)
 Lapine is in the early stages of development and is **definitely not** suitable for use in your project(s) yet.
 
 ## Implementation Status
@@ -53,10 +53,15 @@ Lapine is in the early stages of development and is **definitely not** suitable 
   - [x] Large messages (> MaxFrameSize)
 - [x] Qos
 - [x] Get
-- [ ] Consume
-- [ ] Deliver
-- [ ] Ack
-- [ ] Reject
+  - [x] Empty messages (content header only)
+  - [x] Large messages (> MaxFrameSize)
+- [x] Consume
+- [x] Deliver
+  - [x] Empty messages (content header only)
+  - [x] Large messages (> MaxFrameSize)
+  - [ ] Concurrent message processing
+- [x] Ack
+- [x] Reject
 - [ ] Return
 - [ ] Cancel
 - [ ] Recover
@@ -83,3 +88,4 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [ ] Priority Queues
 - [ ] Auth Failure
 - [ ] Quorum Queues
+- [ ] Streams (via AMQP)

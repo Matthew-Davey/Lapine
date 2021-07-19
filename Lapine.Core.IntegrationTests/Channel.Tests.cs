@@ -21,7 +21,7 @@ namespace Lapine {
                 channel = await subject.OpenChannelAsync();
             }).Teardown(async () => await subject.DisposeAsync());
             "When the client declares a topic exchange".x(async () => {
-                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Create(Random.String2(12)) with {
+                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Topic(Random.String2(12)) with {
                     Type = "topic"
                 });
             });
@@ -45,12 +45,12 @@ namespace Lapine {
                 channel = await subject.OpenChannelAsync();
             }).Teardown(async () => await subject.DisposeAsync());
             "And the broker has an exchange declared".x(async () => {
-                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Create(Random.String2(8)));
+                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Direct(Random.String2(8)));
             });
             "When the client attempts to redeclare the exchange with a different parameter".x(async () => {
                 exception = await Record.ExceptionAsync(async () => {
                     await channel.DeclareExchangeAsync(exchangeDefinition with {
-                        Durability = Durability.Ephemeral
+                        Durability = Durability.Transient
                     });
                 });
             });
@@ -74,7 +74,7 @@ namespace Lapine {
             }).Teardown(async () => await subject.DisposeAsync());
             "When the client attempts to declare an exchange with a reserved prefix".x(async () => {
                 exception = await Record.ExceptionAsync(async () => {
-                    await channel.DeclareExchangeAsync(ExchangeDefinition.Create("amq.notallowed"));
+                    await channel.DeclareExchangeAsync(ExchangeDefinition.Direct("amq.notallowed"));
                 });
             });
             "Then an access refused exception is thrown".x(() => {
