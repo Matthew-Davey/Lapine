@@ -27,8 +27,8 @@ namespace Lapine.Workbench {
                 AutoDelete = true
             });
             await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue") with {
-                Durability = Durability.Transient,
-                AutoDelete = true
+                Durability = Durability.Durable,
+                AutoDelete = false
             });
             await channel.BindQueueAsync("test.exchange", "test.queue");
             await channel.SetPrefetchLimitAsync(100, PrefetchLimitScope.Consumer);
@@ -43,10 +43,18 @@ namespace Lapine.Workbench {
             // };
             // await channel.PublishAsync("test.exchange", "#", (properties, body));
 
-            string consumerTag = await channel.ConsumeAsync("test.queue", Acknowledgements.Manual, exclusive: true, arguments: null, (DeliveryInfo deliveryInfo, MessageProperties properties, ReadOnlyMemory<Byte> body) => {
-                Console.WriteLine(UTF8.GetString(body.Span));
-                return Task.CompletedTask;
-            });
+            for (var i = 0; i < 100_000; i++) {
+                await channel.PublishAsync("test.exchange", "#", (MessageProperties.Empty, UTF8.GetBytes($"TEST MESSAGE {i}")));
+            }
+
+            string consumerTag = await channel.ConsumeAsync("test.queue", ConsumerConfiguration.Create(
+                (DeliveryInfo deliveryInfo, MessageProperties properties, ReadOnlyMemory<Byte> body) => {
+                    Console.WriteLine(UTF8.GetString(body.Span));
+                    return Task.CompletedTask;
+                }) with {
+                    MaxDegreeOfParallelism = 16
+                }
+            );
 
             await Task.Delay(TimeSpan.FromMilliseconds(-1));
 

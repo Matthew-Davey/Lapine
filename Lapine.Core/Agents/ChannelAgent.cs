@@ -30,7 +30,7 @@ namespace Lapine.Agents {
             public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
             public record GetMessage(String Queue, Boolean Ack, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise);
             public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
-            public record Consume(String Queue, Acknowledgements Acknowledgements, Boolean Exclusive, IReadOnlyDictionary<String, Object> Arguments, MessageHandler Handler, TaskCompletionSource<String> Promise);
+            public record Consume(String Queue, ConsumerConfiguration ConsumerConfiguration, IReadOnlyDictionary<String, Object>? Arguments, TaskCompletionSource<String> Promise);
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
@@ -213,15 +213,15 @@ namespace Lapine.Agents {
                                 queueName  : consume.Queue,
                                 consumerTag: consumerTag,
                                 noLocal    : false,
-                                noAck      : consume.Acknowledgements switch {
-                                    Acknowledgements.Auto   => true,
-                                    _ => false
+                                noAck      : consume.ConsumerConfiguration.Acknowledgements switch {
+                                    Acknowledgements.Auto => true,
+                                    _                     => false
                                 },
-                                exclusive  : consume.Exclusive,
+                                exclusive  : consume.ConsumerConfiguration.Exclusive,
                                 noWait     : false,
                                 arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
                             )));
-                            _behaviour.BecomeStacked(AwaitingConsumeOk(state, consumerTag, consume.Handler, consume.Promise));
+                            _behaviour.BecomeStacked(AwaitingConsumeOk(state, consumerTag, consume.ConsumerConfiguration, consume.Promise));
                             break;
                         }
                         case BasicDeliver deliver: {
@@ -433,7 +433,7 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive AwaitingConsumeOk(State state, String consumerTag, MessageHandler handler, TaskCompletionSource<String> promise) =>
+            Receive AwaitingConsumeOk(State state, String consumerTag, ConsumerConfiguration consumerConfiguration, TaskCompletionSource<String> promise) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case BasicConsumeOk ok: {
@@ -441,7 +441,7 @@ namespace Lapine.Agents {
                                 name: $"consumer_{consumerTag}",
                                 props: ConsumerAgent.Create()
                             );
-                            context.Send(consumer, new Start(consumerTag, handler, state.Dispatcher));
+                            context.Send(consumer, new StartConsuming(consumerTag, state.Dispatcher, consumerConfiguration));
                             _behaviour.Become(Open(state with {
                                 Consumers = state.Consumers.Add(consumerTag, consumer)
                             }));
@@ -459,7 +459,7 @@ namespace Lapine.Agents {
                             _behaviour.UnbecomeStacked();
                             switch (header.BodySize) {
                                 case 0: {
-                                    context.Send(consumer, new HandleEmptyMessage(delivery, header.Properties));
+                                    context.Send(consumer, new ConsumeMessage(delivery, header.Properties, new MemoryBufferWriter<Byte>()));
                                     break;
                                 }
                                 default: {
@@ -481,8 +481,7 @@ namespace Lapine.Agents {
                         case ReadOnlyMemory<Byte> segment: {
                             buffer.Write(segment.Span);
                             if ((UInt64)buffer.WrittenCount >= expectedSize) {
-                                var body = buffer.WrittenMemory;
-                                context.Send(consumer, new HandleMessage(delivery, properties, body, buffer));
+                                context.Send(consumer, new ConsumeMessage(delivery, properties, buffer));
                                 _behaviour.UnbecomeStacked();
                             }
                             break;

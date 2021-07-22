@@ -1,6 +1,7 @@
 namespace Lapine.Agents {
     using System;
-    using System.Buffers;
+    using System.Collections.Immutable;
+    using System.Linq;
     using System.Threading.Tasks;
     using Lapine.Client;
     using Lapine.Protocol;
@@ -10,16 +11,27 @@ namespace Lapine.Agents {
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.ConsumerAgent.Protocol;
     using static Lapine.Agents.DispatcherAgent.Protocol;
+    using static Lapine.Agents.MessageHandlerAgent.Protocol;
 
     static class ConsumerAgent {
         static public class Protocol {
-            public record Start(String ConsumerTag, MessageHandler Handler, PID Dispatcher);
-            public record HandleMessage(DeliveryInfo Delivery, BasicProperties Properties, ReadOnlyMemory<Byte> Body, IMemoryOwner<Byte> Buffer);
-            public record HandleEmptyMessage(DeliveryInfo Delivery, BasicProperties Properties);
+            public record StartConsuming(String ConsumerTag, PID Dispatcher, ConsumerConfiguration ConsumerConfiguration);
+            public record ConsumeMessage(DeliveryInfo Delivery, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer);
         }
 
         static public Props Create() =>
             Props.FromProducer(() => new Actor());
+
+        record Message(DeliveryInfo DeliveryInfo, BasicProperties Properties, MemoryBufferWriter<Byte> Body);
+
+        record State(
+            String ConsumerTag,
+            ConsumerConfiguration ConsumerConfiguration,
+            PID Dispatcher,
+            IImmutableQueue<Message> Inbox,
+            IImmutableQueue<PID> AvailableHandlers,
+            ImmutableList<PID> BusyHandlers
+        );
 
         class Actor : IActor {
             readonly Behavior _behaviour;
@@ -32,56 +44,64 @@ namespace Lapine.Agents {
 
             Task Unstarted(IContext context) {
                 switch (context.Message) {
-                    case Start start: {
-                        _behaviour.BecomeStacked(Consuming(start.ConsumerTag, start.Handler, start.Dispatcher));
+                    case StartConsuming start: {
+                        var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
+                            .Select(i => context.SpawnNamed(
+                                name: $"handler_{i}",
+                                props: MessageHandlerAgent.Create()
+                            ));
+                        _behaviour.Become(Running(new State(
+                            ConsumerTag          : start.ConsumerTag,
+                            ConsumerConfiguration: start.ConsumerConfiguration,
+                            Dispatcher           : start.Dispatcher,
+                            Inbox                : ImmutableQueue<Message>.Empty,
+                            AvailableHandlers    : handlers.ToImmutableQueue(),
+                            BusyHandlers         : ImmutableList<PID>.Empty
+                        )));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            static Receive Consuming(String consumerTag, MessageHandler handler, PID dispatcher) =>
-                async (IContext context) => {
+            Receive Running(State state) =>
+                (IContext context) => {
                     switch (context.Message) {
-                        case HandleMessage handle: {
-                            try {
-                                await handler(handle.Delivery, MessageProperties.FromBasicProperties(handle.Properties), handle.Body);
-                                context.Send(dispatcher, Dispatch.Command(new BasicAck(handle.Delivery.DeliveryTag, false)));
-                            }
-                            catch (MessageException) {
-                                // nack without requeue...
-                                context.Send(dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, false)));
-                            }
-                            catch (ConsumerException) {
-                                // nack with requeue...
-                                context.Send(dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, true)));
-                            }
-                            finally {
-                                // Release the buffer containing the message body back into the memory pool...
-                                handle.Buffer.Dispose();
-                            }
+                        case ConsumeMessage consume when state.AvailableHandlers.Any(): {
+                            _behaviour.Become(Running(state with {
+                                AvailableHandlers = state.AvailableHandlers.Dequeue(out var handler),
+                                BusyHandlers = state.BusyHandlers.Add(handler)
+                            }));
+                            context.Send(handler, new HandleMessage(state.Dispatcher, state.ConsumerConfiguration, consume.Delivery, consume.Properties, consume.Buffer));
                             break;
                         }
-                        case HandleEmptyMessage handle: {
-                            try {
-                                await handler(handle.Delivery, MessageProperties.FromBasicProperties(handle.Properties), Memory<Byte>.Empty);
-                                context.Send(dispatcher, Dispatch.Command(new BasicAck(handle.Delivery.DeliveryTag, false)));
+                        case ConsumeMessage consume when state.AvailableHandlers.IsEmpty: {
+                            _behaviour.Become(Running(state with {
+                                Inbox = state.Inbox.Enqueue(new Message(consume.Delivery, consume.Properties, consume.Buffer))
+                            }));
+                            break;
+                        }
+                        case Complete complete: {
+                            if (state.Inbox.IsEmpty) {
+                                _behaviour.Become(Running(state with {
+                                    AvailableHandlers = state.AvailableHandlers.Enqueue(complete.Handler),
+                                    BusyHandlers = state.BusyHandlers.Remove(complete.Handler)
+                                }));
                             }
-                            catch (MessageException) {
-                                // nack without requeue...
-                                context.Send(dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, false)));
-                            }
-                            catch (ConsumerException) {
-                                // nack with requeue...
-                                context.Send(dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, true)));
+                            else {
+                                _behaviour.Become(Running(state with {
+                                    Inbox = state.Inbox.Dequeue(out var message)
+                                }));
+                                context.Send(complete.Handler, new HandleMessage(state.Dispatcher, state.ConsumerConfiguration, message.DeliveryInfo, message.Properties, message.Body));
                             }
                             break;
                         }
                         case Stopping _: {
-                            context.Send(dispatcher, Dispatch.Command(new BasicCancel(consumerTag, false)));
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicCancel(state.ConsumerTag, false)));
                             break;
                         }
                     }
+                    return CompletedTask;
                 };
         }
     }

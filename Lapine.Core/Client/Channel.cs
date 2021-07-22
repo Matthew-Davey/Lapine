@@ -92,9 +92,9 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
-        public async ValueTask<String> ConsumeAsync(String queue, Acknowledgements acknowledgements, Boolean exclusive, IReadOnlyDictionary<String, Object> arguments, MessageHandler handler) {
+        public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null) {
             var promise = new TaskCompletionSource<String>();
-            _system.Root.Send(_agent, new Consume(queue, acknowledgements, exclusive, arguments, handler, promise));
+            _system.Root.Send(_agent, new Consume(queue, consumerConfiguration, arguments, promise));
             return await promise.Task;
         }
     }
