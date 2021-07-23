@@ -28,6 +28,7 @@ namespace Lapine {
         }
 
         public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
+        public record Channel(String Name, Int32 Number, String User, String Vhost);
 
         static readonly IAsyncPolicy CommandRetryPolicy =
             Handle<CommandExecutionException>()
@@ -135,6 +136,30 @@ namespace Lapine {
                     Information        = (String)connection.SelectToken("$.client_properties[4][2]"),
                     ClientProvidedName = (String)connection.SelectToken("$.client_properties[5][2]")
                 });
+            }
+        }
+
+        public async IAsyncEnumerable<Channel> GetChannels() {
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add("list_channels name number user vhost", escape: false)
+                    .Add("--formatter json", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync()
+            );
+
+            var channels = JArray.Parse(process.StandardOutput);
+
+            foreach (var channel in channels) {
+                var name = (String)channel.SelectToken("$.name");
+                var number = (Int32)channel.SelectToken("$.number");
+                var user = (String)channel.SelectToken("$.user");
+                var vhost = (String)channel.SelectToken("$.vhost");
+
+                yield return new Channel(name, number, user, vhost);
             }
         }
 

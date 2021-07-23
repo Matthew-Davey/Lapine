@@ -7,7 +7,7 @@ namespace Lapine {
     using Xbehave;
     using Xunit;
 
-    public class ChannelTests : Faker {
+    public class ExchangeTests : Faker {
         [Scenario]
         [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
