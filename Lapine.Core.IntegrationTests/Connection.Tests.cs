@@ -12,7 +12,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerAsGuest(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client configured to connect to the broker".x(async () => {
@@ -47,7 +47,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerAsUser(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String username, String password) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a configured user".x(async () => {
@@ -79,7 +79,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, Exception connectionError) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client configured to connect to the broker as an invalid user".x(async () => {
@@ -100,7 +100,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DisconnectFromLocalBroker(String brokerVersion, AmqpClient subject, BrokerProxy broker) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client connected to the broker".x(async () => {
@@ -121,7 +121,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToVirtualHost(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String virtualHost) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a virtual host configured".x(async () => {

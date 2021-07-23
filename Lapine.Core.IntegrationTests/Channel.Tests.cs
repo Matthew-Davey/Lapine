@@ -12,7 +12,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareTopicExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client connected to the broker with an open channel".x(async () => {
@@ -36,7 +36,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client connected to the broker with an open channel".x(async () => {
@@ -64,7 +64,7 @@ namespace Lapine {
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareExchangeWithReservedPrefix(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {
-            "Given a running broker".x(async () => {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client connected to the broker with an open channel".x(async () => {
