@@ -8,7 +8,11 @@ namespace Lapine {
     using Lapine.Client;
     using CliWrap;
     using CliWrap.Buffered;
+    using CliWrap.Exceptions;
     using Newtonsoft.Json.Linq;
+    using Polly;
+
+    using static Polly.Policy;
 
     public class BrokerProxy : IAsyncDisposable {
         public enum ConnectionState {
@@ -26,20 +30,24 @@ namespace Lapine {
         public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
 
         readonly String _container;
+        static readonly IAsyncPolicy CommandRetryPolicy =
+            Handle<CommandExecutionException>()
+                .WaitAndRetryAsync(5, _ => TimeSpan.FromMilliseconds(100));
 
         private BrokerProxy(String containerId) =>
             _container = containerId;
 
         static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion) {
             // Start a RabbitMQ container...
-            var process = await Cli.Wrap("docker")
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("run")
                     .Add("--detach")
                     .Add("--rm")
                     .Add($"rabbitmq:{brokerVersion}"))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteBufferedAsync();
+                .ExecuteBufferedAsync()
+            );
 
             var container = process.StandardOutput[..12];
 
@@ -47,13 +55,14 @@ namespace Lapine {
             await Task.Delay(TimeSpan.FromSeconds(3));
 
             // Wait up to 60 seconds for RabbitMQ to start up...
-            await Cli.Wrap("docker")
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(container)
                     .Add("rabbitmqctl await_startup --timeout 60", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteAsync();
+                .ExecuteAsync()
+            );
 
             return new BrokerProxy(container);
         }
@@ -62,13 +71,14 @@ namespace Lapine {
         /// Gets the IP address of the running broker.
         /// </summary>
         public async ValueTask<IPAddress> GetIPAddressAsync() {
-            var process = await Cli.Wrap("docker")
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("inspect")
                     .Add(_container)
                     .Add("--format=\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteBufferedAsync();
+                .ExecuteBufferedAsync()
+            );
 
             return IPAddress.Parse(process.StandardOutput.TrimEnd());
         }
@@ -86,7 +96,7 @@ namespace Lapine {
             };
 
         public async IAsyncEnumerable<Connection> GetConnections() {
-            var process = await Cli.Wrap("docker")
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
@@ -94,7 +104,8 @@ namespace Lapine {
                     .Add("list_connections auth_mechanism user state client_properties", escape: false)
                     .Add("--formatter json", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteBufferedAsync();
+                .ExecuteBufferedAsync()
+            );
 
             var connections = JArray.Parse(process.StandardOutput);
 
@@ -115,7 +126,7 @@ namespace Lapine {
         }
 
         public async IAsyncEnumerable<ExchangeDefinition> GetExchanges() {
-            var process = await Cli.Wrap("docker")
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
@@ -123,7 +134,8 @@ namespace Lapine {
                     .Add("list_exchanges name type durable auto_delete arguments", escape: false)
                     .Add("--formatter json", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteBufferedAsync();
+                .ExecuteBufferedAsync()
+            );
 
             var exchanges = JArray.Parse(process.StandardOutput);
 
@@ -150,39 +162,43 @@ namespace Lapine {
         }
 
         public async ValueTask AddUser(String username, String password) =>
-            await Cli.Wrap("docker")
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
                     .Add("rabbitmqctl")
                     .Add($"add_user {username} {password}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteAsync();
+                .ExecuteAsync()
+            );
 
         public async ValueTask AddVirtualHost(String virtualHost) =>
-            await Cli.Wrap("docker")
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
                     .Add("rabbitmqctl")
                     .Add($"add_vhost {virtualHost}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteAsync();
+                .ExecuteAsync()
+            );
 
         public async ValueTask SetPermissions(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") =>
-            await Cli.Wrap("docker")
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
                     .Add("rabbitmqctl")
                     .Add($"set_permissions -p {virtualHost} {user} {configure} {write} {read}", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteAsync();
+                .ExecuteAsync()
+            );
 
         public async ValueTask DisposeAsync() =>
-            await Cli.Wrap("docker")
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments($"stop {_container}")
                 .WithValidation(CommandResultValidation.ZeroExitCode)
-                .ExecuteAsync();
+                .ExecuteAsync()
+            );
     }
 }
