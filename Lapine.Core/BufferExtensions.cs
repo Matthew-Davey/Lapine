@@ -503,12 +503,13 @@ namespace Lapine {
             if (fieldArray is null)
                 throw new ArgumentNullException(nameof(fieldArray));
 
-            var items = fieldArray.Aggregate(seed: new ArrayBufferWriter<Byte>(), (accumulator, value) =>
-                (ArrayBufferWriter<Byte>)accumulator.WriteFieldValue(value)
+            using var buffer = new MemoryBufferWriter<Byte>();
+            var items = fieldArray.Aggregate(seed: buffer, (accumulator, value) =>
+                (MemoryBufferWriter<Byte>)accumulator.WriteFieldValue(value)
             );
 
             return writer
-                .WriteInt32BE((Int32)items.WrittenMemory.Length)
+                .WriteInt32BE(items.WrittenMemory.Length)
                 .WriteBytes(items.WrittenMemory.Span);
         }
 
@@ -519,8 +520,9 @@ namespace Lapine {
             if (fieldTable is null)
                 throw new ArgumentNullException(nameof(fieldTable));
 
-            var rows = fieldTable.Aggregate(seed: new ArrayBufferWriter<Byte>(), (accumulator, field) =>
-                (ArrayBufferWriter<Byte>)accumulator
+            using var buffer = new MemoryBufferWriter<Byte>();
+            var rows = fieldTable.Aggregate(seed: buffer, (accumulator, field) =>
+                (MemoryBufferWriter<Byte>)accumulator
                     .WriteShortString(field.Key)
                     .WriteFieldValue(field.Value)
             );
