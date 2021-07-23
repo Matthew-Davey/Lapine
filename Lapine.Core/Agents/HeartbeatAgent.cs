@@ -35,6 +35,9 @@ namespace Lapine.Agents {
             Task Idle(IContext context) {
                 switch (context.Message) {
                     case StartHeartbeat start: {
+                        if (start.Frequency == TimeSpan.Zero)
+                            break;
+
                         var cancelHeartbeat = context.Scheduler().RequestRepeatedly(start.Frequency, start.Frequency, context.Self!, new Beat());
                         _behaviour.Become(Beating(start.Frequency, cancelHeartbeat, start.Dispatcher, start.Listener, UtcNow));
                         break;
