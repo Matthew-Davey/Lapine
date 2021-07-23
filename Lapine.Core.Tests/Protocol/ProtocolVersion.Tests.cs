@@ -1,6 +1,5 @@
 namespace Lapine.Protocol {
     using System;
-    using System.Buffers;
     using Bogus;
     using Xunit;
 
@@ -8,7 +7,7 @@ namespace Lapine.Protocol {
         [Fact]
         public void SerializedSizeIsThreeBytes() {
             var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-            var buffer = new ArrayBufferWriter<Byte>(3);
+            var buffer = new MemoryBufferWriter<Byte>(3);
 
             value.Serialize(buffer);
 
@@ -18,7 +17,7 @@ namespace Lapine.Protocol {
         [Fact]
         public void SerializationIsSymmetric() {
             var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-            var buffer = new ArrayBufferWriter<Byte>(3);
+            var buffer = new MemoryBufferWriter<Byte>(3);
 
             value.Serialize(buffer);
             ProtocolVersion.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
@@ -28,7 +27,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ProtocolVersion.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = ProtocolVersion.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
@@ -37,7 +36,7 @@ namespace Lapine.Protocol {
         public void DeserializationReturnsSurplusData() {
             var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>(7);
+            var buffer = new MemoryBufferWriter<Byte>(7);
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);

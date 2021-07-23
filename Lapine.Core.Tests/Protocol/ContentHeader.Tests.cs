@@ -1,13 +1,12 @@
 namespace Lapine.Protocol {
     using System;
-    using System.Buffers;
     using Bogus;
     using Xunit;
 
     public class ContentHeaderTests : Faker {
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
             var value = new ContentHeader(
                 classId   : Random.UShort(),
                 bodySize  : Random.ULong(),
@@ -36,7 +35,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = ContentHeader.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = ContentHeader.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
@@ -63,7 +62,7 @@ namespace Lapine.Protocol {
                 }
             );
             var extra = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);

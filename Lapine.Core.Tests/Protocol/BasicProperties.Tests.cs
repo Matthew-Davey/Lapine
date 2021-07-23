@@ -1,13 +1,12 @@
 namespace Lapine.Protocol {
     using System;
-    using System.Buffers;
     using Bogus;
     using Xunit;
 
     public class BasicPropertiesTests : Faker {
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
             var value =  BasicProperties.Empty with {
                 AppId           = Random.Utf16String(),
                 ClusterId       = Random.Utf16String(),
@@ -32,7 +31,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithUnsufficientData() {
-            var result = BasicProperties.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = BasicProperties.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
@@ -55,7 +54,7 @@ namespace Lapine.Protocol {
                 UserId          = Internet.UserName()
             };
             var extra = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);

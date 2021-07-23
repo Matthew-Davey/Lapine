@@ -1,6 +1,5 @@
 namespace Lapine.Protocol.Commands {
     using System;
-    using System.Buffers;
     using Bogus;
     using Xunit;
 
@@ -9,7 +8,7 @@ namespace Lapine.Protocol.Commands {
         public void DeserializationReturnsSurplusData() {
             var value  = new TransactionCommit();
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
@@ -26,7 +25,7 @@ namespace Lapine.Protocol.Commands {
         public void DeserializationReturnsSurplusData() {
             var value  = new TransactionCommitOk();
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);

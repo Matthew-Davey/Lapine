@@ -1,13 +1,12 @@
 namespace Lapine.Protocol {
     using System;
-    using System.Buffers;
     using Bogus;
     using Xunit;
 
     public class RawFrameTests : Faker {
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
             value.Serialize(buffer);
@@ -21,14 +20,14 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = RawFrame.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = RawFrame.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
 
         [Fact]
         public void DeserializationFailsWithInvalidFrameType() {
-            var buffer = new ArrayBufferWriter<Byte>(8);
+            var buffer = new MemoryBufferWriter<Byte>(8);
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
             value.Serialize(buffer);
@@ -40,7 +39,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationFailsWithInvalidFrameTerminator() {
-            var buffer = new ArrayBufferWriter<Byte>(8);
+            var buffer = new MemoryBufferWriter<Byte>(8);
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
             value.Serialize(buffer);
@@ -54,7 +53,7 @@ namespace Lapine.Protocol {
         public void DeserializationReturnsSurplusData() {
             var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>(12);
+            var buffer = new MemoryBufferWriter<Byte>(12);
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);

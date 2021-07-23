@@ -1,6 +1,5 @@
 namespace Lapine.Protocol.Commands {
     using System;
-    using System.Buffers;
     using System.Collections.Generic;
     using System.Linq;
     using Bogus;
@@ -19,7 +18,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>(8);
+            var buffer = new MemoryBufferWriter<Byte>(8);
             var value  = RandomSubject;
 
             value.Serialize(buffer);
@@ -36,7 +35,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDeclare.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = QueueDeclare.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
@@ -45,7 +44,7 @@ namespace Lapine.Protocol.Commands {
         public void DeserializationReturnsSurplusData() {
             var value  = RandomSubject;
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
@@ -66,7 +65,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void SerializationIsSymmetric() {
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
             var value  = RandomSubject;
 
             value.Serialize(buffer);
@@ -79,7 +78,7 @@ namespace Lapine.Protocol.Commands {
 
         [Fact]
         public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDeclareOk.Deserialize(Array.Empty<Byte>(), out var _, out var _);
+            var result = QueueDeclareOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
             Assert.False(result);
         }
@@ -88,7 +87,7 @@ namespace Lapine.Protocol.Commands {
         public void DeserializationReturnsSurplusData() {
             var value  = RandomSubject;
             var extra  = Random.UInt();
-            var buffer = new ArrayBufferWriter<Byte>();
+            var buffer = new MemoryBufferWriter<Byte>();
 
             buffer.WriteSerializable(value)
                 .WriteUInt32LE(extra);
