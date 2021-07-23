@@ -9,6 +9,7 @@ namespace Lapine {
 
     public class ConnectionTests : Faker {
         [Scenario]
+        // [Example("3.9-rc-alpine")] 3.9 container does not allow remote access for guest user...
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerAsGuest(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration) {
@@ -17,6 +18,7 @@ namespace Lapine {
             }).Teardown(async () => await broker.DisposeAsync());
             "And a client configured to connect to the broker".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
+                    AuthenticationStrategy = new PlainAuthenticationStrategy("guest", "guest"),
                     PeerProperties = PeerProperties.Empty with {
                         ClientProvidedName = Random.AlphaNumeric(16),
                         Copyright          = $"Copyright © {Date.Past():yyyy} {Company.CompanyName()}",
@@ -44,6 +46,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerAsUser(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String username, String password) {
@@ -76,6 +79,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToLocalBrokerWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, Exception connectionError) {
@@ -97,6 +101,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DisconnectFromLocalBroker(String brokerVersion, AmqpClient subject, BrokerProxy broker) {
@@ -118,6 +123,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void ConnectToVirtualHost(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String virtualHost) {
@@ -126,7 +132,7 @@ namespace Lapine {
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a virtual host configured".x(async () => {
                 await broker.AddVirtualHost(virtualHost = Random.AlphaNumeric(8));
-                await broker.SetPermissions(virtualHost, "guest");
+                await broker.SetPermissions(virtualHost, broker.Username);
             });
             "And a client configured to connect to the broker".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
@@ -142,7 +148,7 @@ namespace Lapine {
 
                 connections.Should().Contain(new BrokerProxy.Connection(
                     AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
-                    User          : "guest",
+                    User          : broker.Username,
                     State         : BrokerProxy.ConnectionState.Running,
                     PeerProperties: connectionConfiguration.PeerProperties
                 ));

@@ -72,7 +72,7 @@ namespace Lapine.Agents {
 
                             // TODO: Verify protocol version compatibility...
 
-                            var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(0, Array.Empty<Byte>());
+                            var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(0, Span<Byte>.Empty);
 
                             context.Send(dispatcher, Dispatch.Command(new ConnectionStartOk(
                                 peerProperties: connectionConfiguration.PeerProperties.ToDictionary(),

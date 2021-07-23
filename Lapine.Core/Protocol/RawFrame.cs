@@ -60,7 +60,7 @@ namespace Lapine.Protocol {
         }
 
         static public RawFrame Heartbeat =>
-            new (FrameType.Heartbeat, channel: 0, Array.Empty<Byte>());
+            new (FrameType.Heartbeat, channel: 0, Memory<Byte>.Empty);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt8((Byte)Type)

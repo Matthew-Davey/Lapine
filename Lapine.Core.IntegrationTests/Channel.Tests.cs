@@ -9,6 +9,7 @@ namespace Lapine {
 
     public class ChannelTests : Faker {
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareTopicExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
@@ -21,9 +22,7 @@ namespace Lapine {
                 channel = await subject.OpenChannelAsync();
             }).Teardown(async () => await subject.DisposeAsync());
             "When the client declares a topic exchange".x(async () => {
-                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Topic(Random.String2(12)) with {
-                    Type = "topic"
-                });
+                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Topic(Random.String2(12)));
             });
             "Then the exchange is created on the broker".x(async () => {
                 var exchanges = await broker.GetExchanges().ToListAsync();
@@ -33,6 +32,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
@@ -61,6 +61,7 @@ namespace Lapine {
         }
 
         [Scenario]
+        [Example("3.9-rc-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareExchangeWithReservedPrefix(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {

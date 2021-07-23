@@ -29,15 +29,23 @@ namespace Lapine {
 
         public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
 
-        readonly String _container;
         static readonly IAsyncPolicy CommandRetryPolicy =
             Handle<CommandExecutionException>()
                 .WaitAndRetryAsync(5, _ => TimeSpan.FromMilliseconds(100));
 
-        private BrokerProxy(String containerId) =>
-            _container = containerId;
+        readonly String _container;
+        readonly String _username;
+        readonly String _password;
 
-        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion) {
+        private BrokerProxy(String containerId, String username, String password) {
+            _container = containerId;
+            _username = username;
+            _password = password;
+        }
+
+        public String Username => _username;
+
+        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion, String username = "lapine", String password = "lapine") {
             // Start a RabbitMQ container...
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
@@ -64,7 +72,11 @@ namespace Lapine {
                 .ExecuteAsync()
             );
 
-            return new BrokerProxy(container);
+            var broker = new BrokerProxy(container, username, password);
+            await broker.AddUser(username, password);
+            await broker.SetPermissions("/", username);
+
+            return broker;
         }
 
         /// <summary>
@@ -88,8 +100,9 @@ namespace Lapine {
         /// </summary>
         public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() =>
             ConnectionConfiguration.Default with {
-                Endpoints          = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
-                HeartbeatFrequency = Debugger.IsAttached switch {
+                AuthenticationStrategy = new PlainAuthenticationStrategy(_username, _password),
+                Endpoints              = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
+                HeartbeatFrequency     = Debugger.IsAttached switch {
                     true  => TimeSpan.Zero, // Zero disables heartbeats - see https://www.rabbitmq.com/heartbeats.html#heartbeats-timeout
                     false => ConnectionConfiguration.DefaultHeartbeatFrequency
                 }
