@@ -15,8 +15,16 @@ namespace Lapine.Agents {
 
     static class ConsumerAgent {
         static public class Protocol {
-            public record StartConsuming(String ConsumerTag, PID Dispatcher, ConsumerConfiguration ConsumerConfiguration);
-            public record ConsumeMessage(DeliveryInfo Delivery, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer);
+            public record StartConsuming(
+                String ConsumerTag,
+                PID Dispatcher,
+                ConsumerConfiguration ConsumerConfiguration
+            );
+            public record ConsumeMessage(
+                DeliveryInfo Delivery,
+                BasicProperties Properties,
+                MemoryBufferWriter<Byte> Buffer
+            );
         }
 
         static public Props Create() =>
@@ -70,30 +78,45 @@ namespace Lapine.Agents {
                         case ConsumeMessage consume when state.AvailableHandlers.Any(): {
                             _behaviour.Become(Running(state with {
                                 AvailableHandlers = state.AvailableHandlers.Dequeue(out var handler),
-                                BusyHandlers = state.BusyHandlers.Add(handler)
+                                BusyHandlers      = state.BusyHandlers.Add(handler)
                             }));
-                            context.Send(handler, new HandleMessage(state.Dispatcher, state.ConsumerConfiguration, consume.Delivery, consume.Properties, consume.Buffer));
+                            context.Send(handler, new HandleMessage(
+                                Dispatcher           : state.Dispatcher,
+                                ConsumerConfiguration: state.ConsumerConfiguration,
+                                Delivery             : consume.Delivery,
+                                Properties           : consume.Properties,
+                                Buffer               : consume.Buffer
+                            ));
                             break;
                         }
                         case ConsumeMessage consume when state.AvailableHandlers.IsEmpty: {
                             _behaviour.Become(Running(state with {
-                                Inbox = state.Inbox.Enqueue(new Message(consume.Delivery, consume.Properties, consume.Buffer))
+                                Inbox = state.Inbox.Enqueue(new Message(
+                                    DeliveryInfo: consume.Delivery,
+                                    Properties  : consume.Properties,
+                                    Body        : consume.Buffer
+                                ))
                             }));
                             break;
                         }
-                        case Complete complete: {
-                            if (state.Inbox.IsEmpty) {
-                                _behaviour.Become(Running(state with {
-                                    AvailableHandlers = state.AvailableHandlers.Enqueue(complete.Handler),
-                                    BusyHandlers = state.BusyHandlers.Remove(complete.Handler)
-                                }));
-                            }
-                            else {
-                                _behaviour.Become(Running(state with {
-                                    Inbox = state.Inbox.Dequeue(out var message)
-                                }));
-                                context.Send(complete.Handler, new HandleMessage(state.Dispatcher, state.ConsumerConfiguration, message.DeliveryInfo, message.Properties, message.Body));
-                            }
+                        case HandlerReady ready when state.Inbox.IsEmpty: {
+                            _behaviour.Become(Running(state with {
+                                AvailableHandlers = state.AvailableHandlers.Enqueue(ready.Handler),
+                                BusyHandlers = state.BusyHandlers.Remove(ready.Handler)
+                            }));
+                            break;
+                        }
+                        case HandlerReady ready when state.Inbox.Any(): {
+                            _behaviour.Become(Running(state with {
+                                Inbox = state.Inbox.Dequeue(out var message)
+                            }));
+                            context.Send(ready.Handler, new HandleMessage(
+                                Dispatcher           : state.Dispatcher,
+                                ConsumerConfiguration: state.ConsumerConfiguration,
+                                Delivery             : message.DeliveryInfo,
+                                Properties           : message.Properties,
+                                Buffer               : message.Body
+                            ));
                             break;
                         }
                         case Stopping _: {

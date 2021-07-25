@@ -6,14 +6,19 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static System.Threading.Tasks.Task;
     using static Lapine.Agents.MessageHandlerAgent.Protocol;
     using static Lapine.Agents.DispatcherAgent.Protocol;
 
     static class MessageHandlerAgent {
         static public class Protocol {
-            public record HandleMessage(PID Dispatcher, ConsumerConfiguration ConsumerConfiguration, DeliveryInfo Delivery, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer);
-            public record Complete(PID Handler);
+            public record HandleMessage(
+                PID Dispatcher,
+                ConsumerConfiguration ConsumerConfiguration,
+                DeliveryInfo Delivery,
+                BasicProperties Properties,
+                MemoryBufferWriter<Byte> Buffer
+            );
+            public record HandlerReady(PID Handler);
         }
 
         static public Props Create() =>
@@ -24,17 +29,30 @@ namespace Lapine.Agents {
                 switch (context.Message) {
                     case HandleMessage handle: {
                         try {
-                            await handle.ConsumerConfiguration.Handler(handle.Delivery, MessageProperties.FromBasicProperties(handle.Properties), handle.Buffer.WrittenMemory);
-                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicAck(handle.Delivery.DeliveryTag, false)));
-                            context.Send(context.Parent!, new Complete(context.Self!));
+                            await handle.ConsumerConfiguration.Handler(
+                                deliveryInfo: handle.Delivery,
+                                properties  : MessageProperties.FromBasicProperties(handle.Properties),
+                                body        : handle.Buffer.WrittenMemory
+                            );
+                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicAck(
+                                deliveryTag: handle.Delivery.DeliveryTag,
+                                multiple   : false
+                            )));
+                            context.Send(context.Parent!, new HandlerReady(context.Self!));
                         }
                         catch (MessageException) {
                             // nack without requeue...
-                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, false)));
+                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
+                                deliveryTag: handle.Delivery.DeliveryTag,
+                                requeue    : false
+                            )));
                         }
                         catch (ConsumerException) {
                             // nack with requeue...
-                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(handle.Delivery.DeliveryTag, true)));
+                            context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
+                                deliveryTag: handle.Delivery.DeliveryTag,
+                                requeue    : true
+                            )));
                         }
                         finally {
                             // Release the buffer containing the message body back into the memory pool...
