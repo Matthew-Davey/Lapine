@@ -125,7 +125,7 @@ namespace Lapine.Agents {
                                 noWait    : false,
                                 arguments : declare.Definition.Arguments
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueueDeclareOk(declare.Promise));
+                            _behaviour.BecomeStacked(AwaitingQueueDeclareOk(state, declare.Promise));
                             break;
                         }
                         case DeleteQueue delete: {
@@ -284,12 +284,20 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive AwaitingQueueDeclareOk(TaskCompletionSource promise) =>
+            Receive AwaitingQueueDeclareOk(State state, TaskCompletionSource promise) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case QueueDeclareOk _: {
                             promise.SetResult();
                             _behaviour.UnbecomeStacked();
+                            break;
+                        }
+                        case ChannelClose close: {
+                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
+                            var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
+                            promise.SetException(exception);
+                            _behaviour.Become(Closed);
+
                             break;
                         }
                     }
