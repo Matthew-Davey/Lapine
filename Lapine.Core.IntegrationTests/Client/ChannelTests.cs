@@ -1,7 +1,6 @@
-namespace Lapine {
+namespace Lapine.Client {
     using System;
     using System.Linq;
-    using Lapine.Client;
     using Bogus;
     using FluentAssertions;
     using Xbehave;
@@ -23,7 +22,7 @@ namespace Lapine {
                 await subject.OpenChannelAsync();
             });
             "Then the broker should report an open channel".x(async () => {
-                var channels = await broker.GetChannels().ToListAsync();
+                var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().HaveCount(1);
             });
         }
@@ -45,7 +44,7 @@ namespace Lapine {
                     await subject.OpenChannelAsync();
             });
             "Then the broker should report an open channel".x(async () => {
-                var channels = await broker.GetChannels().ToListAsync();
+                var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().HaveCount(10);
             });
         }
@@ -67,7 +66,7 @@ namespace Lapine {
                 await channel.CloseAsync();
             });
             "Then the broker should report no open channels".x(async () => {
-                var channels = await broker.GetChannels().ToListAsync();
+                var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().BeEmpty();
             });
         }

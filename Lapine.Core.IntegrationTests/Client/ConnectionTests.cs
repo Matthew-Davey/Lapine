@@ -1,7 +1,6 @@
-namespace Lapine {
+namespace Lapine.Client {
     using System;
     using System.Linq;
-    using Lapine.Client;
     using Bogus;
     using FluentAssertions;
     using Xbehave;
@@ -34,7 +33,7 @@ namespace Lapine {
                 await subject.ConnectAsync();
             });
             "Then the broker should report the connected client".x(async () => {
-                var connections = await broker.GetConnections().ToListAsync();
+                var connections = await broker.GetConnectionsAsync().ToListAsync();
 
                 connections.Should().Contain(new BrokerProxy.Connection(
                     AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
@@ -54,8 +53,8 @@ namespace Lapine {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a configured user".x(async () => {
-                await broker.AddUser(username = Person.UserName, password = Random.Utf16String(16));
-                await broker.SetPermissions("/", username);
+                await broker.AddUserAsync(username = Person.UserName, password = Random.Utf16String(16));
+                await broker.SetPermissionsAsync("/", username);
             });
             "And a client configured to connect to the broker as that user".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
@@ -67,7 +66,7 @@ namespace Lapine {
                 await subject.ConnectAsync();
             });
             "Then the broker should report the connected client".x(async () => {
-                var connections = await broker.GetConnections().ToListAsync();
+                var connections = await broker.GetConnectionsAsync().ToListAsync();
 
                 connections.Should().Contain(new BrokerProxy.Connection(
                     AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,
@@ -116,7 +115,7 @@ namespace Lapine {
                 await subject.DisposeAsync();
             });
             "Then the broker should report no open connections".x(async () => {
-                var connections = await broker.GetConnections().ToListAsync();
+                var connections = await broker.GetConnectionsAsync().ToListAsync();
 
                 connections.Should().BeEmpty();
             });
@@ -131,8 +130,8 @@ namespace Lapine {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a virtual host configured".x(async () => {
-                await broker.AddVirtualHost(virtualHost = Random.AlphaNumeric(8));
-                await broker.SetPermissions(virtualHost, broker.Username);
+                await broker.AddVirtualHostAsync(virtualHost = Random.AlphaNumeric(8));
+                await broker.SetPermissionsAsync(virtualHost, broker.Username);
             });
             "And a client configured to connect to the broker".x(async () => {
                 connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
@@ -144,7 +143,7 @@ namespace Lapine {
                 await subject.ConnectAsync();
             });
             "Then the broker should report the connected client".x(async () => {
-                var connections = await broker.GetConnections().ToListAsync();
+                var connections = await broker.GetConnectionsAsync().ToListAsync();
 
                 connections.Should().Contain(new BrokerProxy.Connection(
                     AuthMechanism : connectionConfiguration.AuthenticationStrategy.Mechanism,

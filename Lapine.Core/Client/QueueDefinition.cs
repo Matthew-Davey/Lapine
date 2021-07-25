@@ -1,6 +1,7 @@
 namespace Lapine.Client {
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
 
     public sealed record QueueDefinition(
         String Name,
@@ -14,7 +15,7 @@ namespace Lapine.Client {
             Durability: Durability.Durable,
             Exclusive : false,
             AutoDelete: false,
-            Arguments : new Dictionary<String, Object>()
+            Arguments : ImmutableDictionary<String, Object>.Empty
         );
     }
 }

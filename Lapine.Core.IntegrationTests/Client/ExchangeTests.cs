@@ -1,7 +1,6 @@
-namespace Lapine {
+namespace Lapine.Client {
     using System;
     using System.Linq;
-    using Lapine.Client;
     using Bogus;
     using FluentAssertions;
     using Xbehave;
@@ -25,7 +24,7 @@ namespace Lapine {
                 await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Direct(Random.String2(12)));
             });
             "Then the exchange is created on the broker".x(async () => {
-                var exchanges = await broker.GetExchanges().ToListAsync();
+                var exchanges = await broker.GetExchangesAsync().ToListAsync();
 
                 exchanges.Should().Contain(exchangeDefinition);
             });
@@ -48,7 +47,7 @@ namespace Lapine {
                 await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Fanout(Random.String2(12)));
             });
             "Then the exchange is created on the broker".x(async () => {
-                var exchanges = await broker.GetExchanges().ToListAsync();
+                var exchanges = await broker.GetExchangesAsync().ToListAsync();
 
                 exchanges.Should().Contain(exchangeDefinition);
             });
@@ -71,7 +70,7 @@ namespace Lapine {
                 await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Headers(Random.String2(12)));
             });
             "Then the exchange is created on the broker".x(async () => {
-                var exchanges = await broker.GetExchanges().ToListAsync();
+                var exchanges = await broker.GetExchangesAsync().ToListAsync();
 
                 exchanges.Should().Contain(exchangeDefinition);
             });
@@ -94,28 +93,58 @@ namespace Lapine {
                 await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Topic(Random.String2(12)));
             });
             "Then the exchange is created on the broker".x(async () => {
-                var exchanges = await broker.GetExchanges().ToListAsync();
+                var exchanges = await broker.GetExchangesAsync().ToListAsync();
 
                 exchanges.Should().Contain(exchangeDefinition);
             });
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
-        public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
+        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
+        [Example("3.9-rc-management-alpine")]
+        [Example("3.8-management-alpine")]
+        [Example("3.7-management-alpine")]
+        public void RedeclareExchanges(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has an exchange declared".x(async () => {
+                exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
+                await broker.ExchangeDeclareAsync(exchangeDefinition);
+            });
             "And a client connected to the broker with an open channel".x(async () => {
                 subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
                 await subject.ConnectAsync();
                 channel = await subject.OpenChannelAsync();
             }).Teardown(async () => await subject.DisposeAsync());
-            "And the broker has an exchange declared".x(async () => {
-                await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Direct(Random.String2(8)));
+            "When the client attempts to redeclare the exchange".x(async () => {
+                exception = await Record.ExceptionAsync(async () => {
+                    await channel.DeclareExchangeAsync(exchangeDefinition);
+                });
             });
+            "Then no exception is thrown".x(() => {
+                exception.Should().BeNull();
+            });
+        }
+
+        [Scenario]
+        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
+        [Example("3.9-rc-management-alpine")]
+        [Example("3.8-management-alpine")]
+        [Example("3.7-management-alpine")]
+        public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has an exchange declared".x(async () => {
+                exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
+                await broker.ExchangeDeclareAsync(exchangeDefinition);
+            });
+            "And a client connected to the broker with an open channel".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            }).Teardown(async () => await subject.DisposeAsync());
             "When the client attempts to redeclare the exchange with a different parameter".x(async () => {
                 exception = await Record.ExceptionAsync(async () => {
                     await channel.DeclareExchangeAsync(exchangeDefinition with {
@@ -158,25 +187,25 @@ namespace Lapine {
         [Example("3.9-rc-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
-        public void DeleteExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchange) {
+        public void DeleteExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has an exchange declared".x(async () => {
-                exchange = ExchangeDefinition.Direct(Lorem.Word());
-                await broker.ExchangeDeclareAsync(exchange.Name);
+                exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
+                await broker.ExchangeDeclareAsync(exchangeDefinition);
             });
             "And a client connected to the broker with an open channel".x(async () => {
                 subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
                 await subject.ConnectAsync();
                 channel = await subject.OpenChannelAsync();
-            });
+            }).Teardown(async () => await subject.DisposeAsync());
             "When the client deletes the exchange".x(async () => {
-                await channel.DeleteExchangeAsync(exchange.Name);
+                await channel.DeleteExchangeAsync(exchangeDefinition.Name);
             });
             "Then the exchange should no longer exist on the broker".x(async () => {
-                var exchanges = await broker.GetExchanges().ToListAsync();
-                exchanges.Should().NotContain(exchange);
+                var exchanges = await broker.GetExchangesAsync().ToListAsync();
+                exchanges.Should().NotContain(exchangeDefinition);
             });
         }
     }

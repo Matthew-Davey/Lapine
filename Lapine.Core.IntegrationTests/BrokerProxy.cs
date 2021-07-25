@@ -74,8 +74,8 @@ namespace Lapine {
             );
 
             var broker = new BrokerProxy(container, username, password);
-            await broker.AddUser(username, password);
-            await broker.SetPermissions("/", username);
+            await broker.AddUserAsync(username, password);
+            await broker.SetPermissionsAsync("/", username);
 
             return broker;
         }
@@ -109,7 +109,7 @@ namespace Lapine {
                 }
             };
 
-        public async IAsyncEnumerable<Connection> GetConnections() {
+        public async IAsyncEnumerable<Connection> GetConnectionsAsync() {
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -139,7 +139,7 @@ namespace Lapine {
             }
         }
 
-        public async IAsyncEnumerable<Channel> GetChannels() {
+        public async IAsyncEnumerable<Channel> GetChannelsAsync() {
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -163,7 +163,7 @@ namespace Lapine {
             }
         }
 
-        public async IAsyncEnumerable<ExchangeDefinition> GetExchanges() {
+        public async IAsyncEnumerable<ExchangeDefinition> GetExchangesAsync() {
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -192,14 +192,51 @@ namespace Lapine {
                     },
                     Arguments  = arguments switch {
                         JArray { Count: 0 } => ImmutableDictionary<String, Object>.Empty,
-                        JObject obj         => obj.ToObject<Dictionary<String, Object>>(),
+                        JObject obj         => obj.ToObject<ImmutableDictionary<String, Object>>(),
                         _                   => throw new Exception("Unexpected rabbitmqctl output")
                     },
                 };
             }
         }
 
-        public async ValueTask AddUser(String username, String password) =>
+        public async IAsyncEnumerable<QueueDefinition> GetQueuesAsync() {
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add("list_queues name auto_delete exclusive durable arguments", escape: false)
+                    .Add("--formatter json", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync()
+            );
+
+            var queues = JArray.Parse(process.StandardOutput);
+
+            foreach (var queue in queues) {
+                var name       = (String)queue.SelectToken("$.name");
+                var autoDelete = (Boolean)queue.SelectToken("$.auto_delete");
+                var exclusive  = (Boolean)queue.SelectToken("$.exclusive");
+                var durable    = (Boolean)queue.SelectToken("$.durable");
+                var arguments  = queue.SelectToken("$.arguments");
+
+                yield return QueueDefinition.Create(name) with {
+                    AutoDelete = autoDelete,
+                    Durability = durable switch {
+                        true  => Durability.Durable,
+                        false => Durability.Transient
+                    },
+                    Exclusive  = exclusive,
+                    Arguments  = arguments switch {
+                        JArray { Count: 0 } => ImmutableDictionary<String, Object>.Empty,
+                        JObject obj         => obj.ToObject<ImmutableDictionary<String, Object>>(),
+                        _                   => throw new Exception("Unexpected rabbitmqctl output")
+                    },
+                };
+            }
+        }
+
+        public async ValueTask AddUserAsync(String username, String password) =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -210,7 +247,7 @@ namespace Lapine {
                 .ExecuteAsync()
             );
 
-        public async ValueTask AddVirtualHost(String virtualHost) =>
+        public async ValueTask AddVirtualHostAsync(String virtualHost) =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -221,7 +258,7 @@ namespace Lapine {
                 .ExecuteAsync()
             );
 
-        public async ValueTask SetPermissions(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") =>
+        public async ValueTask SetPermissionsAsync(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
@@ -232,17 +269,27 @@ namespace Lapine {
                 .ExecuteAsync()
             );
 
-        public async ValueTask ExchangeDeclareAsync(String name, String type = "direct") {
+        public async ValueTask ExchangeDeclareAsync(ExchangeDefinition definition) =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
                     .Add("exec")
                     .Add(_container)
                     .Add("rabbitmqadmin")
-                    .Add($"declare exchange name={name} type={type}", escape: false))
+                    .Add($"declare exchange name={definition.Name} type={definition.Type} durable={definition.Durability switch { Durability.Durable => "true", _ => "false" } }", escape: false))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync()
             );
-        }
+
+        public async ValueTask QueueDeclareAsync(QueueDefinition definition) =>
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqadmin")
+                    .Add($"declare queue name={definition.Name} durable={definition.Durability switch { Durability.Durable => "true", _ => "false" } } auto_delete={(definition.AutoDelete ? "true" : "false")}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync()
+            );
 
         public async ValueTask DisposeAsync() =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
