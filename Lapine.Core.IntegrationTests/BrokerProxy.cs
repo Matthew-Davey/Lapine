@@ -154,10 +154,10 @@ namespace Lapine {
             var channels = JArray.Parse(process.StandardOutput);
 
             foreach (var channel in channels) {
-                var name = (String)channel.SelectToken("$.name");
+                var name   = (String)channel.SelectToken("$.name");
                 var number = (Int32)channel.SelectToken("$.number");
-                var user = (String)channel.SelectToken("$.user");
-                var vhost = (String)channel.SelectToken("$.vhost");
+                var user   = (String)channel.SelectToken("$.user");
+                var vhost  = (String)channel.SelectToken("$.vhost");
 
                 yield return new Channel(name, number, user, vhost);
             }
@@ -231,6 +231,18 @@ namespace Lapine {
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteAsync()
             );
+
+        public async ValueTask ExchangeDeclareAsync(String name, String type = "direct") {
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqadmin")
+                    .Add($"declare exchange name={name} type={type}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync()
+            );
+        }
 
         public async ValueTask DisposeAsync() =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")

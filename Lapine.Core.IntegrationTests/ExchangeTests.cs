@@ -152,5 +152,32 @@ namespace Lapine {
                 exception.Should().BeOfType(Type.GetType("Lapine.Client.AccessRefusedException, Lapine.Core"));
             });
         }
+
+        [Scenario]
+        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
+        [Example("3.9-rc-management-alpine")]
+        [Example("3.8-management-alpine")]
+        [Example("3.7-management-alpine")]
+        public void DeleteExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchange) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has an exchange declared".x(async () => {
+                exchange = ExchangeDefinition.Direct(Lorem.Word());
+                await broker.ExchangeDeclareAsync(exchange.Name);
+            });
+            "And a client connected to the broker with an open channel".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            });
+            "When the client deletes the exchange".x(async () => {
+                await channel.DeleteExchangeAsync(exchange.Name);
+            });
+            "Then the exchange should no longer exist on the broker".x(async () => {
+                var exchanges = await broker.GetExchanges().ToListAsync();
+                exchanges.Should().NotContain(exchange);
+            });
+        }
     }
 }
