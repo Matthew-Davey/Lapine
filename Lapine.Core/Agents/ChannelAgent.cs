@@ -18,7 +18,7 @@ namespace Lapine.Agents {
     static class ChannelAgent {
         static public class Protocol {
             public record Open(PID Listener, UInt16 ChannelId, PID TxD);
-            public record Opened(PID ChannelAgent);
+            public record Opened(UInt16 ChannelId, PID ChannelAgent);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
             public record DeleteExchange(
@@ -71,7 +71,7 @@ namespace Lapine.Agents {
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
 
-        record State(PID Dispatcher, IImmutableDictionary<String, PID> Consumers);
+        record State(UInt16 ChannelId, PID Dispatcher, IImmutableDictionary<String, PID> Consumers);
 
         class Actor : IActor {
             readonly UInt32 _maxFrameSize;
@@ -89,6 +89,7 @@ namespace Lapine.Agents {
                 switch (context.Message) {
                     case Open open: {
                         var state = new State(
+                            ChannelId : open.ChannelId,
                             Dispatcher: context.SpawnNamed(
                                 name: "dispatcher",
                                 props: DispatcherAgent.Create()
@@ -108,7 +109,7 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case ChannelOpenOk _: {
-                            context.Send(listener, new Opened(context.Self!));
+                            context.Send(listener, new Opened(state.ChannelId, context.Self!));
                             _behaviour.Become(Open(state));
                             break;
                         }
