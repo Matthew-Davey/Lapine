@@ -58,13 +58,12 @@ namespace Lapine.Agents {
             PID HandshakeAgent,
             PID Dispatcher
         ) {
-            public ConnectedState ToConnectedState(PID heartbeatAgent, IImmutableList<UInt16> availableChannelIds) =>
+            public ConnectedState ToConnectedState(IImmutableList<UInt16> availableChannelIds) =>
                 new (
                     ConnectionConfiguration: ConnectionConfiguration,
                     SocketAgent            : SocketAgent,
                     TxD                    : TxD,
                     FrameRouter            : FrameRouter,
-                    HeartbeatAgent         : heartbeatAgent,
                     Dispatcher             : Dispatcher,
                     AvailableChannelIds    : availableChannelIds
                 );
@@ -75,7 +74,6 @@ namespace Lapine.Agents {
             PID SocketAgent,
             PID TxD,
             PID FrameRouter,
-            PID HeartbeatAgent,
             PID Dispatcher,
             IImmutableList<UInt16> AvailableChannelIds
         );
@@ -198,28 +196,40 @@ namespace Lapine.Agents {
                             state.ScheduledTimeout.Cancel();
                             context.Send(state.FrameRouter, new RemoveRoutee(0, state.HandshakeAgent));
                             context.Stop(state.HandshakeAgent);
+                            context.Send(state.SocketAgent, new Tune(completed.MaxFrameSize));
 
-                            var connectedState = state.ToConnectedState(
-                                heartbeatAgent: context.SpawnNamed(
-                                    name : "heartbeat",
+                            // If amqp heartbeats are enabled, spawn a heartbeat agent...
+                            if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.HasValue) {
+                                var heartbeatAgent = context.SpawnNamed(
+                                    name: "heartbeat",
                                     props: HeartbeatAgent.Create()
-                                ),
+                                );
+                                context.Send(state.FrameRouter, new AddRoutee(0, heartbeatAgent));
+                                context.Send(heartbeatAgent, new StartHeartbeat(
+                                    Dispatcher: state.Dispatcher,
+                                    Frequency : state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value,
+                                    Listener  : context.Self!
+                                ));
+                            }
+
+                            // If tcp keepalives are enabled, configure the socket...
+                            if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.HasValue) {
+                                var (probeTime, retryInterval, retryCount) = state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.Value;
+
+                                context.Send(state.SocketAgent, new EnableTcpKeepAlives(
+                                    ProbeTime    : probeTime,
+                                    RetryInterval: retryInterval,
+                                    RetryCount   : retryCount
+                                ));
+                            }
+
+                            _behaviour.Become(Connected(state.ToConnectedState(
                                 availableChannelIds: Enumerable.Range(1, completed.MaxChannelCount)
                                     .Select(channelId => (UInt16)channelId)
                                     .ToImmutableList()
-                            );
-
-                            context.Send(connectedState.FrameRouter, new AddRoutee(0, connectedState.HeartbeatAgent));
-                            context.Send(connectedState.HeartbeatAgent, new StartHeartbeat(
-                                Dispatcher: state.Dispatcher,
-                                Frequency : completed.HeartbeatFrequency,
-                                Listener  : context.Self!
-                            ));
-                            context.Send(connectedState.SocketAgent, new Tune(completed.MaxFrameSize));
+                            )));
 
                             state.Promise.SetResult();
-
-                            _behaviour.Become(Connected(connectedState));
                             break;
                         }
                         case HandshakeFailed failed: {
@@ -247,11 +257,9 @@ namespace Lapine.Agents {
                         case RemoteFlatline _: {
                             context.Stop(state.Dispatcher);
                             context.Stop(state.FrameRouter);
-                            context.Stop(state.HeartbeatAgent);
                             context.Stop(state.SocketAgent);
 
                             _behaviour.Become(Disconnected);
-                            //context.Send(context.Self!, new Connect(state.ConnectionConfiguration!, new TaskCompletionSource()));
                             break;
                         }
                         case OpenChannel openChannel: {

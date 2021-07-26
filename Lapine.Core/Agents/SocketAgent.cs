@@ -11,6 +11,8 @@ namespace Lapine.Agents {
 
     using static System.Math;
     using static System.Threading.Tasks.Task;
+    using static System.Net.Sockets.SocketOptionLevel;
+    using static System.Net.Sockets.SocketOptionName;
     using static Lapine.Agents.SocketAgent.Protocol;
     using static Lapine.Client.ConnectionConfiguration;
 
@@ -20,6 +22,7 @@ namespace Lapine.Agents {
             public record Connected(PID TxD, PID RxD);
             public record ConnectionFailed(Exception Reason);
             public record Tune(UInt32 MaxFrameSize);
+            public record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount);
             public record Transmit(ISerializable Entity);
             public record BeginPolling(PID FrameListener);
             public record FrameReceived(RawFrame Frame);
@@ -108,6 +111,13 @@ namespace Lapine.Agents {
                             }
                             break;
                         }
+                        case EnableTcpKeepAlives enable: {
+                            socket.SetSocketOption(SocketOptionLevel.Socket, KeepAlive, true);
+                            socket.SetSocketOption(Tcp, TcpKeepAliveTime, (Int32)Round(enable.ProbeTime.TotalSeconds));
+                            socket.SetSocketOption(Tcp, TcpKeepAliveInterval, (Int32)Round(enable.RetryInterval.TotalSeconds));
+                            socket.SetSocketOption(Tcp, TcpKeepAliveRetryCount, enable.RetryCount);
+                            break;
+                        }
                         case Restarting:
                         case Stopping _: {
                             socket.Close();
@@ -138,12 +148,12 @@ namespace Lapine.Agents {
             }
 
             static Receive Ready(Socket socket) {
-                var buffer = new ArrayBufferWriter<Byte>((Int32)DefaultMaximumFrameSize);
+                var buffer = new MemoryBufferWriter<Byte>((Int32)DefaultMaximumFrameSize);
 
                 return (IContext context) => {
                     switch (context.Message) {
                         case Tune tune: {
-                            buffer = new ArrayBufferWriter<Byte>((Int32)tune.MaxFrameSize);
+                            buffer = new MemoryBufferWriter<Byte>((Int32)tune.MaxFrameSize);
                             break;
                         }
                         case Transmit transmit: {

@@ -114,7 +114,7 @@ namespace Lapine.Agents {
                 _rootContext.Send(_subject, new ConnectionTune(
                     channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
                     frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
-                    heartbeat : (UInt16)ConnectionConfiguration.DefaultHeartbeatFrequency.TotalSeconds
+                    heartbeat : 60
                 ));
             });
             "Then it should send a ConnectionTuneOk message".x(() => {
@@ -146,7 +146,7 @@ namespace Lapine.Agents {
                 _rootContext.Send(_subject, new ConnectionTune(
                     channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
                     frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
-                    heartbeat : (UInt16)ConnectionConfiguration.DefaultHeartbeatFrequency.TotalSeconds
+                    heartbeat : 60
                 ));
             });
             "When the agent receives a ConnectionOpenOk message".x(() => {

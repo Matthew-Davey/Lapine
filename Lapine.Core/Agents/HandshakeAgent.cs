@@ -144,7 +144,7 @@ namespace Lapine.Agents {
                             return CompletedTask;
                         }
                         case ConnectionTune tune: {
-                            var heartbeatFrequency = Min(tune.Heartbeat, (UInt16)state.ConnectionConfiguration.HeartbeatFrequency.TotalSeconds);
+                            var heartbeatFrequency = Min(tune.Heartbeat, (UInt16)state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.GetValueOrDefault().TotalSeconds);
                             var maxFrameSize       = Min(tune.FrameMax, state.ConnectionConfiguration.MaximumFrameSize);
                             var maxChannelCount    = Min(tune.ChannelMax, state.ConnectionConfiguration.MaximumChannelCount);
 

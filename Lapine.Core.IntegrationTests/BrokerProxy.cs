@@ -101,11 +101,11 @@ namespace Lapine {
         /// </summary>
         public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() =>
             ConnectionConfiguration.Default with {
-                AuthenticationStrategy = new PlainAuthenticationStrategy(_username, _password),
-                Endpoints              = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
-                HeartbeatFrequency     = Debugger.IsAttached switch {
-                    true  => TimeSpan.Zero, // Zero disables heartbeats - see https://www.rabbitmq.com/heartbeats.html#heartbeats-timeout
-                    false => ConnectionConfiguration.DefaultHeartbeatFrequency
+                AuthenticationStrategy      = new PlainAuthenticationStrategy(_username, _password),
+                Endpoints                   = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
+                ConnectionIntegrityStrategy = Debugger.IsAttached switch {
+                    true  => ConnectionIntegrityStrategy.None,
+                    false => ConnectionIntegrityStrategy.Default
                 }
             };
 
