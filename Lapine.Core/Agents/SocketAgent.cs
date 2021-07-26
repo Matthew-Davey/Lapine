@@ -49,19 +49,19 @@ namespace Lapine.Agents {
                         socket.BeginConnect(connect.Endpoint, (asyncResult) => {
                             context.Send(context.Self!, asyncResult);
                         }, state: socket);
-                        var cancelTimeout = context.Scheduler().SendOnce(
+                        var scheduledTimeout = context.Scheduler().SendOnce(
                             delay  : connect.ConnectTimeout,
                             target : context.Self!,
                             message: new TimeoutExpired()
                         );
-                        _behaviour.Become(Connecting(connect.Listener, socket, cancelTimeout));
+                        _behaviour.Become(Connecting(connect.Listener, socket, scheduledTimeout));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            Receive Connecting(PID listener, Socket socket, CancellationTokenSource cancelTimeout) =>
+            Receive Connecting(PID listener, Socket socket, CancellationTokenSource scheduledTimeout) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired timeout: {
@@ -71,7 +71,7 @@ namespace Lapine.Agents {
                             break;
                         }
                         case IAsyncResult asyncResult: {
-                            cancelTimeout.Cancel();
+                            scheduledTimeout.Cancel();
                             try {
                                 socket.EndConnect(asyncResult);
                                 var txd = context.SpawnNamed(
