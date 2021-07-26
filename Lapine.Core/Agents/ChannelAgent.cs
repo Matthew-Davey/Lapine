@@ -21,16 +21,48 @@ namespace Lapine.Agents {
             public record Opened(PID ChannelAgent);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
-            public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition, TaskCompletionSource Promise);
+            public record DeleteExchange(
+                String Exchange,
+                DeleteExchangeCondition Condition,
+                TaskCompletionSource Promise
+            );
             public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TaskCompletionSource Promise);
-            public record BindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
-            public record UnbindQueue(String Exchange, String Queue, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments, TaskCompletionSource Promise);
+            public record BindQueue(
+                String Exchange,
+                String Queue,
+                String RoutingKey,
+                IReadOnlyDictionary<String, Object> Arguments,
+                TaskCompletionSource Promise
+            );
+            public record UnbindQueue(
+                String Exchange,
+                String Queue,
+                String RoutingKey,
+                IReadOnlyDictionary<String, Object> Arguments,
+                TaskCompletionSource Promise
+            );
             public record PurgeQueue(String Queue, TaskCompletionSource Promise);
-            public record Publish(String Exchange, String RoutingKey, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message, Boolean Mandatory, Boolean Immediate, TaskCompletionSource Promise);
-            public record GetMessage(String Queue, Boolean Ack, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise);
+            public record Publish(
+                String Exchange,
+                String RoutingKey,
+                (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message,
+                Boolean Mandatory,
+                Boolean Immediate,
+                TaskCompletionSource Promise
+            );
+            public record GetMessage(
+                String Queue,
+                Boolean Ack,
+                TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise
+            );
             public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
-            public record Consume(String Queue, ConsumerConfiguration ConsumerConfiguration, IReadOnlyDictionary<String, Object>? Arguments, TaskCompletionSource<String> Promise);
+            public record Consume(
+                String Queue,
+                ConsumerConfiguration ConsumerConfiguration,
+                IReadOnlyDictionary<String, Object>? Arguments,
+                TaskCompletionSource<String> Promise
+            );
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
@@ -221,15 +253,21 @@ namespace Lapine.Agents {
                                 noWait     : false,
                                 arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
                             )));
-                            _behaviour.BecomeStacked(AwaitingConsumeOk(state, consumerTag, consume.ConsumerConfiguration, consume.Promise));
+                            _behaviour.BecomeStacked(AwaitingBasicConsumeOk(
+                                state                : state,
+                                consumerTag          : consumerTag,
+                                consumerConfiguration: consume.ConsumerConfiguration,
+                                promise              : consume.Promise
+                            ));
                             break;
                         }
                         case BasicDeliver deliver: {
-                            var deliveryInfo = new DeliveryInfo(deliver.DeliveryTag, deliver.Redelivered, deliver.ExchangeName, null, null);
-
                             if (state.Consumers.ContainsKey(deliver.ConsumerTag)) {
                                 var consumer = state.Consumers[deliver.ConsumerTag];
-                                _behaviour.BecomeStacked(AwaitingContentHeader(deliveryInfo, consumer));
+                                _behaviour.BecomeStacked(AwaitingContentHeader(
+                                    delivery: DeliveryInfo.FromBasicDeliver(deliver),
+                                    consumer: consumer
+                                ));
                             }
                             else {
                                 // TODO: No handler....
@@ -378,10 +416,8 @@ namespace Lapine.Agents {
                             break;
                         }
                         case BasicGetOk ok: {
-                            var deliveryInfo = new DeliveryInfo(ok.DeliveryTag, ok.Redelivered, ok.ExchangeName, ok.RoutingKey, ok.MessageCount);
-
                             _behaviour.UnbecomeStacked();
-                            _behaviour.BecomeStacked(AwaitingContentHeader(deliveryInfo, promise));
+                            _behaviour.BecomeStacked(AwaitingContentHeader(DeliveryInfo.FromBasicGetOk(ok), promise));
                             break;
                         }
                     }
@@ -441,7 +477,7 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive AwaitingConsumeOk(State state, String consumerTag, ConsumerConfiguration consumerConfiguration, TaskCompletionSource<String> promise) =>
+            Receive AwaitingBasicConsumeOk(State state, String consumerTag, ConsumerConfiguration consumerConfiguration, TaskCompletionSource<String> promise) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case BasicConsumeOk ok: {
@@ -449,7 +485,11 @@ namespace Lapine.Agents {
                                 name: $"consumer_{consumerTag}",
                                 props: ConsumerAgent.Create()
                             );
-                            context.Send(consumer, new StartConsuming(consumerTag, state.Dispatcher, consumerConfiguration));
+                            context.Send(consumer, new StartConsuming(
+                                ConsumerTag          : consumerTag,
+                                Dispatcher           : state.Dispatcher,
+                                ConsumerConfiguration: consumerConfiguration
+                            ));
                             _behaviour.Become(Open(state with {
                                 Consumers = state.Consumers.Add(consumerTag, consumer)
                             }));
@@ -467,11 +507,20 @@ namespace Lapine.Agents {
                             _behaviour.UnbecomeStacked();
                             switch (header.BodySize) {
                                 case 0: {
-                                    context.Send(consumer, new ConsumeMessage(delivery, header.Properties, new MemoryBufferWriter<Byte>()));
+                                    context.Send(consumer, new ConsumeMessage(
+                                        Delivery  : delivery,
+                                        Properties: header.Properties,
+                                        Buffer    : new MemoryBufferWriter<Byte>()
+                                    ));
                                     break;
                                 }
                                 default: {
-                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, consumer, header.Properties, header.BodySize));
+                                    _behaviour.BecomeStacked(AwaitingContentBody(
+                                        delivery    : delivery,
+                                        consumer    : consumer,
+                                        properties  : header.Properties,
+                                        expectedSize: header.BodySize
+                                    ));
                                     break;
                                 }
                             }

@@ -23,6 +23,14 @@ namespace Lapine.Agents {
         static public Props Create() =>
             Props.FromProducer(() => new Actor());
 
+        record State(
+            TimeSpan HeartbeatFrequency,
+            CancellationTokenSource CancelSchedule,
+            PID Dispatcher,
+            PID Listener,
+            DateTime LastRemoteHeartbeat
+        );
+
         class Actor : IActor {
             readonly Behavior _behaviour;
 
@@ -38,32 +46,43 @@ namespace Lapine.Agents {
                         if (start.Frequency == TimeSpan.Zero)
                             break;
 
-                        var cancelHeartbeat = context.Scheduler().RequestRepeatedly(start.Frequency, start.Frequency, context.Self!, new Beat());
-                        _behaviour.Become(Beating(start.Frequency, cancelHeartbeat, start.Dispatcher, start.Listener, UtcNow));
+                        var cancelHeartbeat = context.Scheduler().RequestRepeatedly(
+                            delay   : start.Frequency,
+                            interval: start.Frequency,
+                            target  : context.Self!,
+                            message : new Beat()
+                        );
+                        _behaviour.Become(Beating(new State(
+                            HeartbeatFrequency : start.Frequency,
+                            CancelSchedule     : cancelHeartbeat,
+                            Dispatcher         : start.Dispatcher,
+                            Listener           : start.Listener,
+                            LastRemoteHeartbeat: UtcNow
+                        )));
                         break;
                     };
                 }
                 return CompletedTask;
             }
 
-            static Receive Beating(TimeSpan frequency, CancellationTokenSource cancelHeartbeat, PID dispatcher, PID listener, DateTime lastRemoteHeartbeat) =>
+            Receive Beating(State state) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case Beat _: {
-                            context.Send(dispatcher, Dispatch.Frame(RawFrame.Heartbeat));
-
-                            if ((UtcNow - lastRemoteHeartbeat) > (frequency * 3)) {
-                                context.Send(listener, new RemoteFlatline());
+                            if ((UtcNow - state.LastRemoteHeartbeat) > (state.HeartbeatFrequency * 3)) {
+                                context.Send(state.Listener, new RemoteFlatline());
                             }
-
+                            context.Send(state.Dispatcher, Dispatch.Frame(RawFrame.Heartbeat));
                             break;
                         }
                         case FrameReceived { Frame: { Type: FrameType.Heartbeat } }: {
-                            lastRemoteHeartbeat = UtcNow;
+                            _behaviour.Become(Beating(state with {
+                                LastRemoteHeartbeat = UtcNow
+                            }));
                             break;
                         }
                         case Stopping _: {
-                            cancelHeartbeat.Cancel();
+                            state.CancelSchedule.Cancel();
                             break;
                         }
                     }

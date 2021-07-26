@@ -22,7 +22,7 @@ namespace Lapine.Client {
 
         public async ValueTask ConnectAsync(TimeSpan? timeout = default) {
             var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new Connect(
+            _system.Root.Send(_agent, new EstablishConnection(
                 Configuration: _connectionConfiguration with {
                     ConnectionTimeout = timeout ?? _connectionConfiguration.ConnectionTimeout
                 }, promise

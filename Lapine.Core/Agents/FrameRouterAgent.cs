@@ -38,21 +38,19 @@ namespace Lapine.Agents {
                             _behaviour.Become(Routing(newRoutees));
                             break;
                         }
-                        case RemoveRoutee remove: {
-                            if (routees.ContainsKey(remove.ChannelId)) {
-                                _behaviour.Become(Routing(routees.SetItem(remove.ChannelId, routees[remove.ChannelId].Remove(remove.Routee))));
-                            }
+                        case RemoveRoutee remove when routees.ContainsKey(remove.ChannelId): {
+                            _behaviour.Become(Routing(
+                                routees.SetItem(remove.ChannelId, routees[remove.ChannelId].Remove(remove.Routee))
+                            ));
                             break;
                         }
                         case Reset _: {
                             _behaviour.Become(Routing(ImmutableDictionary<UInt16, IImmutableSet<PID>>.Empty));
                             break;
                         }
-                        case FrameReceived received: {
-                            if (routees.ContainsKey(received.Frame.Channel)) {
-                                foreach (var routee in routees[received.Frame.Channel]) {
-                                    context.Forward(routee);
-                                }
+                        case FrameReceived received when routees.ContainsKey(received.Frame.Channel): {
+                            foreach (var routee in routees[received.Frame.Channel]) {
+                                context.Forward(routee);
                             }
                             break;
                         }

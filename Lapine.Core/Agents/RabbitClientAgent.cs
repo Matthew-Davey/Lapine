@@ -16,12 +16,13 @@ namespace Lapine.Agents {
     using static Lapine.Agents.HandshakeAgent.Protocol;
     using static Lapine.Agents.HeartbeatAgent.Protocol;
     using static Lapine.Agents.RabbitClientAgent.Protocol;
+    using static Lapine.Agents.SocketAgent.Protocol;
 
     using TimeoutExpired = Lapine.Agents.RabbitClientAgent.Protocol.TimeoutExpired;
 
     static public class RabbitClientAgent {
         static public class Protocol {
-            public record Connect(ConnectionConfiguration Configuration, TaskCompletionSource Promise);
+            public record EstablishConnection(ConnectionConfiguration Configuration, TaskCompletionSource Promise);
             public record OpenChannel(TaskCompletionSource<PID> Promise);
             internal record TimeoutExpired();
         }
@@ -31,22 +32,42 @@ namespace Lapine.Agents {
             TaskCompletionSource Promise,
             PID SocketAgent,
             IPEndPoint[] RemainingEndpoints,
-            CancellationTokenSource CancelTimeout,
+            CancellationTokenSource ScheduledTimeout,
             IImmutableList<Exception> AccumulatedFailures
-        );
+        ) {
+            public NegotiatingState ToNegotiatingState(PID txd, PID frameRouter, PID handshakeAgent, PID dispatcher) =>
+                new (
+                    ConnectionConfiguration: ConnectionConfiguration,
+                    Promise                : Promise,
+                    SocketAgent            : SocketAgent,
+                    ScheduledTimeout       : ScheduledTimeout,
+                    TxD                    : txd,
+                    FrameRouter            : frameRouter,
+                    HandshakeAgent         : handshakeAgent,
+                    Dispatcher             : dispatcher
+                );
+        }
 
         record NegotiatingState(
             ConnectionConfiguration ConnectionConfiguration,
             TaskCompletionSource Promise,
             PID SocketAgent,
-            CancellationTokenSource CancelTimeout,
+            CancellationTokenSource ScheduledTimeout,
             PID TxD,
             PID FrameRouter,
             PID HandshakeAgent,
             PID Dispatcher
         ) {
-            public NegotiatingState(ConnectingState state, PID txd, PID frameRouter, PID handshakeAgent, PID dispatcher)
-                : this(state.ConnectionConfiguration, state.Promise, state.SocketAgent, state.CancelTimeout, txd, frameRouter, handshakeAgent, dispatcher) { }
+            public ConnectedState ToConnectedState(PID heartbeatAgent, IImmutableList<UInt16> availableChannelIds) =>
+                new (
+                    ConnectionConfiguration: ConnectionConfiguration,
+                    SocketAgent            : SocketAgent,
+                    TxD                    : TxD,
+                    FrameRouter            : FrameRouter,
+                    HeartbeatAgent         : heartbeatAgent,
+                    Dispatcher             : Dispatcher,
+                    AvailableChannelIds    : availableChannelIds
+                );
         }
 
         record ConnectedState(
@@ -57,10 +78,7 @@ namespace Lapine.Agents {
             PID HeartbeatAgent,
             PID Dispatcher,
             IImmutableList<UInt16> AvailableChannelIds
-        ) {
-            public ConnectedState(NegotiatingState state, PID heartbeatAgent, IImmutableList<UInt16> availableChannelIds)
-                : this(state.ConnectionConfiguration, state.SocketAgent, state.TxD, state.FrameRouter, heartbeatAgent, state.Dispatcher, availableChannelIds) { }
-        }
+        );
 
         static public Props Create() =>
             Props.FromProducer(() => new Actor());
@@ -76,7 +94,7 @@ namespace Lapine.Agents {
 
             Task Disconnected(IContext context) {
                 switch (context.Message) {
-                    case Connect connect: {
+                    case EstablishConnection connect: {
                         var state = new ConnectingState(
                             ConnectionConfiguration: connect.Configuration,
                             Promise: connect.Promise,
@@ -85,13 +103,23 @@ namespace Lapine.Agents {
                                 props: SocketAgent.Create()
                             ),
                             RemainingEndpoints: connect.Configuration.GetConnectionSequence(),
-                            CancelTimeout: context.Scheduler().SendOnce(connect.Configuration.ConnectionTimeout, context.Self!, new TimeoutExpired()),
+                            ScheduledTimeout: context.Scheduler().SendOnce(
+                                delay  : connect.Configuration.ConnectionTimeout,
+                                target : context.Self!,
+                                message: new TimeoutExpired()
+                            ),
                             AccumulatedFailures: ImmutableList<Exception>.Empty
                         );
 
                         if (state.RemainingEndpoints.Length > 0) {
-                            context.Send(state.SocketAgent, new SocketAgent.Protocol.Connect(state.RemainingEndpoints[0], connect.Configuration.ConnectionTimeout, context.Self!));
-                            _behaviour.Become(Connecting(state with { RemainingEndpoints = state.RemainingEndpoints[1..] }));
+                            context.Send(state.SocketAgent, new Connect(
+                                Endpoint      : state.RemainingEndpoints[0],
+                                ConnectTimeout: connect.Configuration.ConnectionTimeout,
+                                Listener      : context.Self!
+                            ));
+                            _behaviour.Become(Connecting(state with {
+                                RemainingEndpoints = state.RemainingEndpoints[1..]
+                            }));
                         }
                         else {
                             connect.Promise.SetException(new Exception("No endpoints specified in connection configuration"));
@@ -106,39 +134,50 @@ namespace Lapine.Agents {
             Receive Connecting(ConnectingState state) =>
                 (IContext context) => {
                     switch (context.Message) {
-                        case SocketAgent.Protocol.ConnectionFailed failed: {
-                            if (state.RemainingEndpoints.Length > 0) {
-                                context.Send(state.SocketAgent, new SocketAgent.Protocol.Connect(state.RemainingEndpoints[0], state.ConnectionConfiguration!.ConnectionTimeout, context.Self!));
-                                _behaviour.Become(Connecting(state with { RemainingEndpoints = state.RemainingEndpoints[1..], AccumulatedFailures = state.AccumulatedFailures.Add(failed.Reason) }));
-                            }
-                            else {
-                                state.CancelTimeout.Cancel();
-                                state.Promise.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
-                                context.Stop(state.SocketAgent);
-                                _behaviour.Become(Disconnected);
-                            }
+                        case ConnectionFailed failed when state.RemainingEndpoints.Length > 0: {
+                            context.Send(state.SocketAgent, new Connect(
+                                Endpoint      : state.RemainingEndpoints[0],
+                                ConnectTimeout: state.ConnectionConfiguration!.ConnectionTimeout,
+                                Listener      : context.Self!
+                            ));
+                            _behaviour.Become(Connecting(state with {
+                                RemainingEndpoints  = state.RemainingEndpoints[1..],
+                                AccumulatedFailures = state.AccumulatedFailures.Add(failed.Reason)
+                            }));
                             break;
                         }
-                        case SocketAgent.Protocol.Connected connected: {
-                            var negotiatingState = new NegotiatingState(state, connected.TxD,
+                        case ConnectionFailed failed when state.RemainingEndpoints.Length == 0: {
+                            state.ScheduledTimeout.Cancel();
+                            state.Promise.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
+                            context.Stop(state.SocketAgent);
+                            _behaviour.Become(Disconnected);
+                            break;
+                        }
+                        case Connected connected: {
+                            var negotiatingState = state.ToNegotiatingState(
+                                txd : connected.TxD,
                                 frameRouter: context.SpawnNamed(
-                                    name: "frame_router",
+                                    name : "frame_router",
                                     props: FrameRouterAgent.Create()
                                 ),
                                 handshakeAgent: context.SpawnNamed(
-                                    name: "handshake",
+                                    name : "handshake",
                                     props: HandshakeAgent.Create()
                                 ),
                                 dispatcher: context.SpawnNamed(
-                                    name: "dispatcher",
+                                    name : "dispatcher",
                                     props: DispatcherAgent.Create()
                                 )
                             );
 
-                            context.Send(connected.RxD, new SocketAgent.Protocol.BeginPolling(negotiatingState.FrameRouter));
+                            context.Send(connected.RxD, new BeginPolling(negotiatingState.FrameRouter));
                             context.Send(negotiatingState.FrameRouter, new AddRoutee(0, negotiatingState.HandshakeAgent));
                             context.Send(negotiatingState.Dispatcher, new DispatchTo(connected.TxD, 0));
-                            context.Send(negotiatingState.HandshakeAgent, new BeginHandshake(state.ConnectionConfiguration!, context.Self!, negotiatingState.Dispatcher));
+                            context.Send(negotiatingState.HandshakeAgent, new BeginHandshake(
+                                ConnectionConfiguration: state.ConnectionConfiguration!,
+                                Listener               : context.Self!,
+                                Dispatcher             : negotiatingState.Dispatcher
+                            ));
                             _behaviour.Become(Negotiating(negotiatingState));
                             break;
                         }
@@ -156,24 +195,27 @@ namespace Lapine.Agents {
                 (IContext context) => {
                     switch (context.Message) {
                         case HandshakeCompleted completed: {
-                            state.CancelTimeout.Cancel();
+                            state.ScheduledTimeout.Cancel();
                             context.Send(state.FrameRouter, new RemoveRoutee(0, state.HandshakeAgent));
                             context.Stop(state.HandshakeAgent);
-                            var availableChannels = Enumerable.Range(1, completed.MaxChannelCount)
-                                .Select(channelId => (UInt16)channelId)
-                                .ToImmutableList();
 
-                            var connectedState = new ConnectedState(state,
+                            var connectedState = state.ToConnectedState(
                                 heartbeatAgent: context.SpawnNamed(
-                                    name: "heartbeat",
+                                    name : "heartbeat",
                                     props: HeartbeatAgent.Create()
                                 ),
-                                availableChannelIds: availableChannels
+                                availableChannelIds: Enumerable.Range(1, completed.MaxChannelCount)
+                                    .Select(channelId => (UInt16)channelId)
+                                    .ToImmutableList()
                             );
 
                             context.Send(connectedState.FrameRouter, new AddRoutee(0, connectedState.HeartbeatAgent));
-                            context.Send(connectedState.HeartbeatAgent, new StartHeartbeat(state.Dispatcher, completed.HeartbeatFrequency, context.Self!));
-                            context.Send(connectedState.SocketAgent, new SocketAgent.Protocol.Tune(completed.MaxFrameSize));
+                            context.Send(connectedState.HeartbeatAgent, new StartHeartbeat(
+                                Dispatcher: state.Dispatcher,
+                                Frequency : completed.HeartbeatFrequency,
+                                Listener  : context.Self!
+                            ));
+                            context.Send(connectedState.SocketAgent, new Tune(completed.MaxFrameSize));
 
                             state.Promise.SetResult();
 
@@ -181,7 +223,7 @@ namespace Lapine.Agents {
                             break;
                         }
                         case HandshakeFailed failed: {
-                            state.CancelTimeout.Cancel();
+                            state.ScheduledTimeout.Cancel();
                             state.Promise.SetException(failed.Reason);
                             _behaviour.Become(Disconnected);
                             break;
@@ -209,7 +251,7 @@ namespace Lapine.Agents {
                             context.Stop(state.SocketAgent);
 
                             _behaviour.Become(Disconnected);
-                            context.Send(context.Self!, new Connect(state.ConnectionConfiguration!, new TaskCompletionSource()));
+                            //context.Send(context.Self!, new Connect(state.ConnectionConfiguration!, new TaskCompletionSource()));
                             break;
                         }
                         case OpenChannel openChannel: {

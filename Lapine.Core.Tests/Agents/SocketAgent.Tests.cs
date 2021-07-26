@@ -43,10 +43,11 @@ namespace Lapine.Agents {
         [Scenario(Timeout = 1000)]
         public void EstablishesConnection(Socket socket) {
             "When the agent is instructed to connect to a remote endpoint".x(() => {
-                _context.Send(_subject, new Connect(new IPEndPoint(IPAddress.Loopback, _port), TimeSpan.FromSeconds(1), _listener));
-            });
-            "Then is should publish a Connecting event".x(() => {
-                Assert.Contains(new Connecting(), _sent);
+                _context.Send(_subject, new Connect(
+                    Endpoint      : new IPEndPoint(IPAddress.Loopback, _port),
+                    ConnectTimeout: TimeSpan.FromSeconds(1),
+                    Listener      : _listener
+                ));
             });
             "And it should establish a TCP connection".x(() => {
                 socket = _tcpListener.AcceptSocket();
@@ -54,8 +55,8 @@ namespace Lapine.Agents {
             });
             "And it should publish a Connected message".x(() => {
                 Assert.Contains(_sent, message => message switch {
-                    Connected _ => true,
-                    _           => false
+                    Connected => true,
+                    _         => false
                 });
             });
         }

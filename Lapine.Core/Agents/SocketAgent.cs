@@ -9,6 +9,7 @@ namespace Lapine.Agents {
     using Proto;
     using Proto.Timers;
 
+    using static System.Math;
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.SocketAgent.Protocol;
     using static Lapine.Client.ConnectionConfiguration;
@@ -16,7 +17,6 @@ namespace Lapine.Agents {
     static class SocketAgent {
         static public class Protocol {
             public record Connect(IPEndPoint Endpoint, TimeSpan ConnectTimeout, PID Listener);
-            public record Connecting();
             public record Connected(PID TxD, PID RxD);
             public record ConnectionFailed(Exception Reason);
             public record Tune(UInt32 MaxFrameSize);
@@ -46,11 +46,14 @@ namespace Lapine.Agents {
                 switch (context.Message) {
                     case Connect connect: {
                         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        context.Send(connect.Listener, new Connecting());
                         socket.BeginConnect(connect.Endpoint, (asyncResult) => {
                             context.Send(context.Self!, asyncResult);
-                        }, socket);
-                        var cancelTimeout = context.Scheduler().SendOnce(connect.ConnectTimeout, context.Self!, new TimeoutExpired());
+                        }, state: socket);
+                        var cancelTimeout = context.Scheduler().SendOnce(
+                            delay  : connect.ConnectTimeout,
+                            target : context.Self!,
+                            message: new TimeoutExpired()
+                        );
                         _behaviour.Become(Connecting(connect.Listener, socket, cancelTimeout));
                         break;
                     }
@@ -196,9 +199,16 @@ namespace Lapine.Agents {
                 return (IContext context) => {
                     switch (context.Message) {
                         case Poll poll: {
-                            socket.BeginReceive(frameBuffer, tail, Math.Min(128, frameBuffer.Length - tail), SocketFlags.None, asyncResult => {
-                                context.Send(context.Self!, asyncResult);
-                            }, null);
+                            socket.BeginReceive(
+                                buffer     : frameBuffer,
+                                offset     : tail,
+                                size       : Min(128, frameBuffer.Length - tail),
+                                socketFlags: SocketFlags.None,
+                                state      : socket,
+                                callback   : asyncResult => {
+                                    context.Send(context.Self!, asyncResult);
+                                }
+                            );
                             break;
                         }
                         case IAsyncResult asyncResult: {

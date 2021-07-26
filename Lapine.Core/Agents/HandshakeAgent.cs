@@ -19,7 +19,12 @@ namespace Lapine.Agents {
         static public class Protocol {
             public record BeginHandshake(ConnectionConfiguration ConnectionConfiguration, PID Listener, PID Dispatcher);
             public record HandshakeFailed(Exception Reason);
-            public record HandshakeCompleted(UInt16 MaxChannelCount, UInt32 MaxFrameSize, TimeSpan HeartbeatFrequency, IReadOnlyDictionary<String, Object> ServerProperties);
+            public record HandshakeCompleted(
+                UInt16 MaxChannelCount,
+                UInt32 MaxFrameSize,
+                TimeSpan HeartbeatFrequency,
+                IReadOnlyDictionary<String, Object> ServerProperties
+            );
 
             internal record TimeoutExpired();
         }
@@ -27,6 +32,21 @@ namespace Lapine.Agents {
         static public Props Create() =>
             Props.FromProducer(() => new Actor())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+        record NegotiatingState(
+            ConnectionConfiguration ConnectionConfiguration,
+            PID Listener,
+            PID Dispatcher,
+            IReadOnlyDictionary<String, Object>? ServerProperties
+        );
+
+        record NegotiationCompleteState(
+            PID Listener,
+            UInt16 MaxChannelCount,
+            UInt32 MaxFrameSize,
+            TimeSpan HeartbeatFrequency,
+            IReadOnlyDictionary<String, Object> ServerProperties
+        );
 
         class Actor : IActor {
             readonly Behavior _behaviour;
@@ -40,97 +60,130 @@ namespace Lapine.Agents {
             Task Unstarted(IContext context) {
                 switch (context.Message) {
                     case BeginHandshake handshake: {
-                        context.Scheduler().SendOnce(handshake.ConnectionConfiguration.ConnectionTimeout, context.Self!, new TimeoutExpired());
+                        context.Scheduler().SendOnce(
+                            delay  : handshake.ConnectionConfiguration.ConnectionTimeout,
+                            target : context.Self!,
+                            message: new TimeoutExpired()
+                        );
                         context.Send(handshake.Dispatcher, Dispatch.ProtocolHeader(ProtocolHeader.Default));
-                        _behaviour.Become(AwaitConnectionStart(handshake.ConnectionConfiguration, handshake.Listener, handshake.Dispatcher));
+                        _behaviour.Become(AwaitConnectionStart(new NegotiatingState(
+                            ConnectionConfiguration: handshake.ConnectionConfiguration,
+                            Listener               : handshake.Listener,
+                            Dispatcher             : handshake.Dispatcher,
+                            ServerProperties       : null
+                        )));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            Receive AwaitConnectionStart(ConnectionConfiguration connectionConfiguration, PID listener, PID dispatcher) =>
+            Receive AwaitConnectionStart(NegotiatingState state) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired _: {
-                            context.Send(listener, new HandshakeFailed(new TimeoutException()));
+                            context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
+                            _behaviour.Become(Unstarted);
+                            return CompletedTask;
+                        }
+                        case ConnectionStart message when !message.Mechanisms.Contains(state.ConnectionConfiguration.AuthenticationStrategy.Mechanism): {
+                            context.Send(state.Listener, new HandshakeFailed(new Exception($"Requested authentication mechanism '{state.ConnectionConfiguration.AuthenticationStrategy.Mechanism}' is not supported by the broker. This broker supports {String.Join(", ", message.Mechanisms)}")));
+                            _behaviour.Become(Unstarted);
+                            return CompletedTask;
+                        }
+                        case ConnectionStart message when !message.Locales.Contains(state.ConnectionConfiguration.Locale): {
+                            context.Send(state.Listener, new HandshakeFailed(new Exception($"Requested locale '{state.ConnectionConfiguration.Locale}' is not supported by the broker. This broker supports {String.Join(", ", message.Locales)}")));
                             _behaviour.Become(Unstarted);
                             return CompletedTask;
                         }
                         case ConnectionStart message: {
-                            if (!message.Mechanisms.Contains(connectionConfiguration.AuthenticationStrategy.Mechanism)) {
-                                context.Send(listener, new HandshakeFailed(new Exception($"Requested authentication mechanism '{connectionConfiguration.AuthenticationStrategy.Mechanism}' is not supported by the broker. This broker supports {String.Join(", ", message.Mechanisms)}")));
-                                _behaviour.Become(Unstarted);
-                                return CompletedTask;
-                            }
-
-                            if (!message.Locales.Contains(connectionConfiguration.Locale)) {
-                                context.Send(listener, new HandshakeFailed(new Exception($"Requested locale '{connectionConfiguration.Locale}' is not supported by the broker. This broker supports {String.Join(", ", message.Locales)}")));
-                                _behaviour.Become(Unstarted);
-                                return CompletedTask;
-                            }
-
                             // TODO: Verify protocol version compatibility...
-
-                            var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(0, Span<Byte>.Empty);
-
-                            context.Send(dispatcher, Dispatch.Command(new ConnectionStartOk(
-                                peerProperties: connectionConfiguration.PeerProperties.ToDictionary(),
-                                mechanism     : connectionConfiguration.AuthenticationStrategy.Mechanism,
+                            var authenticationResponse = state.ConnectionConfiguration.AuthenticationStrategy.Respond(
+                                stage    : 0,
+                                challenge: Span<Byte>.Empty
+                            );
+                            context.Send(state.Dispatcher, Dispatch.Command(new ConnectionStartOk(
+                                peerProperties: state.ConnectionConfiguration.PeerProperties.ToDictionary(),
+                                mechanism     : state.ConnectionConfiguration.AuthenticationStrategy.Mechanism,
                                 response      : UTF8.GetString(authenticationResponse),
-                                locale        : connectionConfiguration.Locale
+                                locale        : state.ConnectionConfiguration.Locale
                             )));
-                            _behaviour.Become(AwaitConnectionSecureOrTune(connectionConfiguration, listener, dispatcher, message.ServerProperties, 0));
+                            _behaviour.Become(AwaitConnectionSecureOrTune(
+                                authenticationStage: 0,
+                                state              : state with {
+                                    ServerProperties = message.ServerProperties
+                                }
+                            ));
                             return CompletedTask;
                         }
                         default: return CompletedTask;
                     }
                 };
 
-            Receive AwaitConnectionSecureOrTune(ConnectionConfiguration connectionConfiguration, PID listener, PID dispatcher, IReadOnlyDictionary<String, Object> serverProperties, Byte authenticationStage) =>
+            Receive AwaitConnectionSecureOrTune(NegotiatingState state, Byte authenticationStage) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired _: {
-                            context.Send(listener, new HandshakeFailed(new TimeoutException()));
+                            context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
                             _behaviour.Become(Unstarted);
                             return CompletedTask;
                         }
                         case ConnectionSecure message: {
                             var challenge = UTF8.GetBytes(message.Challenge);
-                            var authenticationResponse = connectionConfiguration.AuthenticationStrategy.Respond(stage: ++authenticationStage, challenge: challenge);
-                            context.Send(dispatcher, Dispatch.Command(new ConnectionSecureOk(UTF8.GetString(authenticationResponse))));
-                            _behaviour.Become(AwaitConnectionSecureOrTune(connectionConfiguration, listener, dispatcher, serverProperties, authenticationStage));
+                            var authenticationResponse = state.ConnectionConfiguration.AuthenticationStrategy.Respond(
+                                stage    : ++authenticationStage,
+                                challenge: challenge
+                            );
+                            context.Send(state.Dispatcher, Dispatch.Command(new ConnectionSecureOk(
+                                response: UTF8.GetString(authenticationResponse)
+                            )));
+                            _behaviour.Become(AwaitConnectionSecureOrTune(
+                                state              : state,
+                                authenticationStage: authenticationStage
+                            ));
                             return CompletedTask;
                         }
-                        case ConnectionTune message: {
-                            var heartbeatFrequency  = Min(message.Heartbeat, (UInt16)connectionConfiguration.HeartbeatFrequency.TotalSeconds);
-                            var maximumFrameSize    = Min(message.FrameMax, connectionConfiguration.MaximumFrameSize);
-                            var maximumChannelCount = Min(message.ChannelMax, connectionConfiguration.MaximumChannelCount);
+                        case ConnectionTune tune: {
+                            var heartbeatFrequency = Min(tune.Heartbeat, (UInt16)state.ConnectionConfiguration.HeartbeatFrequency.TotalSeconds);
+                            var maxFrameSize       = Min(tune.FrameMax, state.ConnectionConfiguration.MaximumFrameSize);
+                            var maxChannelCount    = Min(tune.ChannelMax, state.ConnectionConfiguration.MaximumChannelCount);
 
-                            context.Send(dispatcher, Dispatch.Command(new ConnectionTuneOk(
-                                channelMax: maximumChannelCount,
-                                frameMax  : maximumFrameSize,
+                            context.Send(state.Dispatcher, Dispatch.Command(new ConnectionTuneOk(
+                                channelMax: maxChannelCount,
+                                frameMax  : maxFrameSize,
                                 heartbeat : heartbeatFrequency
                             )));
-                            context.Send(dispatcher, Dispatch.Command(new ConnectionOpen(
-                                virtualHost: connectionConfiguration.VirtualHost
+                            context.Send(state.Dispatcher, Dispatch.Command(new ConnectionOpen(
+                                virtualHost: state.ConnectionConfiguration.VirtualHost
                             )));
-                            _behaviour.Become(AwaitConnectionOpenOk(listener, maximumChannelCount, maximumFrameSize, TimeSpan.FromSeconds(heartbeatFrequency), serverProperties));
+                            _behaviour.Become(AwaitConnectionOpenOk(new NegotiationCompleteState(
+                                Listener          : state.Listener,
+                                MaxChannelCount   : maxChannelCount,
+                                MaxFrameSize      : maxFrameSize,
+                                HeartbeatFrequency: TimeSpan.FromSeconds(heartbeatFrequency),
+                                ServerProperties  : state.ServerProperties!
+                            )));
                             return CompletedTask;
                         }
                         default: return CompletedTask;
                     }
                 };
 
-            Receive AwaitConnectionOpenOk(PID listener, UInt16 maxChannelCount, UInt32 maximumFrameSize, TimeSpan heartbeatFrequency, IReadOnlyDictionary<String, Object> serverProperties) =>
+            Receive AwaitConnectionOpenOk(NegotiationCompleteState state) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired _: {
-                            context.Send(listener, new HandshakeFailed(new TimeoutException()));
+                            context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
+                            _behaviour.Become(Unstarted);
                             break;
                         }
                         case ConnectionOpenOk _: {
-                            context.Send(listener, new HandshakeCompleted(maxChannelCount, maximumFrameSize, heartbeatFrequency, serverProperties));
+                            context.Send(state.Listener, new HandshakeCompleted(
+                                MaxChannelCount   : state.MaxChannelCount,
+                                MaxFrameSize      : state.MaxFrameSize,
+                                HeartbeatFrequency: state.HeartbeatFrequency,
+                                ServerProperties  : state.ServerProperties
+                            ));
                             break;
                         }
                     }
