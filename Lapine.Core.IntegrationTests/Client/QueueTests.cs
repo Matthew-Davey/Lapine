@@ -8,7 +8,7 @@ namespace Lapine.Client {
 
     public class QueueTests : Faker {
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareClassicQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefition) {
@@ -36,7 +36,7 @@ namespace Lapine.Client {
 
         [Scenario]
         // This test requires management enabled containers due to the use of rabbitmqadmin to declare queues...
-        [Example("3.9-rc-management-alpine")]
+        [Example("3.9-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
         public void RedeclareQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
@@ -66,7 +66,7 @@ namespace Lapine.Client {
 
         [Scenario]
         // This test requires management enabled containers due to the use of rabbitmqadmin to declare queues...
-        [Example("3.9-rc-management-alpine")]
+        [Example("3.9-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
         public void RedeclareQueueWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {

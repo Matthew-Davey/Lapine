@@ -7,7 +7,7 @@ namespace Lapine.Client {
 
     public class ChannelTests : Faker {
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void Open(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
@@ -28,7 +28,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void OpenMultiple(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
@@ -50,7 +50,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void Close(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel) {

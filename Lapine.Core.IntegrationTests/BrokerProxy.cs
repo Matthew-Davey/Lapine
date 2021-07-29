@@ -35,18 +35,11 @@ namespace Lapine {
                 .WaitAndRetryAsync(5, _ => TimeSpan.FromMilliseconds(100));
 
         readonly String _container;
-        readonly String _username;
-        readonly String _password;
 
-        private BrokerProxy(String containerId, String username, String password) {
+        private BrokerProxy(String containerId) =>
             _container = containerId;
-            _username = username;
-            _password = password;
-        }
 
-        public String Username => _username;
-
-        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion, String username = "lapine", String password = "lapine") {
+        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion) {
             // Start a RabbitMQ container...
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
@@ -73,9 +66,7 @@ namespace Lapine {
                 .ExecuteAsync()
             );
 
-            var broker = new BrokerProxy(container, username, password);
-            await broker.AddUserAsync(username, password);
-            await broker.SetPermissionsAsync("/", username);
+            var broker = new BrokerProxy(container);
 
             return broker;
         }
@@ -101,9 +92,11 @@ namespace Lapine {
         /// </summary>
         public async Task<ConnectionConfiguration> GetConnectionConfigurationAsync() =>
             ConnectionConfiguration.Default with {
-                AuthenticationStrategy      = new PlainAuthenticationStrategy(_username, _password),
+                AuthenticationStrategy      = new PlainAuthenticationStrategy("guest", "guest"),
                 Endpoints                   = new [] { new IPEndPoint(await GetIPAddressAsync(), 5672) },
                 ConnectionIntegrityStrategy = Debugger.IsAttached switch {
+                    // Disable connection integrity checks when debugging, we don't want the connection to be terminated
+                    // while we're stepping through the code...
                     true  => ConnectionIntegrityStrategy.None,
                     false => ConnectionIntegrityStrategy.Default
                 }

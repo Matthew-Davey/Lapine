@@ -8,7 +8,7 @@ namespace Lapine.Client {
 
     public class ExchangeTests : Faker {
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareDirectExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
@@ -31,7 +31,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareFanoutExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
@@ -54,7 +54,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareHeadersExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
@@ -77,7 +77,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareTopicExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
@@ -101,7 +101,7 @@ namespace Lapine.Client {
 
         [Scenario]
         // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-rc-management-alpine")]
+        [Example("3.9-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
         public void RedeclareExchanges(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
@@ -129,7 +129,7 @@ namespace Lapine.Client {
 
         [Scenario]
         // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-rc-management-alpine")]
+        [Example("3.9-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
         public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
@@ -159,7 +159,7 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-rc-alpine")]
+        [Example("3.9-alpine")]
         [Example("3.8-alpine")]
         [Example("3.7-alpine")]
         public void DeclareExchangeWithReservedPrefix(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {
@@ -184,7 +184,7 @@ namespace Lapine.Client {
 
         [Scenario]
         // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-rc-management-alpine")]
+        [Example("3.9-management-alpine")]
         [Example("3.8-management-alpine")]
         [Example("3.7-management-alpine")]
         public void DeleteExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
