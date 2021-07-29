@@ -11,7 +11,7 @@ namespace Lapine.Client {
         [Example("3.9")]
         [Example("3.8")]
         [Example("3.7")]
-        public void DeclareClassicQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefition) {
+        public void DeclareClassicQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
@@ -21,7 +21,7 @@ namespace Lapine.Client {
                 channel = await subject.OpenChannelAsync();
             }).Teardown(async () => await subject.DisposeAsync());
             "When the client declares a classic queue".x(async () => {
-                await channel.DeclareQueueAsync(queueDefition = QueueDefinition.Create(Lorem.Word()) with {
+                await channel.DeclareQueueAsync(queueDefinition = QueueDefinition.Create(Lorem.Word()) with {
                     AutoDelete = true,
                     Exclusive  = true,
                     Durability = Durability.Transient
@@ -30,7 +30,7 @@ namespace Lapine.Client {
             "Then the queue is created on the broker".x(async () => {
                 var queues = await broker.GetQueuesAsync().ToListAsync();
 
-                queues.Should().Contain(queueDefition);
+                queues.Should().Contain(   queueDefinition);
             });
         }
 
@@ -92,6 +92,35 @@ namespace Lapine.Client {
             "Then a precondition failed exception is thrown".x(() => {
                 exception.Should().NotBeNull();
                 exception.Should().BeOfType(Type.GetType("Lapine.Client.PreconditionFailedException, Lapine.Core"));
+            });
+        }
+
+        [Scenario]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
+        public void DeleteQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has a queue declared".x(async () => {
+                queueDefinition = QueueDefinition.Create(Lorem.Word()) with {
+                    Durability = Durability.Durable,
+                };
+                await broker.QueueDeclareAsync(queueDefinition);
+            });
+            "And a client connected to the broker with an open channel".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client deletes the queue".x(async () => {
+                await channel.DeleteQueueAsync(queueDefinition.Name);
+            });
+            "Then the queue no longer exists on the broker".x(async () => {
+                var queues = await broker.GetQueuesAsync().ToListAsync();
+
+                queues.Should().NotContain(queueDefinition);
             });
         }
     }
