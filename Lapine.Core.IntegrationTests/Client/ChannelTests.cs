@@ -7,9 +7,9 @@ namespace Lapine.Client {
 
     public class ChannelTests : Faker {
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void Open(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -28,9 +28,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void OpenMultiple(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -50,9 +50,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void Close(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);

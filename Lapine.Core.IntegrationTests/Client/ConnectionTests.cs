@@ -8,9 +8,9 @@ namespace Lapine.Client {
 
     public class ConnectionTests : Faker {
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void ConnectToLocalBrokerAsGuest(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -45,9 +45,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void ConnectToLocalBrokerAsUser(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String username, String password) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -78,9 +78,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void ConnectToLocalBrokerWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, Exception connectionError) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -100,9 +100,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void DisconnectFromLocalBroker(String brokerVersion, AmqpClient subject, BrokerProxy broker) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
@@ -122,9 +122,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        [Example("3.9-alpine")]
-        [Example("3.8-alpine")]
-        [Example("3.7-alpine")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void ConnectToVirtualHost(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, String virtualHost) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
