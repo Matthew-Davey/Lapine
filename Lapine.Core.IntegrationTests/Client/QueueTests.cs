@@ -35,13 +35,12 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        // This test requires management enabled containers due to the use of rabbitmqadmin to declare queues...
-        [Example("3.9-management")]
-        [Example("3.8-management")]
-        [Example("3.7-management")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void RedeclareQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
-                broker = await BrokerProxy.StartAsync(brokerVersion);
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a queue declared".x(async () => {
                 queueDefinition = QueueDefinition.Create(Lorem.Word()) with {
@@ -65,13 +64,12 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        // This test requires management enabled containers due to the use of rabbitmqadmin to declare queues...
-        [Example("3.9-management")]
-        [Example("3.8-management")]
-        [Example("3.7-management")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void RedeclareQueueWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
-                broker = await BrokerProxy.StartAsync(brokerVersion);
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has a queue declared".x(async () => {
                 queueDefinition = QueueDefinition.Create(Lorem.Word()) with {

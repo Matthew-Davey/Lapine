@@ -39,7 +39,10 @@ namespace Lapine {
         private BrokerProxy(String containerId) =>
             _container = containerId;
 
-        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion) {
+        static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion, Boolean enableManagement = false) {
+            if (enableManagement)
+                brokerVersion = $"{brokerVersion}-management";
+
             // Start a RabbitMQ container...
             var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments

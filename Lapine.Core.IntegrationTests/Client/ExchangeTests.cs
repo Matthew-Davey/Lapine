@@ -100,13 +100,12 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-management")]
-        [Example("3.8-management")]
-        [Example("3.7-management")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void RedeclareExchanges(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
-                broker = await BrokerProxy.StartAsync(brokerVersion);
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has an exchange declared".x(async () => {
                 exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
@@ -128,13 +127,12 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-management")]
-        [Example("3.8-management")]
-        [Example("3.7-management")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
-                broker = await BrokerProxy.StartAsync(brokerVersion);
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has an exchange declared".x(async () => {
                 exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
@@ -183,13 +181,12 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        // This test requires management enabled containers due to the use of rabbitmqadmin to declare exchanges...
-        [Example("3.9-management")]
-        [Example("3.8-management")]
-        [Example("3.7-management")]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
         public void DeleteExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
-                broker = await BrokerProxy.StartAsync(brokerVersion);
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
             "And the broker has an exchange declared".x(async () => {
                 exchangeDefinition = ExchangeDefinition.Direct(Lorem.Word());
