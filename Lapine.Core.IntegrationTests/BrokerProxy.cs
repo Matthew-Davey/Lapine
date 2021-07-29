@@ -3,6 +3,7 @@ namespace Lapine {
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
+    using System.Linq;
     using System.Net;
     using System.Threading.Tasks;
     using Lapine.Client;
@@ -33,6 +34,15 @@ namespace Lapine {
         static readonly IAsyncPolicy CommandRetryPolicy =
             Handle<CommandExecutionException>()
                 .WaitAndRetryAsync(5, _ => TimeSpan.FromMilliseconds(100));
+
+        /// <summary>
+        /// The management plugin can take up to 5 seconds to refresh. This retry policy will retry a failing operation
+        /// every 200ms, for up to 5 seconds. If it is still failing after 5 seconds has elapsed the failure is
+        /// considered genuine.
+        /// </summary>
+        static public readonly IAsyncPolicy ManagementRetryPolicy =
+            Handle<Exception>()
+                .WaitAndRetryAsync(25, _ => TimeSpan.FromMilliseconds(200));
 
         readonly String _container;
 
@@ -286,6 +296,37 @@ namespace Lapine {
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync()
             );
+
+        public async ValueTask PublishMessage(String exchange, String routingKey, String payload) =>
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqadmin")
+                    .Add($"publish exchange={exchange} routing_key={routingKey} payload=\"{payload}\"", escape: false)
+                )
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteAsync()
+            );
+
+        public async ValueTask<Int32> GetMessageCount(String queue) {
+            var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqctl")
+                    .Add($"list_queues --formatter json", escape: false)
+                )
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteBufferedAsync()
+            );
+
+            var array = JArray.Parse(process.StandardOutput);
+            return array
+                .Where(x => (String)((JObject)x).SelectToken("$.name") == queue)
+                .Select(x => (Int32)((JObject)x).SelectToken("$.messages"))
+                .SingleOrDefault();
+        }
 
         public async ValueTask DisposeAsync() =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
