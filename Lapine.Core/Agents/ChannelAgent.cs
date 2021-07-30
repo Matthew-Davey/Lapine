@@ -351,6 +351,11 @@ namespace Lapine.Agents {
                             _behaviour.UnbecomeStacked();
                             break;
                         }
+                        case ChannelClose { FailingMethod: (0x32, 0x28) } close: {
+                            promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            _behaviour.Become(Closed);
+                            break;
+                        }
                     }
                     return CompletedTask;
                 };
