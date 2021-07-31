@@ -73,13 +73,25 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
-        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Boolean ack) {
+        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements) {
             var promise = new TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>();
-            _system.Root.Send(_agent, new GetMessage(queue, ack, promise));
+            _system.Root.Send(_agent, new GetMessage(queue, acknowledgements, promise));
             return await promise.Task switch {
                 null => null,
                 (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
             };
+        }
+
+        public async ValueTask AcknowledgeAsync(UInt64 deliveryTag, Boolean multiple = false) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new Acknowledge(deliveryTag, multiple, promise));
+            await promise.Task;
+        }
+
+        public async ValueTask RejectAsync(UInt64 deliveryTag, Boolean requeue) {
+            var promise = new TaskCompletionSource();
+            _system.Root.Send(_agent, new Reject(deliveryTag, requeue, promise));
+            await promise.Task;
         }
 
         public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {

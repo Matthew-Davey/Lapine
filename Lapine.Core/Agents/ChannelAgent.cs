@@ -53,9 +53,11 @@ namespace Lapine.Agents {
             );
             public record GetMessage(
                 String Queue,
-                Boolean Ack,
+                Acknowledgements Acknowledgements,
                 TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise
             );
+            public record Acknowledge(UInt64 DeliveryTag, Boolean Multiple, TaskCompletionSource Promise);
+            public record Reject(UInt64 DeliveryTag, Boolean Requeue, TaskCompletionSource Promise);
             public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
             public record Consume(
                 String Queue,
@@ -293,8 +295,31 @@ namespace Lapine.Agents {
                             break;
                         }
                         case GetMessage get: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new BasicGet(get.Queue, !get.Ack)));
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicGet(
+                                queueName: get.Queue,
+                                noAck    : get.Acknowledgements switch {
+                                    Acknowledgements.Auto   => true,
+                                    Acknowledgements.Manual => false,
+                                    _                       => false
+                                }
+                            )));
                             _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get.Promise));
+                            break;
+                        }
+                        case Acknowledge ack: {
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicAck(
+                                deliveryTag: ack.DeliveryTag,
+                                multiple   : ack.Multiple
+                            )));
+                            ack.Promise.SetResult();
+                            break;
+                        }
+                        case Reject reject: {
+                            context.Send(state.Dispatcher, Dispatch.Command(new BasicReject(
+                                deliveryTag: reject.DeliveryTag,
+                                requeue    : reject.Requeue
+                            )));
+                            reject.Promise.SetResult();
                             break;
                         }
                         case SetPrefetchLimit prefetch: {
