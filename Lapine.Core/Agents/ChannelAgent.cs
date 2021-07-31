@@ -98,31 +98,29 @@ namespace Lapine.Agents {
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
                         context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
-                        _behaviour.Become(Opening(state, open.Listener));
+                        _behaviour.Become(Awaiting<ChannelOpenOk>(state,
+                            onReceive: _ => {
+                                context.Send(open.Listener, new Opened(state.ChannelId, context.Self!));
+                                _behaviour.Become(Open(state));
+                            }
+                        ));
                         break;
                     }
                 }
                 return CompletedTask;
             }
 
-            Receive Opening(State state, PID listener) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case ChannelOpenOk _: {
-                            context.Send(listener, new Opened(state.ChannelId, context.Self!));
-                            _behaviour.Become(Open(state));
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
             Receive Open(State state) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case Close close: {
                             context.Send(state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
-                            _behaviour.Become(AwaitingChannelCloseOk(close.Promise));
+                            _behaviour.Become(Awaiting<ChannelCloseOk>(state,
+                                onReceive: _ => {
+                                    close.Promise.SetResult();
+                                    context.Stop(context.Self!);
+                                }
+                            ));
                             break;
                         }
                         case DeclareExchange declare: {
@@ -136,7 +134,15 @@ namespace Lapine.Agents {
                                 noWait      : false,
                                 arguments   : declare.Definition.Arguments
                             )));
-                            _behaviour.BecomeStacked(AwaitingExchangeDeclareOk(state, declare.Promise));
+                            _behaviour.BecomeStacked(Awaiting<ExchangeDeclareOk>(state,
+                                onReceive: _ => {
+                                    declare.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    declare.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case DeleteExchange delete: {
@@ -145,7 +151,15 @@ namespace Lapine.Agents {
                                 ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
                                 noWait      : false
                             )));
-                            _behaviour.BecomeStacked(AwaitingExchangeDeleteOk(delete.Promise));
+                            _behaviour.BecomeStacked(Awaiting<ExchangeDeleteOk>(state,
+                                onReceive: _ => {
+                                    delete.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    delete.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case DeclareQueue declare: {
@@ -158,7 +172,15 @@ namespace Lapine.Agents {
                                 noWait    : false,
                                 arguments : declare.Definition.Arguments
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueueDeclareOk(state, declare.Promise));
+                            _behaviour.BecomeStacked(Awaiting<QueueDeclareOk>(state,
+                                onReceive: _ => {
+                                    declare.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    declare.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case DeleteQueue delete: {
@@ -168,7 +190,15 @@ namespace Lapine.Agents {
                                 ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
                                 noWait   : false
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueueDeleteOk(delete.Promise));
+                            _behaviour.BecomeStacked(Awaiting<QueueDeleteOk>(state,
+                                onReceive: _ => {
+                                    delete.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    delete.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case BindQueue bind: {
@@ -179,7 +209,15 @@ namespace Lapine.Agents {
                                 noWait      : false,
                                 arguments   : bind.Arguments
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueueBindOk(bind.Promise));
+                            _behaviour.BecomeStacked(Awaiting<QueueBindOk>(state,
+                                onReceive: _ => {
+                                    bind.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    bind.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case UnbindQueue unbind: {
@@ -189,7 +227,15 @@ namespace Lapine.Agents {
                                 routingKey  : unbind.RoutingKey,
                                 arguments   : unbind.Arguments
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueueUnbindOk(unbind.Promise));
+                            _behaviour.BecomeStacked(Awaiting<QueueUnbindOk>(state,
+                                onReceive: _ => {
+                                    unbind.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    unbind.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case PurgeQueue purge: {
@@ -197,7 +243,15 @@ namespace Lapine.Agents {
                                 queueName: purge.Queue,
                                 noWait   : false
                             )));
-                            _behaviour.BecomeStacked(AwaitingQueuePurgeOk(purge.Promise));
+                            _behaviour.BecomeStacked(Awaiting<QueuePurgeOk>(state,
+                                onReceive: _ => {
+                                    purge.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    purge.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case Publish publish: {
@@ -218,7 +272,19 @@ namespace Lapine.Agents {
                             }
 
                             if (publish.Mandatory || publish.Immediate) {
-                                _behaviour.Become(AwaitingBasicReturn(publish.Promise));
+                                _behaviour.BecomeStacked(Awaiting<BasicReturn>(state,
+                                    onReceive: @return => {
+                                        publish.Promise.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
+                                        _behaviour.UnbecomeStacked();
+                                    },
+                                    onUnexpected: context => {
+                                        _behaviour.UnbecomeStacked();
+                                        _behaviour.ReceiveAsync(context);
+                                    },
+                                    onChannelClosed: error => {
+                                        publish.Promise.SetException(error);
+                                    }
+                                ));
                                 break;
                             }
                             else {
@@ -237,7 +303,15 @@ namespace Lapine.Agents {
                                 prefetchCount: prefetch.Limit,
                                 global       : prefetch.Global
                             )));
-                            _behaviour.BecomeStacked(AwaitingBasicQosOk(prefetch.Promise));
+                            _behaviour.BecomeStacked(Awaiting<BasicQosOk>(state,
+                                onReceive: _ => {
+                                    prefetch.Promise.SetResult();
+                                    _behaviour.UnbecomeStacked();
+                                },
+                                onChannelClosed: error => {
+                                    prefetch.Promise.SetException(error);
+                                }
+                            ));
                             break;
                         }
                         case Consume consume: {
@@ -254,11 +328,25 @@ namespace Lapine.Agents {
                                 noWait     : false,
                                 arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
                             )));
-                            _behaviour.BecomeStacked(AwaitingBasicConsumeOk(
-                                state                : state,
-                                consumerTag          : consumerTag,
-                                consumerConfiguration: consume.ConsumerConfiguration,
-                                promise              : consume.Promise
+                            _behaviour.BecomeStacked(Awaiting<BasicConsumeOk>(state,
+                                onReceive: _ => {
+                                    var consumer = context.SpawnNamed(
+                                        name: $"consumer_{consumerTag}",
+                                        props: ConsumerAgent.Create()
+                                    );
+                                    context.Send(consumer, new StartConsuming(
+                                        ConsumerTag          : consumerTag,
+                                        Dispatcher           : state.Dispatcher,
+                                        ConsumerConfiguration: consume.ConsumerConfiguration
+                                    ));
+                                    _behaviour.Become(Open(state with {
+                                        Consumers = state.Consumers.Add(consumerTag, consumer)
+                                    }));
+                                    consume.Promise.SetResult(consumerTag);
+                                },
+                                onChannelClosed: error => {
+                                    consume.Promise.SetException(error);
+                                }
                             ));
                             break;
                         }
@@ -279,135 +367,23 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            static Receive AwaitingChannelCloseOk(TaskCompletionSource promise) =>
+            Receive Awaiting<T>(State state, Action<T> onReceive, Action<IContext>? onUnexpected = null, Action<Exception>? onChannelClosed = null) =>
                 (IContext context) => {
                     switch (context.Message) {
-                        case ChannelCloseOk _: {
-                            promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingExchangeDeclareOk(State state, TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case ExchangeDeclareOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
+                        case T expected: {
+                            onReceive(expected);
                             break;
                         }
                         case ChannelClose close: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
                             var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
-                            promise.SetException(exception);
-                            _behaviour.Become(Closed);
-
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingExchangeDeleteOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case ExchangeDeleteOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingQueueDeclareOk(State state, TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case QueueDeclareOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                        case ChannelClose close: {
+                            onChannelClosed?.Invoke(exception);
                             context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
-                            var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
-                            promise.SetException(exception);
-                            _behaviour.Become(Closed);
-
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingQueueDeleteOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case QueueDeleteOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                        case ChannelClose { FailingMethod: (0x32, 0x28) } close: {
-                            promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
                             _behaviour.Become(Closed);
                             break;
                         }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingQueueBindOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case QueueBindOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
+                        default: {
+                            onUnexpected?.Invoke(context);
                             break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingQueueUnbindOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case QueueUnbindOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingQueuePurgeOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case QueuePurgeOk _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingBasicReturn(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case BasicReturn @return: {
-                            promise.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                        case ICommand _: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            return _behaviour.ReceiveAsync(context);
                         }
                     }
                     return CompletedTask;
@@ -470,41 +446,6 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
             }
-
-            Receive AwaitingBasicQosOk(TaskCompletionSource promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case BasicQosOk ok: {
-                            promise.SetResult();
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingBasicConsumeOk(State state, String consumerTag, ConsumerConfiguration consumerConfiguration, TaskCompletionSource<String> promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case BasicConsumeOk ok: {
-                            var consumer = context.SpawnNamed(
-                                name: $"consumer_{consumerTag}",
-                                props: ConsumerAgent.Create()
-                            );
-                            context.Send(consumer, new StartConsuming(
-                                ConsumerTag          : consumerTag,
-                                Dispatcher           : state.Dispatcher,
-                                ConsumerConfiguration: consumerConfiguration
-                            ));
-                            _behaviour.Become(Open(state with {
-                                Consumers = state.Consumers.Add(consumerTag, consumer)
-                            }));
-                            promise.SetResult(consumerTag);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
 
             Receive AwaitingContentHeader(DeliveryInfo delivery, PID consumer) =>
                 (IContext context) => {
