@@ -205,5 +205,29 @@ namespace Lapine.Client {
                 exchanges.Should().NotContain(exchangeDefinition);
             });
         }
+
+        [Scenario]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
+        public void DeleteDefaultExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And a client connected to the broker with an open channel".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client deletes the default exchange".x(async () => {
+                exception = await Record.ExceptionAsync(async () =>
+                    await channel.DeleteExchangeAsync("amq.default")
+                );
+            });
+            "Then an access refused exception is thrown".x(() => {
+                exception.Should().NotBeNull();
+                exception.Should().BeOfType(Type.GetType("Lapine.Client.AccessRefusedException, Lapine.Core"));
+            });
+        }
     }
 }
