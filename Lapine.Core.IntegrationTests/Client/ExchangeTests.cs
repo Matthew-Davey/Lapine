@@ -103,7 +103,37 @@ namespace Lapine.Client {
         [Example("3.9")]
         [Example("3.8")]
         [Example("3.7")]
-        public void RedeclareExchanges(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
+        public void DeclareExchangeWithInsufficientPermission(String brokerVersion, BrokerProxy broker, String user, String password, AmqpClient subject, Channel channel, Exception exception) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And the broker has a user without permission to declare an exchange".x(async () => {
+                await broker.AddUserAsync(user = Person.UserName, password = Random.String2(16));
+                await broker.SetPermissionsAsync("/", user, configure: "^$");
+            });
+            "And a client connected to the broker as the user".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync() with {
+                    AuthenticationStrategy = new PlainAuthenticationStrategy(user, password)
+                });
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client declares a topic exchange".x(async () => {
+                exception = await Record.ExceptionAsync(async () => {
+                    await channel.DeclareExchangeAsync(ExchangeDefinition.Direct(Random.String2(12)));
+                });
+            });
+            "Then an access refused exception is thrown".x(() => {
+                exception.Should().NotBeNull();
+                exception.Should().BeOfType(Type.GetType("Lapine.Client.AccessRefusedException, Lapine.Core"));
+            });
+        }
+
+        [Scenario]
+        [Example("3.9")]
+        [Example("3.8")]
+        [Example("3.7")]
+        public void RedeclareExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
             }).Teardown(async () => await broker.DisposeAsync());
