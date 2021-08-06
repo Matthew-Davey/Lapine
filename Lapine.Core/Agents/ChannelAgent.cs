@@ -17,8 +17,7 @@ namespace Lapine.Agents {
 
     static class ChannelAgent {
         static public class Protocol {
-            public record Open(PID Listener, UInt16 ChannelId, PID TxD);
-            public record Opened(UInt16 ChannelId, PID ChannelAgent);
+            public record Open(UInt16 ChannelId, PID TxD, TaskCompletionSource Promise);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
             public record DeleteExchange(
@@ -100,12 +99,21 @@ namespace Lapine.Agents {
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
                         context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
-                        _behaviour.Become(Awaiting<ChannelOpenOk>(state,
-                            onReceive: _ => {
-                                context.Send(open.Listener, new Opened(state.ChannelId, context.Self!));
-                                _behaviour.Become(Open(state));
+                        _behaviour.Become(ctx => {
+                            switch (ctx.Message) {
+                                case ChannelOpenOk: {
+                                    _behaviour.Become(Open(state));
+                                    open.Promise.SetResult();
+                                    break;
+                                }
+                                case ICommand command: {
+                                    var fault = ProtocolErrorException.UnexpectedCommand(command);
+                                    open.Promise.SetException(fault);
+                                    throw fault;
+                                }
                             }
-                        ));
+                            return CompletedTask;
+                        });
                         break;
                     }
                 }

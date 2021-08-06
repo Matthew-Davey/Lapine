@@ -252,7 +252,7 @@ namespace Lapine.Agents {
                 };
 
             Receive Connected(ConnectedState state) =>
-                (IContext context) => {
+                async (IContext context) => {
                     switch (context.Message) {
                         case RemoteFlatline _: {
                             context.Stop(state.Dispatcher);
@@ -269,26 +269,22 @@ namespace Lapine.Agents {
                                 props: ChannelAgent.Create(state.ConnectionConfiguration.MaximumFrameSize)
                             );
                             context.Send(state.FrameRouter, new AddRoutee(channelId, channelAgent));
-                            context.Send(channelAgent, new Open(context.Self!, channelId, state.TxD!));
-                            _behaviour.Become(OpeningChannel(state, openChannel.Promise));
+                            var promise = new TaskCompletionSource();
+                            context.Send(channelAgent, new Open(channelId, state.TxD!, promise));
+
+                            try {
+                                await promise.Task;
+                                _behaviour.Become(Connected(state with {
+                                    AvailableChannelIds = state.AvailableChannelIds.Remove(channelId)
+                                }));
+                                openChannel.Promise.SetResult(channelAgent);
+                            }
+                            catch (Exception fault) {
+                                openChannel.Promise.SetException(fault);
+                            }
                             break;
                         };
                     }
-                    return CompletedTask;
-                };
-
-            Receive OpeningChannel(ConnectedState state, TaskCompletionSource<PID> promise) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case Opened opened: {
-                            _behaviour.Become(Connected(state with {
-                                AvailableChannelIds = state.AvailableChannelIds.Remove(opened.ChannelId)
-                            }));
-                            promise.SetResult(opened.ChannelAgent);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
                 };
         }
     }
