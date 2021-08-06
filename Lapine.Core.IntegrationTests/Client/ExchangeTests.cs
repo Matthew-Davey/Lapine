@@ -237,6 +237,29 @@ namespace Lapine.Client {
         }
 
         [Scenario]
+        //[Example("3.9")]
+        [Example("3.8")]
+        //[Example("3.7")]
+        public void DeleteNonExistentExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception error) {
+            $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+                broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
+            }).Teardown(async () => await broker.DisposeAsync());
+            "And a client connected to the broker with an open channel".x(async () => {
+                subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+                await subject.ConnectAsync();
+                channel = await subject.OpenChannelAsync();
+            }).Teardown(async () => await subject.DisposeAsync());
+            "When the client deletes a non-existent exchange".x(async () => {
+                error = await Record.ExceptionAsync(async () => {
+                    await channel.DeleteExchangeAsync("not.exist");
+                });
+            });
+            "Then no exception is thrown".x(() => {
+                error.Should().BeNull();
+            });
+        }
+
+        [Scenario]
         [Example("3.9")]
         [Example("3.8")]
         [Example("3.7")]
