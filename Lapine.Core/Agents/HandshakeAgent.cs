@@ -14,6 +14,9 @@ namespace Lapine.Agents {
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.HandshakeAgent.Protocol;
+    using static Lapine.Agents.SocketAgent.Protocol;
+
+    using TimeoutExpired = Lapine.Agents.HandshakeAgent.Protocol.TimeoutExpired;
 
     static class HandshakeAgent {
         static public class Protocol {
@@ -34,6 +37,7 @@ namespace Lapine.Agents {
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
         record NegotiatingState(
+            Guid SubscriptionId,
             ConnectionConfiguration ConnectionConfiguration,
             PID Listener,
             PID Dispatcher,
@@ -41,6 +45,7 @@ namespace Lapine.Agents {
         );
 
         record NegotiationCompleteState(
+            Guid SubscriptionId,
             PID Listener,
             UInt16 MaxChannelCount,
             UInt32 MaxFrameSize,
@@ -60,6 +65,10 @@ namespace Lapine.Agents {
             Task Unstarted(IContext context) {
                 switch (context.Message) {
                     case BeginHandshake handshake: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == 0,
+                            action   : message => context.Send(context.Self!, message)
+                        );
                         context.Scheduler().SendOnce(
                             delay  : handshake.ConnectionConfiguration.ConnectionTimeout,
                             target : context.Self!,
@@ -67,6 +76,7 @@ namespace Lapine.Agents {
                         );
                         context.Send(handshake.Dispatcher, Dispatch.ProtocolHeader(ProtocolHeader.Default));
                         _behaviour.Become(AwaitConnectionStart(new NegotiatingState(
+                            SubscriptionId         : subscription.Id,
                             ConnectionConfiguration: handshake.ConnectionConfiguration,
                             Listener               : handshake.Listener,
                             Dispatcher             : handshake.Dispatcher,
@@ -83,7 +93,8 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case TimeoutExpired _: {
                             context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
-                            _behaviour.Become(Unstarted);
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
+                            context.Stop(context.Self!);
                             return CompletedTask;
                         }
                         case ConnectionStart message when !message.Mechanisms.Contains(state.ConnectionConfiguration.AuthenticationStrategy.Mechanism): {
@@ -125,7 +136,8 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case TimeoutExpired _: {
                             context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
-                            _behaviour.Become(Unstarted);
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
+                            context.Stop(context.Self!);
                             return CompletedTask;
                         }
                         case ConnectionSecure message: {
@@ -157,6 +169,7 @@ namespace Lapine.Agents {
                                 virtualHost: state.ConnectionConfiguration.VirtualHost
                             )));
                             _behaviour.Become(AwaitConnectionOpenOk(new NegotiationCompleteState(
+                                SubscriptionId    : state.SubscriptionId,
                                 Listener          : state.Listener,
                                 MaxChannelCount   : maxChannelCount,
                                 MaxFrameSize      : maxFrameSize,
@@ -169,25 +182,27 @@ namespace Lapine.Agents {
                     }
                 };
 
-            Receive AwaitConnectionOpenOk(NegotiationCompleteState state) =>
+            static Receive AwaitConnectionOpenOk(NegotiationCompleteState state) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case TimeoutExpired _: {
                             context.Send(state.Listener, new HandshakeFailed(new TimeoutException()));
-                            _behaviour.Become(Unstarted);
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
+                            context.Stop(context.Self!);
                             break;
                         }
                         case ConnectionOpenOk _: {
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
                             context.Send(state.Listener, new HandshakeCompleted(
                                 MaxChannelCount   : state.MaxChannelCount,
                                 MaxFrameSize      : state.MaxFrameSize,
                                 HeartbeatFrequency: state.HeartbeatFrequency,
                                 ServerProperties  : state.ServerProperties
                             ));
+                            context.Stop(context.Self!);
                             break;
                         }
                     }
-                    _behaviour.Become(Unstarted);
                     return CompletedTask;
                 };
         }

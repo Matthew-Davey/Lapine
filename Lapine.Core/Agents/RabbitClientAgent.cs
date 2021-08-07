@@ -12,7 +12,6 @@ namespace Lapine.Agents {
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.ChannelAgent.Protocol;
     using static Lapine.Agents.DispatcherAgent.Protocol;
-    using static Lapine.Agents.FrameRouterAgent.Protocol;
     using static Lapine.Agents.HandshakeAgent.Protocol;
     using static Lapine.Agents.HeartbeatAgent.Protocol;
     using static Lapine.Agents.RabbitClientAgent.Protocol;
@@ -35,14 +34,13 @@ namespace Lapine.Agents {
             CancellationTokenSource ScheduledTimeout,
             IImmutableList<Exception> AccumulatedFailures
         ) {
-            public NegotiatingState ToNegotiatingState(PID txd, PID frameRouter, PID handshakeAgent, PID dispatcher) =>
+            public NegotiatingState ToNegotiatingState(PID txd, PID handshakeAgent, PID dispatcher) =>
                 new (
                     ConnectionConfiguration: ConnectionConfiguration,
                     Promise                : Promise,
                     SocketAgent            : SocketAgent,
                     ScheduledTimeout       : ScheduledTimeout,
                     TxD                    : txd,
-                    FrameRouter            : frameRouter,
                     HandshakeAgent         : handshakeAgent,
                     Dispatcher             : dispatcher
                 );
@@ -54,7 +52,6 @@ namespace Lapine.Agents {
             PID SocketAgent,
             CancellationTokenSource ScheduledTimeout,
             PID TxD,
-            PID FrameRouter,
             PID HandshakeAgent,
             PID Dispatcher
         ) {
@@ -63,7 +60,6 @@ namespace Lapine.Agents {
                     ConnectionConfiguration: ConnectionConfiguration,
                     SocketAgent            : SocketAgent,
                     TxD                    : TxD,
-                    FrameRouter            : FrameRouter,
                     Dispatcher             : Dispatcher,
                     AvailableChannelIds    : availableChannelIds
                 );
@@ -73,7 +69,6 @@ namespace Lapine.Agents {
             ConnectionConfiguration ConnectionConfiguration,
             PID SocketAgent,
             PID TxD,
-            PID FrameRouter,
             PID Dispatcher,
             IImmutableList<UInt16> AvailableChannelIds
         );
@@ -154,10 +149,6 @@ namespace Lapine.Agents {
                         case Connected connected: {
                             var negotiatingState = state.ToNegotiatingState(
                                 txd : connected.TxD,
-                                frameRouter: context.SpawnNamed(
-                                    name : "frame_router",
-                                    props: FrameRouterAgent.Create()
-                                ),
                                 handshakeAgent: context.SpawnNamed(
                                     name : "handshake",
                                     props: HandshakeAgent.Create()
@@ -168,8 +159,7 @@ namespace Lapine.Agents {
                                 )
                             );
 
-                            context.Send(connected.RxD, new BeginPolling(negotiatingState.FrameRouter));
-                            context.Send(negotiatingState.FrameRouter, new AddRoutee(0, negotiatingState.HandshakeAgent));
+                            context.Send(connected.RxD, new BeginPolling());
                             context.Send(negotiatingState.Dispatcher, new DispatchTo(connected.TxD, 0));
                             context.Send(negotiatingState.HandshakeAgent, new BeginHandshake(
                                 ConnectionConfiguration: state.ConnectionConfiguration!,
@@ -194,8 +184,6 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case HandshakeCompleted completed: {
                             state.ScheduledTimeout.Cancel();
-                            context.Send(state.FrameRouter, new RemoveRoutee(0, state.HandshakeAgent));
-                            context.Stop(state.HandshakeAgent);
                             context.Send(state.SocketAgent, new Tune(completed.MaxFrameSize));
 
                             // If amqp heartbeats are enabled, spawn a heartbeat agent...
@@ -204,7 +192,6 @@ namespace Lapine.Agents {
                                     name: "heartbeat",
                                     props: HeartbeatAgent.Create()
                                 );
-                                context.Send(state.FrameRouter, new AddRoutee(0, heartbeatAgent));
                                 context.Send(heartbeatAgent, new StartHeartbeat(
                                     Dispatcher: state.Dispatcher,
                                     Frequency : state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value,
@@ -241,7 +228,6 @@ namespace Lapine.Agents {
                         case TimeoutExpired _: {
                             state.Promise.SetException(new TimeoutException("A connection to the broker was established but the negotiation did not complete within the specified connection timeout limit"));
                             context.Stop(state.Dispatcher);
-                            context.Stop(state.FrameRouter);
                             context.Stop(state.HandshakeAgent);
                             context.Stop(state.SocketAgent);
                             _behaviour.Become(Disconnected);
@@ -256,7 +242,6 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case RemoteFlatline _: {
                             context.Stop(state.Dispatcher);
-                            context.Stop(state.FrameRouter);
                             context.Stop(state.SocketAgent);
 
                             _behaviour.Become(Disconnected);
@@ -268,7 +253,6 @@ namespace Lapine.Agents {
                                 name: $"channel_{channelId}",
                                 props: ChannelAgent.Create(state.ConnectionConfiguration.MaximumFrameSize)
                             );
-                            context.Send(state.FrameRouter, new AddRoutee(channelId, channelAgent));
                             var promise = new TaskCompletionSource();
                             context.Send(channelAgent, new Open(channelId, state.TxD!, promise));
 

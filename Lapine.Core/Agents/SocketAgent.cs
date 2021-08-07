@@ -23,7 +23,7 @@ namespace Lapine.Agents {
             public record Tune(UInt32 MaxFrameSize);
             public record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount);
             public record Transmit(ISerializable Entity);
-            public record BeginPolling(PID FrameListener);
+            public record BeginPolling();
             public record FrameReceived(RawFrame Frame);
 
             internal record TimeoutExpired();
@@ -193,14 +193,14 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case BeginPolling poll: {
                             context.Scheduler().SendOnce(PollingInterval, context.Self!, new Poll());
-                            _behaviour.Become(Polling(socket, poll.FrameListener));
+                            _behaviour.Become(Polling(socket));
                             break;
                         }
                     }
                     return CompletedTask;
                 };
 
-            static Receive Polling(Socket socket, PID frameListener) {
+            static Receive Polling(Socket socket) {
                 // The socket receive buffer is considerably smaller than the max frame size, so we accumulate
                 // received bytes in the frame buffer until we can deserialize one or more AMQP frames...
                 var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
@@ -225,7 +225,7 @@ namespace Lapine.Agents {
 
                             if (tail > 0) {
                                 while (RawFrame.Deserialize(frameBuffer.AsSpan(0, tail), out var frame, out var remaining)) {
-                                    context.Send(frameListener, new FrameReceived(frame));
+                                    context.System.EventStream.Publish(new FrameReceived(frame));
                                     remaining.CopyTo(frameBuffer); // Move any bytes that were not consumed to the front of the frame buffer...
                                     tail = remaining.Length;
                                 }

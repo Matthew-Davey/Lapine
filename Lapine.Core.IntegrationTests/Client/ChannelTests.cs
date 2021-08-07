@@ -22,7 +22,7 @@ namespace Lapine.Client {
             "When a channel is opened".x(async () => {
                 await subject.OpenChannelAsync();
             });
-            "Then the broker should report an open channel".x(async () => {
+            "Then the broker reports an open channel".x(async () => {
                 var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().HaveCount(1);
             });
@@ -44,7 +44,7 @@ namespace Lapine.Client {
                 for (var i = 0; i < 10; i++)
                     await subject.OpenChannelAsync();
             });
-            "Then the broker should report 10 open channels".x(async () => {
+            "Then the broker reports 10 open channels".x(async () => {
                 var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().HaveCount(10);
             });
@@ -54,7 +54,7 @@ namespace Lapine.Client {
         [Example("3.9")]
         [Example("3.8")]
         [Example("3.7")]
-        public void OpenMultipleSimultaneously(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
+        public void OpenMultipleConcurrently(String brokerVersion, BrokerProxy broker, AmqpClient subject) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion);
             }).Teardown(async () => await broker.DisposeAsync());
@@ -62,14 +62,14 @@ namespace Lapine.Client {
                 subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
                 await subject.ConnectAsync();
             }).Teardown(async () => await subject.DisposeAsync());
-            "When 10 channels are opened simultaneously".x(async () => {
+            "When 10 channels are opened concurrently".x(async () => {
                 await Task.WhenAll(
                     Enumerable.Range(0, 10)
                         .Select(_ => subject.OpenChannelAsync().AsTask())
                         .ToArray()
                 );
             });
-            "Then the broker should report 10 open channels".x(async () => {
+            "Then the broker reports 10 open channels".x(async () => {
                 var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().HaveCount(10);
             });
@@ -91,7 +91,7 @@ namespace Lapine.Client {
             "When the channel is closed".x(async () => {
                 await channel.CloseAsync();
             });
-            "Then the broker should report no open channels".x(async () => {
+            "Then the broker reports no open channels".x(async () => {
                 var channels = await broker.GetChannelsAsync().ToListAsync();
                 channels.Should().BeEmpty();
             });

@@ -24,8 +24,9 @@ namespace Lapine.Agents {
             Props.FromProducer(() => new Actor());
 
         record State(
+            Guid SubscriptionId,
             TimeSpan HeartbeatFrequency,
-            CancellationTokenSource CancelSchedule,
+            CancellationTokenSource ScheduledHeartbeat,
             PID Dispatcher,
             PID Listener,
             DateTime LastRemoteHeartbeat
@@ -46,15 +47,20 @@ namespace Lapine.Agents {
                         if (start.Frequency == TimeSpan.Zero)
                             break;
 
-                        var cancelHeartbeat = context.Scheduler().RequestRepeatedly(
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message is { Frame: { Type: FrameType.Heartbeat } },
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        var scheduledHeartbeat = context.Scheduler().RequestRepeatedly(
                             delay   : start.Frequency,
                             interval: start.Frequency,
                             target  : context.Self!,
                             message : new Beat()
                         );
                         _behaviour.Become(Beating(new State(
+                            SubscriptionId     : subscription.Id,
                             HeartbeatFrequency : start.Frequency,
-                            CancelSchedule     : cancelHeartbeat,
+                            ScheduledHeartbeat : scheduledHeartbeat,
                             Dispatcher         : start.Dispatcher,
                             Listener           : start.Listener,
                             LastRemoteHeartbeat: UtcNow
@@ -82,7 +88,8 @@ namespace Lapine.Agents {
                             break;
                         }
                         case Stopping _: {
-                            state.CancelSchedule.Cancel();
+                            state.ScheduledHeartbeat.Cancel();
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
                             break;
                         }
                     }

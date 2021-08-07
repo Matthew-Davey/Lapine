@@ -14,6 +14,7 @@ namespace Lapine.Agents {
     using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.ChannelAgent.Protocol;
     using static Lapine.Agents.ConsumerAgent.Protocol;
+    using static Lapine.Agents.SocketAgent.Protocol;
 
     static class ChannelAgent {
         static public class Protocol {
@@ -72,7 +73,12 @@ namespace Lapine.Agents {
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
 
-        record State(UInt16 ChannelId, PID Dispatcher, IImmutableDictionary<String, PID> Consumers);
+        record State(
+            Guid SubscriptionId,
+            UInt16 ChannelId,
+            PID Dispatcher,
+            IImmutableDictionary<String, PID> Consumers
+        );
 
         class Actor : IActor {
             readonly UInt32 _maxFrameSize;
@@ -89,13 +95,18 @@ namespace Lapine.Agents {
             Task Closed(IContext context) {
                 switch (context.Message) {
                     case Open open: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == open.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
                         var state = new State(
-                            ChannelId : open.ChannelId,
-                            Dispatcher: context.SpawnNamed(
-                                name: "dispatcher",
+                            SubscriptionId: subscription.Id,
+                            ChannelId     : open.ChannelId,
+                            Dispatcher    : context.SpawnNamed(
+                                name : "dispatcher",
                                 props: DispatcherAgent.Create()
                             ),
-                            Consumers: ImmutableDictionary<String, PID>.Empty
+                            Consumers     : ImmutableDictionary<String, PID>.Empty
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
                         context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
@@ -109,6 +120,7 @@ namespace Lapine.Agents {
                                 case ICommand command: {
                                     var fault = ProtocolErrorException.UnexpectedCommand(command);
                                     open.Promise.SetException(fault);
+                                    context.System.EventStream.Unsubscribe(state.SubscriptionId);
                                     throw fault;
                                 }
                             }
@@ -128,6 +140,7 @@ namespace Lapine.Agents {
                             _behaviour.Become(Awaiting<ChannelCloseOk>(state,
                                 onReceive: _ => {
                                     close.Promise.SetResult();
+                                    context.System.EventStream.Unsubscribe(state.SubscriptionId);
                                     context.Stop(context.Self!);
                                 }
                             ));
@@ -411,6 +424,7 @@ namespace Lapine.Agents {
                             var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
                             onChannelClosed?.Invoke(exception);
                             context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
+                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
                             _behaviour.Become(Closed);
                             break;
                         }
