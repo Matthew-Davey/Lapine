@@ -4,7 +4,7 @@ namespace Lapine.Protocol {
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
 
-    public record BasicProperties(
+    readonly record struct BasicProperties(
         String? ContentType,
         String? ContentEncoding,
         IReadOnlyDictionary<String, Object>? Headers,
@@ -82,7 +82,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.ContentType)) {
                     if (surplus.ReadShortString(out var contentType, out surplus)) {
-                        result = result with { ContentType = contentType };
+                        result = result.Value with { ContentType = contentType };
                     }
                     else {
                         result = default;
@@ -92,7 +92,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.ContentEncoding)) {
                     if (surplus.ReadShortString(out var contentEncoding, out surplus)) {
-                        result = result with { ContentEncoding = contentEncoding };
+                        result = result.Value with { ContentEncoding = contentEncoding };
                     }
                     else {
                         result = default;
@@ -102,7 +102,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.Headers)) {
                     if (surplus.ReadFieldTable(out var headers, out surplus)) {
-                        result = result with { Headers = headers };
+                        result = result.Value with { Headers = headers };
                     }
                     else {
                         result = default;
@@ -112,7 +112,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.DeliveryMode)) {
                     if (surplus.ReadUInt8(out var deliveryMode, out surplus)) {
-                        result = result with { DeliveryMode = deliveryMode };
+                        result = result.Value with { DeliveryMode = deliveryMode };
                     }
                     else {
                         result = default;
@@ -122,7 +122,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.Priority)) {
                     if (surplus.ReadUInt8(out var priority, out surplus)) {
-                        result = result with { Priority = priority };
+                        result = result.Value with { Priority = priority };
                     }
                     else {
                         result = default;
@@ -132,7 +132,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.CorrelationId)) {
                     if (surplus.ReadShortString(out var correlationId, out surplus)) {
-                        result = result with { CorrelationId = correlationId };
+                        result = result.Value with { CorrelationId = correlationId };
                     }
                     else {
                         result = default;
@@ -142,7 +142,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.ReplyTo)) {
                     if (surplus.ReadShortString(out var replyTo, out surplus)) {
-                        result = result with { ReplyTo = replyTo };
+                        result = result.Value with { ReplyTo = replyTo };
                     }
                     else {
                         result = default;
@@ -152,7 +152,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.Expiration)) {
                     if (surplus.ReadShortString(out var expiration, out surplus)) {
-                        result = result with { Expiration = expiration };
+                        result = result.Value with { Expiration = expiration };
                     }
                     else {
                         result = default;
@@ -162,7 +162,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.MessageId)) {
                     if (surplus.ReadShortString(out var messageId, out surplus)) {
-                        result = result with { MessageId = messageId };
+                        result = result.Value with { MessageId = messageId };
                     }
                     else {
                         result = default;
@@ -172,7 +172,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.Timestamp)) {
                     if (surplus.ReadUInt64BE(out var timestamp, out surplus)) {
-                        result = result with { Timestamp = timestamp };
+                        result = result.Value with { Timestamp = timestamp };
                     }
                     else {
                         result = default;
@@ -182,7 +182,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.Type)) {
                     if (surplus.ReadShortString(out var type, out surplus)) {
-                        result = result with { Type = type };
+                        result = result.Value with { Type = type };
                     }
                     else {
                         result = default;
@@ -192,7 +192,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.UserId)) {
                     if (surplus.ReadShortString(out var userId, out surplus)) {
-                        result = result with { UserId = userId };
+                        result = result.Value with { UserId = userId };
                     }
                     else {
                         result = default;
@@ -202,7 +202,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.AppId)) {
                     if (surplus.ReadShortString(out var appId, out surplus)) {
-                        result = result with { AppId = appId };
+                        result = result.Value with { AppId = appId };
                     }
                     else {
                         result = default;
@@ -212,7 +212,7 @@ namespace Lapine.Protocol {
 
                 if (flags.HasFlag(PropertyFlags.ClusterId)) {
                     if (surplus.ReadShortString(out var clusterId, out surplus)) {
-                        result = result with { ClusterId = clusterId };
+                        result = result.Value with { ClusterId = clusterId };
                     }
                     else {
                         result = default;

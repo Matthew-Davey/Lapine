@@ -19,14 +19,14 @@ namespace Lapine.Agents {
 
     using TimeoutExpired = Lapine.Agents.RabbitClientAgent.Protocol.TimeoutExpired;
 
-    static public class RabbitClientAgent {
+    static class RabbitClientAgent {
         static public class Protocol {
             public record EstablishConnection(ConnectionConfiguration Configuration, TaskCompletionSource Promise);
             public record OpenChannel(TimeSpan Timeout, TaskCompletionSource<PID> Promise);
-            internal record TimeoutExpired();
+            internal record TimeoutExpired;
         }
 
-        record ConnectingState(
+        readonly record struct ConnectingState(
             ConnectionConfiguration ConnectionConfiguration,
             TaskCompletionSource Promise,
             PID SocketAgent,
@@ -46,7 +46,7 @@ namespace Lapine.Agents {
                 );
         }
 
-        record NegotiatingState(
+        readonly record struct NegotiatingState(
             ConnectionConfiguration ConnectionConfiguration,
             TaskCompletionSource Promise,
             PID SocketAgent,
@@ -65,7 +65,7 @@ namespace Lapine.Agents {
                 );
         }
 
-        record ConnectedState(
+        readonly record struct ConnectedState(
             ConnectionConfiguration ConnectionConfiguration,
             PID SocketAgent,
             PID TxD,

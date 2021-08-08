@@ -3,7 +3,7 @@ namespace Lapine.Client {
     using System.Linq;
     using System.Net;
 
-    public sealed record ConnectionConfiguration(
+    public readonly record struct ConnectionConfiguration(
         IPEndPoint[] Endpoints,
         IEndpointSelectionStrategy EndpointSelectionStrategy,
         TimeSpan ConnectionTimeout,

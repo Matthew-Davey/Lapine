@@ -3,7 +3,7 @@ namespace Lapine.Client {
     using System.Collections.Generic;
     using System.Collections.Immutable;
 
-    public sealed record QueueDefinition(
+    public readonly record struct QueueDefinition(
         String Name,
         Durability Durability,
         Boolean Exclusive,

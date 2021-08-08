@@ -6,7 +6,7 @@ namespace Lapine.Protocol {
     public class ProtocolHeaderTests : Faker {
         [Fact]
         public void SerializedSizeIsEightBytes() {
-            var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
             var buffer = new MemoryBufferWriter<Byte>(8);
 
             value.Serialize(buffer);
@@ -17,7 +17,7 @@ namespace Lapine.Protocol {
         [Fact]
         public void SerializationIsSymmetric() {
             var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
 
             value.Serialize(buffer);
             ProtocolHeader.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
@@ -34,7 +34,7 @@ namespace Lapine.Protocol {
 
         [Fact]
         public void DeserializationReturnsSurplusData() {
-            var value  = new ProtocolHeader(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
             var extra  = Random.UInt();
             var buffer = new MemoryBufferWriter<Byte>(12);
 

@@ -3,7 +3,7 @@ namespace Lapine.Client {
     using System.Collections.Generic;
     using System.Collections.Immutable;
 
-    public sealed record ExchangeDefinition(
+    public readonly record struct ExchangeDefinition(
         String Name,
         String Type,
         Durability Durability,

@@ -15,15 +15,15 @@ namespace Lapine.Agents {
     static class HeartbeatAgent {
         static public class Protocol {
             public record StartHeartbeat(PID Dispatcher, TimeSpan Frequency, PID Listener);
-            public record RemoteFlatline();
+            public record RemoteFlatline;
 
-            internal record Beat();
+            internal record Beat;
         }
 
         static public Props Create() =>
             Props.FromProducer(() => new Actor());
 
-        record State(
+        readonly record struct State(
             Guid SubscriptionId,
             TimeSpan HeartbeatFrequency,
             CancellationTokenSource ScheduledHeartbeat,

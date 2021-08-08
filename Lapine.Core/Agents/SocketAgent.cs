@@ -23,12 +23,12 @@ namespace Lapine.Agents {
             public record Tune(UInt32 MaxFrameSize);
             public record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount);
             public record Transmit(ISerializable Entity);
-            public record BeginPolling();
+            public record BeginPolling;
             public record FrameReceived(RawFrame Frame);
 
-            internal record TimeoutExpired();
+            internal record TimeoutExpired;
             internal record Bind(Socket Socket);
-            internal record Poll();
+            internal record Poll;
         }
 
         static public Props Create() =>

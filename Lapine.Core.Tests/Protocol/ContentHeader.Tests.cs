@@ -8,9 +8,9 @@ namespace Lapine.Protocol {
         public void SerializationIsSymmetric() {
             var buffer = new MemoryBufferWriter<Byte>();
             var value = new ContentHeader(
-                classId   : Random.UShort(),
-                bodySize  : Random.ULong(),
-                properties: BasicProperties.Empty with {
+                ClassId   : Random.UShort(),
+                BodySize  : Random.ULong(),
+                Properties: BasicProperties.Empty with {
                     AppId           = Random.Utf16String(),
                     ClusterId       = Random.Utf16String(),
                     ContentEncoding = Random.Utf16String(),
@@ -43,9 +43,9 @@ namespace Lapine.Protocol {
         [Fact]
         public void DeserializationReturnsSurplusData() {
             var value = new ContentHeader(
-                classId   : Random.UShort(),
-                bodySize  : Random.ULong(),
-                properties: BasicProperties.Empty with {
+                ClassId   : Random.UShort(),
+                BodySize  : Random.ULong(),
+                Properties: BasicProperties.Empty with {
                     AppId           = Random.Utf16String(),
                     ClusterId       = Random.Utf16String(),
                     ContentEncoding = Random.Utf16String(),

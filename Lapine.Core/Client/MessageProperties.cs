@@ -3,7 +3,7 @@ namespace Lapine.Client {
     using System.Collections.Immutable;
     using Lapine.Protocol;
 
-    public record MessageProperties(
+    public readonly record struct MessageProperties(
         String? ContentType,
         String? ContentEncoding,
         IImmutableDictionary<String, Object>? Headers,

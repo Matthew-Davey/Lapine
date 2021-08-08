@@ -75,7 +75,7 @@ namespace Lapine.Agents {
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
 
-        record State(
+        readonly record struct State(
             Guid SubscriptionId,
             UInt16 ChannelId,
             PID Dispatcher,
@@ -281,9 +281,9 @@ namespace Lapine.Agents {
                                 immediate   : publish.Immediate
                             )));
                             context.Send(state.Dispatcher, Dispatch.ContentHeader(new ContentHeader(
-                                classId   : 0x3C,
-                                bodySize  : (UInt64)publish.Message.Body.Length,
-                                properties: publish.Message.Properties
+                                ClassId   : 0x3C,
+                                BodySize  : (UInt64)publish.Message.Body.Length,
+                                Properties: publish.Message.Properties
                             )));
 
                             foreach (var segment in publish.Message.Body.Split((Int32)_maxFrameSize)) {

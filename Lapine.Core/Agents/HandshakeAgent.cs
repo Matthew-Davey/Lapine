@@ -29,14 +29,14 @@ namespace Lapine.Agents {
                 IReadOnlyDictionary<String, Object> ServerProperties
             );
 
-            internal record TimeoutExpired();
+            internal record TimeoutExpired;
         }
 
         static public Props Create() =>
             Props.FromProducer(() => new Actor())
                 .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
-        record NegotiatingState(
+        readonly record struct NegotiatingState(
             Guid SubscriptionId,
             ConnectionConfiguration ConnectionConfiguration,
             PID Listener,
@@ -44,7 +44,7 @@ namespace Lapine.Agents {
             IReadOnlyDictionary<String, Object>? ServerProperties
         );
 
-        record NegotiationCompleteState(
+        readonly record struct NegotiationCompleteState(
             Guid SubscriptionId,
             PID Listener,
             UInt16 MaxChannelCount,

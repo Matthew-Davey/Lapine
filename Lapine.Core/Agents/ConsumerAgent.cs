@@ -30,9 +30,13 @@ namespace Lapine.Agents {
         static public Props Create() =>
             Props.FromProducer(() => new Actor());
 
-        record Message(DeliveryInfo DeliveryInfo, BasicProperties Properties, MemoryBufferWriter<Byte> Body);
+        readonly record struct Message(
+            DeliveryInfo DeliveryInfo,
+            BasicProperties Properties,
+            MemoryBufferWriter<Byte> Body
+        );
 
-        record State(
+        readonly record struct State(
             String ConsumerTag,
             ConsumerConfiguration ConsumerConfiguration,
             PID Dispatcher,

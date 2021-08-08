@@ -4,7 +4,7 @@ namespace Lapine.Client {
 
     using static System.Runtime.InteropServices.RuntimeInformation;
 
-    public sealed record PeerProperties(
+    public readonly record struct PeerProperties(
         String? Product,
         String? Version,
         String? Platform,

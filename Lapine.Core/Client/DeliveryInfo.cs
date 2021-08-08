@@ -2,7 +2,7 @@ namespace Lapine.Client {
     using System;
     using Lapine.Protocol.Commands;
 
-    public record DeliveryInfo(
+    public readonly record struct DeliveryInfo(
         UInt64 DeliveryTag,
         Boolean Redelivered,
         String Exchange,

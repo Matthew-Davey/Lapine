@@ -3,29 +3,10 @@ namespace Lapine.Protocol {
     using System.Buffers;
     using Lapine.Protocol.Commands;
 
-    readonly struct RawFrame : ISerializable {
+    readonly record struct RawFrame(FrameType Type, UInt16 Channel, ReadOnlyMemory<Byte> Payload) : ISerializable {
         public const Byte FrameTerminator = 0xCE;
 
-        readonly FrameType _type;
-        readonly UInt16 _channel;
-        readonly ReadOnlyMemory<Byte> _payload;
-
-        public RawFrame(in FrameType type, in UInt16 channel, in ReadOnlyMemory<Byte> payload) {
-            if (!Enum.IsDefined(typeof(FrameType), type))
-                throw new ProtocolErrorException();
-
-            _type    = type;
-            _channel = channel;
-            _payload = payload;
-        }
-
-        public FrameType Type => _type;
-        public UInt16 Channel => _channel;
-        public UInt32 Size => (UInt32)_payload.Length;
-        public ReadOnlyMemory<Byte> Payload => _payload;
-
-        public override String ToString() =>
-            $"{{{Type} Frame}}";
+        public UInt32 Size => (UInt32)Payload.Length;
 
         public UInt32 SerializedSize => 7 + Size + 1; // header + payload + frame-terminator...
 
@@ -38,7 +19,7 @@ namespace Lapine.Protocol {
             var payload = payloadWriter.WrittenMemory;
 
             // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
-            return new RawFrame(FrameType.Method, in channel, in payload);
+            return new RawFrame(FrameType.Method, channel, payload);
         }
 
         static public RawFrame Wrap(in UInt16 channel, in ContentHeader contentHeader) {
@@ -47,7 +28,7 @@ namespace Lapine.Protocol {
             var payload = payloadWriter.WrittenMemory;
 
             // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
-            return new RawFrame(FrameType.Header, in channel, in payload);
+            return new RawFrame(FrameType.Header, channel, payload);
         }
 
         static public RawFrame Wrap(in UInt16 channel, in ReadOnlySpan<Byte> content) {
@@ -56,11 +37,11 @@ namespace Lapine.Protocol {
             var payload = payloadWriter.WrittenMemory;
 
             // TODO: payloadWriter will be collected, but we still have a reference to its memory in payload...
-            return new RawFrame(FrameType.Body, in channel, in payload);
+            return new RawFrame(FrameType.Body, channel, payload);
         }
 
         static public RawFrame Heartbeat =>
-            new (FrameType.Heartbeat, channel: 0, Memory<Byte>.Empty);
+            new (FrameType.Heartbeat, Channel: 0, Memory<Byte>.Empty);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt8((Byte)Type)
