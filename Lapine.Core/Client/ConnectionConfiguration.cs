@@ -7,6 +7,7 @@ namespace Lapine.Client {
         IPEndPoint[] Endpoints,
         IEndpointSelectionStrategy EndpointSelectionStrategy,
         TimeSpan ConnectionTimeout,
+        TimeSpan CommandTimeout,
         IAuthenticationStrategy AuthenticationStrategy,
         String Locale,
         PeerProperties PeerProperties,
@@ -19,6 +20,7 @@ namespace Lapine.Client {
         public static IEndpointSelectionStrategy DefaultEndpointSelectionStrategy =>
             new RandomEndpointSelectionStrategy();
         public static TimeSpan DefaultConnectionTimeout => TimeSpan.FromSeconds(5);
+        public static TimeSpan DefaultCommandTimeout => TimeSpan.FromSeconds(5);
         public static IAuthenticationStrategy DefaultAuthenticationStrategy =>
             new PlainAuthenticationStrategy();
         public const String DefaultLocale = "en_US";
@@ -32,6 +34,7 @@ namespace Lapine.Client {
             Endpoints                  : new [] { new IPEndPoint(IPAddress.Loopback, DefaultPort) },
             EndpointSelectionStrategy  : DefaultEndpointSelectionStrategy,
             ConnectionTimeout          : DefaultConnectionTimeout,
+            CommandTimeout             : DefaultCommandTimeout,
             AuthenticationStrategy     : DefaultAuthenticationStrategy,
             Locale                     : DefaultLocale,
             PeerProperties             : PeerProperties.Default,
