@@ -23,9 +23,9 @@ namespace Lapine.Client {
             if (_closed)
                 return; // Channel is already closed, nothing to do here...
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new Close(promise));
-            await promise.Task;
+            var command = new Close();
+            _system.Root.Send(_agent, command);
+            await command;
 
             _closed = true;
         }
@@ -34,83 +34,83 @@ namespace Lapine.Client {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new DeclareExchange(definition, promise));
-            await promise.Task;
+            var command = new DeclareExchange(definition);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new DeleteExchange(exchange, condition, promise));
-            await promise.Task;
+            var command = new DeleteExchange(exchange, condition);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask DeclareQueueAsync(QueueDefinition definition) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new DeclareQueue(definition, promise));
-            await promise.Task;
+            var command = new DeclareQueue(definition);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask DeleteQueueAsync(String queue, DeleteQueueCondition condition = DeleteQueueCondition.None) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new DeleteQueue(queue, condition, promise));
-            await promise.Task;
+            var command = new DeleteQueue(queue, condition);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask BindQueueAsync(String exchange, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new BindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>(), promise));
-            await promise.Task;
+            var command = new BindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>());
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
-        public async ValueTask UnbindQueueAsync(String exchangem, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
+        public async ValueTask UnbindQueueAsync(String exchange, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new UnbindQueue(exchangem, queue, routingKey, arguments ?? new Dictionary<String, Object>(), promise));
-            await promise.Task;
+            var command = new UnbindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>());
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask PurgeQueueAsync(String queue) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new PurgeQueue(queue, promise));
-            await promise.Task;
+            var command = new PurgeQueue(queue);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask PublishAsync(String exchange, String routingKey, (MessageProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
             var mandatory = routingFlags.HasFlag(RoutingFlags.Mandatory);
             var immediate = routingFlags.HasFlag(RoutingFlags.Immediate);
-            _system.Root.Send(_agent, new Publish(exchange, routingKey, (message.Properties.ToBasicProperties(), message.Payload), mandatory, immediate, promise));
-            await promise.Task;
+            var command   = new Publish(exchange, routingKey, (message.Properties.ToBasicProperties(), message.Payload), mandatory, immediate);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>();
-            _system.Root.Send(_agent, new GetMessage(queue, acknowledgements, promise));
-            return await promise.Task switch {
+            var command = new GetMessage(queue, acknowledgements);
+            _system.Root.Send(_agent, command);
+            return await command switch {
                 null => null,
                 (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
             };
@@ -120,40 +120,40 @@ namespace Lapine.Client {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new Acknowledge(deliveryTag, multiple, promise));
-            await promise.Task;
+            var command = new Acknowledge(deliveryTag, multiple);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask RejectAsync(UInt64 deliveryTag, Boolean requeue) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new Reject(deliveryTag, requeue, promise));
-            await promise.Task;
+            var command = new Reject(deliveryTag, requeue);
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new SetPrefetchLimit(limit, scope switch {
+            var command = new SetPrefetchLimit(limit, scope switch {
                 PrefetchLimitScope.Consumer => false,
                 PrefetchLimitScope.Channel  => true,
                 _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
-            }, promise));
-            await promise.Task;
+            });
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var promise = new TaskCompletionSource<String>();
-            _system.Root.Send(_agent, new Consume(queue, consumerConfiguration, arguments, promise));
-            return await promise.Task;
+            var command = new Consume(queue, consumerConfiguration, arguments);
+            _system.Root.Send(_agent, command);
+            return await command;
         }
     }
 }

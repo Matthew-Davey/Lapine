@@ -21,20 +21,20 @@ namespace Lapine.Client {
         }
 
         public async ValueTask ConnectAsync(TimeSpan? timeout = default) {
-            var promise = new TaskCompletionSource();
-            _system.Root.Send(_agent, new EstablishConnection(
+            var command = new EstablishConnection(
                 Configuration: _connectionConfiguration with {
                     ConnectionTimeout = timeout ?? _connectionConfiguration.ConnectionTimeout
-                }, promise
-            ));
-            await promise.Task;
+                }
+            );
+            _system.Root.Send(_agent, command);
+            await command;
         }
 
         public async ValueTask<Channel> OpenChannelAsync(TimeSpan? timeout = null) {
-            var promise = new TaskCompletionSource<PID>();
-            _system.Root.Send(_agent, new OpenChannel(timeout ?? _connectionConfiguration.CommandTimeout, promise));
+            var command = new OpenChannel(timeout ?? _connectionConfiguration.CommandTimeout);
+            _system.Root.Send(_agent, command);
 
-            return new Channel(_system, await promise.Task);
+            return new Channel(_system, await command);
         }
 
         public async ValueTask DisposeAsync() =>

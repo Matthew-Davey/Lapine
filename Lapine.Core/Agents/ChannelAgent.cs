@@ -20,53 +20,44 @@ namespace Lapine.Agents {
 
     static class ChannelAgent {
         static public class Protocol {
-            public record Open(UInt16 ChannelId, PID TxD, TimeSpan Timeout, TaskCompletionSource Promise);
-            public record Close(TaskCompletionSource Promise);
-            public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
-            public record DeleteExchange(
-                String Exchange,
-                DeleteExchangeCondition Condition,
-                TaskCompletionSource Promise
-            );
-            public record DeclareQueue(QueueDefinition Definition, TaskCompletionSource Promise);
-            public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TaskCompletionSource Promise);
+            public record Open(UInt16 ChannelId, PID TxD, TimeSpan Timeout) : AsyncCommand;
+            public record Close : AsyncCommand;
+            public record DeclareExchange(ExchangeDefinition Definition) : AsyncCommand;
+            public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition) : AsyncCommand;
+            public record DeclareQueue(QueueDefinition Definition) : AsyncCommand;
+            public record DeleteQueue(String Queue, DeleteQueueCondition Condition) : AsyncCommand;
             public record BindQueue(
                 String Exchange,
                 String Queue,
                 String RoutingKey,
-                IReadOnlyDictionary<String, Object> Arguments,
-                TaskCompletionSource Promise
-            );
+                IReadOnlyDictionary<String, Object> Arguments
+            ) : AsyncCommand;
             public record UnbindQueue(
                 String Exchange,
                 String Queue,
                 String RoutingKey,
-                IReadOnlyDictionary<String, Object> Arguments,
-                TaskCompletionSource Promise
-            );
-            public record PurgeQueue(String Queue, TaskCompletionSource Promise);
+                IReadOnlyDictionary<String, Object> Arguments
+            ) : AsyncCommand;
+            public record PurgeQueue(String Queue) : AsyncCommand;
             public record Publish(
                 String Exchange,
                 String RoutingKey,
                 (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message,
                 Boolean Mandatory,
-                Boolean Immediate,
-                TaskCompletionSource Promise
-            );
+                Boolean Immediate
+            ) : AsyncCommand;
             public record GetMessage(
                 String Queue,
-                Acknowledgements Acknowledgements,
-                TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> Promise
-            );
-            public record Acknowledge(UInt64 DeliveryTag, Boolean Multiple, TaskCompletionSource Promise);
-            public record Reject(UInt64 DeliveryTag, Boolean Requeue, TaskCompletionSource Promise);
-            public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TaskCompletionSource Promise);
+                Acknowledgements Acknowledgements
+            ) : AsyncCommand<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>;
+            public record Acknowledge(UInt64 DeliveryTag, Boolean Multiple) : AsyncCommand;
+            public record Reject(UInt64 DeliveryTag, Boolean Requeue) : AsyncCommand;
+            public record SetPrefetchLimit(UInt16 Limit, Boolean Global) : AsyncCommand;
             public record Consume(
                 String Queue,
                 ConsumerConfiguration ConsumerConfiguration,
-                IReadOnlyDictionary<String, Object>? Arguments,
-                TaskCompletionSource<String> Promise
-            );
+                IReadOnlyDictionary<String, Object>? Arguments
+            ) : AsyncCommand<String>;
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
@@ -117,11 +108,11 @@ namespace Lapine.Agents {
 
                         try {
                             await promise.Task;
-                            open.Promise.SetResult();
+                            open.SetResult();
                             _behaviour.Become(Open(state));
                         }
                         catch (Exception fault) {
-                            open.Promise.SetException(fault);
+                            open.SetException(fault);
                         }
                         break;
                     }
@@ -135,7 +126,7 @@ namespace Lapine.Agents {
                             context.Send(state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
                             _behaviour.Become(Awaiting<ChannelCloseOk>(state,
                                 onReceive: _ => {
-                                    close.Promise.SetResult();
+                                    close.SetResult();
                                     context.System.EventStream.Unsubscribe(state.SubscriptionId);
                                     context.Stop(context.Self!);
                                 }
@@ -155,11 +146,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<ExchangeDeclareOk>(state,
                                 onReceive: _ => {
-                                    declare.Promise.SetResult();
+                                    declare.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    declare.Promise.SetException(error);
+                                    declare.SetException(error);
                                 }
                             ));
                             break;
@@ -172,11 +163,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<ExchangeDeleteOk>(state,
                                 onReceive: _ => {
-                                    delete.Promise.SetResult();
+                                    delete.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    delete.Promise.SetException(error);
+                                    delete.SetException(error);
                                 }
                             ));
                             break;
@@ -193,11 +184,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueDeclareOk>(state,
                                 onReceive: _ => {
-                                    declare.Promise.SetResult();
+                                    declare.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    declare.Promise.SetException(error);
+                                    declare.SetException(error);
                                 }
                             ));
                             break;
@@ -211,11 +202,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueDeleteOk>(state,
                                 onReceive: _ => {
-                                    delete.Promise.SetResult();
+                                    delete.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    delete.Promise.SetException(error);
+                                    delete.SetException(error);
                                 }
                             ));
                             break;
@@ -230,11 +221,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueBindOk>(state,
                                 onReceive: _ => {
-                                    bind.Promise.SetResult();
+                                    bind.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    bind.Promise.SetException(error);
+                                    bind.SetException(error);
                                 }
                             ));
                             break;
@@ -248,11 +239,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueUnbindOk>(state,
                                 onReceive: _ => {
-                                    unbind.Promise.SetResult();
+                                    unbind.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    unbind.Promise.SetException(error);
+                                    unbind.SetException(error);
                                 }
                             ));
                             break;
@@ -264,11 +255,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueuePurgeOk>(state,
                                 onReceive: _ => {
-                                    purge.Promise.SetResult();
+                                    purge.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    purge.Promise.SetException(error);
+                                    purge.SetException(error);
                                 }
                             ));
                             break;
@@ -293,7 +284,7 @@ namespace Lapine.Agents {
                             if (publish.Mandatory || publish.Immediate) {
                                 _behaviour.BecomeStacked(Awaiting<BasicReturn>(state,
                                     onReceive: @return => {
-                                        publish.Promise.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
+                                        publish.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
                                         _behaviour.UnbecomeStacked();
                                     },
                                     onUnexpected: context => {
@@ -301,13 +292,13 @@ namespace Lapine.Agents {
                                         _behaviour.ReceiveAsync(context);
                                     },
                                     onChannelClosed: error => {
-                                        publish.Promise.SetException(error);
+                                        publish.SetException(error);
                                     }
                                 ));
                                 break;
                             }
                             else {
-                                publish.Promise.SetResult();
+                                publish.SetResult();
                             }
                             break;
                         }
@@ -320,7 +311,7 @@ namespace Lapine.Agents {
                                     _                       => false
                                 }
                             )));
-                            _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get.Promise));
+                            _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get));
                             break;
                         }
                         case Acknowledge ack: {
@@ -328,7 +319,7 @@ namespace Lapine.Agents {
                                 deliveryTag: ack.DeliveryTag,
                                 multiple   : ack.Multiple
                             )));
-                            ack.Promise.SetResult();
+                            ack.SetResult();
                             break;
                         }
                         case Reject reject: {
@@ -336,7 +327,7 @@ namespace Lapine.Agents {
                                 deliveryTag: reject.DeliveryTag,
                                 requeue    : reject.Requeue
                             )));
-                            reject.Promise.SetResult();
+                            reject.SetResult();
                             break;
                         }
                         case SetPrefetchLimit prefetch: {
@@ -347,11 +338,11 @@ namespace Lapine.Agents {
                             )));
                             _behaviour.BecomeStacked(Awaiting<BasicQosOk>(state,
                                 onReceive: _ => {
-                                    prefetch.Promise.SetResult();
+                                    prefetch.SetResult();
                                     _behaviour.UnbecomeStacked();
                                 },
                                 onChannelClosed: error => {
-                                    prefetch.Promise.SetException(error);
+                                    prefetch.SetException(error);
                                 }
                             ));
                             break;
@@ -384,10 +375,10 @@ namespace Lapine.Agents {
                                     _behaviour.Become(Open(state with {
                                         Consumers = state.Consumers.Add(consumerTag, consumer)
                                     }));
-                                    consume.Promise.SetResult(consumerTag);
+                                    consume.SetResult(consumerTag);
                                 },
                                 onChannelClosed: error => {
-                                    consume.Promise.SetException(error);
+                                    consume.SetException(error);
                                 }
                             ));
                             break;
@@ -432,35 +423,35 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
 
-            Receive AwaitingGetOkOrEmpty(TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) =>
+            Receive AwaitingGetOkOrEmpty(GetMessage getMessage) =>
                 (IContext context) => {
                     switch (context.Message) {
                         case BasicGetEmpty _: {
-                            promise.SetResult(null);
+                            getMessage.SetResult(null);
                             _behaviour.UnbecomeStacked();
                             break;
                         }
                         case BasicGetOk ok: {
                             _behaviour.UnbecomeStacked();
-                            _behaviour.BecomeStacked(AwaitingContentHeader(DeliveryInfo.FromBasicGetOk(ok), promise));
+                            _behaviour.BecomeStacked(AwaitingContentHeader(DeliveryInfo.FromBasicGetOk(ok), getMessage));
                             break;
                         }
                     }
                     return CompletedTask;
                 };
 
-            Receive AwaitingContentHeader(DeliveryInfo delivery, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) {
+            Receive AwaitingContentHeader(DeliveryInfo delivery, GetMessage getMessage) {
                 return (IContext context) => {
                     switch (context.Message) {
                         case ContentHeader header: {
                             _behaviour.UnbecomeStacked();
                             switch (header.BodySize) {
                                 case 0: {
-                                    promise.SetResult((delivery, header.Properties, Memory<Byte>.Empty));
+                                    getMessage.SetResult((delivery, header.Properties, Memory<Byte>.Empty));
                                     break;
                                 }
                                 default: {
-                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, promise));
+                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, getMessage));
                                     break;
                                 }
                             }
@@ -471,7 +462,7 @@ namespace Lapine.Agents {
                 };
             }
 
-            Receive AwaitingContentBody(DeliveryInfo delivery, ContentHeader header, TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?> promise) {
+            Receive AwaitingContentBody(DeliveryInfo delivery, ContentHeader header, GetMessage getMessage) {
                 var buffer = new ArrayBufferWriter<Byte>((Int32)header.BodySize);
                 return (IContext context) => {
                     switch (context.Message) {
@@ -479,7 +470,7 @@ namespace Lapine.Agents {
                             buffer.Write(bodySegment.Span);
 
                             if ((UInt64)buffer.WrittenCount >= header.BodySize) {
-                                promise.SetResult((delivery, header.Properties, buffer.WrittenMemory));
+                                getMessage.SetResult((delivery, header.Properties, buffer.WrittenMemory));
                                 _behaviour.UnbecomeStacked();
                             }
 

@@ -21,14 +21,14 @@ namespace Lapine.Agents {
 
     static class RabbitClientAgent {
         static public class Protocol {
-            public record EstablishConnection(ConnectionConfiguration Configuration, TaskCompletionSource Promise);
-            public record OpenChannel(TimeSpan Timeout, TaskCompletionSource<PID> Promise);
+            public record EstablishConnection(ConnectionConfiguration Configuration) : AsyncCommand;
+            public record OpenChannel(TimeSpan Timeout) : AsyncCommand<PID>;
             internal record TimeoutExpired;
         }
 
         readonly record struct ConnectingState(
             ConnectionConfiguration ConnectionConfiguration,
-            TaskCompletionSource Promise,
+            EstablishConnection Command,
             PID SocketAgent,
             IPEndPoint[] RemainingEndpoints,
             CancellationTokenSource ScheduledTimeout,
@@ -37,7 +37,7 @@ namespace Lapine.Agents {
             public NegotiatingState ToNegotiatingState(PID txd, PID handshakeAgent, PID dispatcher) =>
                 new (
                     ConnectionConfiguration: ConnectionConfiguration,
-                    Promise                : Promise,
+                    Command                : Command,
                     SocketAgent            : SocketAgent,
                     ScheduledTimeout       : ScheduledTimeout,
                     TxD                    : txd,
@@ -48,7 +48,7 @@ namespace Lapine.Agents {
 
         readonly record struct NegotiatingState(
             ConnectionConfiguration ConnectionConfiguration,
-            TaskCompletionSource Promise,
+            EstablishConnection Command,
             PID SocketAgent,
             CancellationTokenSource ScheduledTimeout,
             PID TxD,
@@ -90,7 +90,7 @@ namespace Lapine.Agents {
                     case EstablishConnection connect: {
                         var state = new ConnectingState(
                             ConnectionConfiguration: connect.Configuration,
-                            Promise: connect.Promise,
+                            Command: connect,
                             SocketAgent: context.SpawnNamed(
                                 name: "socket",
                                 props: SocketAgent.Create()
@@ -115,7 +115,7 @@ namespace Lapine.Agents {
                             }));
                         }
                         else {
-                            connect.Promise.SetException(new Exception("No endpoints specified in connection configuration"));
+                            connect.SetException(new Exception("No endpoints specified in connection configuration"));
                             _behaviour.Become(Disconnected);
                         }
                         break;
@@ -141,7 +141,7 @@ namespace Lapine.Agents {
                         }
                         case ConnectionFailed failed when state.RemainingEndpoints.Length == 0: {
                             state.ScheduledTimeout.Cancel();
-                            state.Promise.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
+                            state.Command.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
                             context.Stop(state.SocketAgent);
                             _behaviour.Become(Disconnected);
                             break;
@@ -170,7 +170,7 @@ namespace Lapine.Agents {
                             break;
                         }
                         case TimeoutExpired _: {
-                            state.Promise.SetException(new TimeoutException("Unable to connect to any of the configured endpoints within the connection timeout limit"));
+                            state.Command.SetException(new TimeoutException("Unable to connect to any of the configured endpoints within the connection timeout limit"));
                             context.Stop(state.SocketAgent);
                             _behaviour.Become(Disconnected);
                             break;
@@ -216,17 +216,17 @@ namespace Lapine.Agents {
                                     .ToImmutableList()
                             )));
 
-                            state.Promise.SetResult();
+                            state.Command.SetResult();
                             break;
                         }
                         case HandshakeFailed failed: {
                             state.ScheduledTimeout.Cancel();
-                            state.Promise.SetException(failed.Reason);
+                            state.Command.SetException(failed.Reason);
                             _behaviour.Become(Disconnected);
                             break;
                         }
                         case TimeoutExpired _: {
-                            state.Promise.SetException(new TimeoutException("A connection to the broker was established but the negotiation did not complete within the specified connection timeout limit"));
+                            state.Command.SetException(new TimeoutException("A connection to the broker was established but the negotiation did not complete within the specified connection timeout limit"));
                             context.Stop(state.Dispatcher);
                             context.Stop(state.HandshakeAgent);
                             context.Stop(state.SocketAgent);
@@ -253,18 +253,18 @@ namespace Lapine.Agents {
                                 name: $"channel_{channelId}",
                                 props: ChannelAgent.Create(state.ConnectionConfiguration.MaximumFrameSize)
                             );
-                            var promise = new TaskCompletionSource();
-                            context.Send(channelAgent, new Open(channelId, state.TxD!, openChannel.Timeout, promise));
+                            var command = new Open(channelId, state.TxD!, openChannel.Timeout);
+                            context.Send(channelAgent, command);
 
                             try {
-                                await promise.Task;
+                                await command;
                                 _behaviour.Become(Connected(state with {
                                     AvailableChannelIds = state.AvailableChannelIds.Remove(channelId)
                                 }));
-                                openChannel.Promise.SetResult(channelAgent);
+                                openChannel.SetResult(channelAgent);
                             }
                             catch (Exception fault) {
-                                openChannel.Promise.SetException(fault);
+                                openChannel.SetException(fault);
                             }
                             break;
                         };
