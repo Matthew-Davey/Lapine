@@ -22,7 +22,7 @@ namespace Lapine.Agents {
     static public class RabbitClientAgent {
         static public class Protocol {
             public record EstablishConnection(ConnectionConfiguration Configuration, TaskCompletionSource Promise);
-            public record OpenChannel(TaskCompletionSource<PID> Promise);
+            public record OpenChannel(TimeSpan Timeout, TaskCompletionSource<PID> Promise);
             internal record TimeoutExpired();
         }
 
@@ -254,7 +254,7 @@ namespace Lapine.Agents {
                                 props: ChannelAgent.Create(state.ConnectionConfiguration.MaximumFrameSize)
                             );
                             var promise = new TaskCompletionSource();
-                            context.Send(channelAgent, new Open(channelId, state.TxD!, promise));
+                            context.Send(channelAgent, new Open(channelId, state.TxD!, openChannel.Timeout, promise));
 
                             try {
                                 await promise.Task;

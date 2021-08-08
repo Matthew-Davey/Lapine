@@ -30,9 +30,9 @@ namespace Lapine.Client {
             await promise.Task;
         }
 
-        public async ValueTask<Channel> OpenChannelAsync() {
+        public async ValueTask<Channel> OpenChannelAsync(TimeSpan? timeout = null) {
             var promise = new TaskCompletionSource<PID>();
-            _system.Root.Send(_agent, new OpenChannel(promise));
+            _system.Root.Send(_agent, new OpenChannel(timeout ?? _connectionConfiguration.CommandTimeout, promise));
 
             return new Channel(_system, await promise.Task);
         }

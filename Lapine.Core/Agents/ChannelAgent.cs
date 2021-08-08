@@ -3,12 +3,14 @@ namespace Lapine.Agents {
     using System.Buffers;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
     using Lapine.Client;
     using Lapine.Protocol;
     using Lapine.Protocol.Commands;
     using Proto;
+    using Proto.Timers;
 
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.DispatcherAgent.Protocol;
@@ -18,7 +20,7 @@ namespace Lapine.Agents {
 
     static class ChannelAgent {
         static public class Protocol {
-            public record Open(UInt16 ChannelId, PID TxD, TaskCompletionSource Promise);
+            public record Open(UInt16 ChannelId, PID TxD, TimeSpan Timeout, TaskCompletionSource Promise);
             public record Close(TaskCompletionSource Promise);
             public record DeclareExchange(ExchangeDefinition Definition, TaskCompletionSource Promise);
             public record DeleteExchange(
@@ -92,7 +94,7 @@ namespace Lapine.Agents {
             public Task ReceiveAsync(IContext context) =>
                 _behaviour.ReceiveAsync(context);
 
-            Task Closed(IContext context) {
+            async Task Closed(IContext context) {
                 switch (context.Message) {
                     case Open open: {
                         var subscription = context.System.EventStream.Subscribe<FrameReceived>(
@@ -109,27 +111,21 @@ namespace Lapine.Agents {
                             Consumers     : ImmutableDictionary<String, PID>.Empty
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
-                        context.Send(state.Dispatcher, Dispatch.Command(new ChannelOpen()));
-                        _behaviour.Become(ctx => {
-                            switch (ctx.Message) {
-                                case ChannelOpenOk: {
-                                    _behaviour.Become(Open(state));
-                                    open.Promise.SetResult();
-                                    break;
-                                }
-                                case ICommand command: {
-                                    var fault = ProtocolErrorException.UnexpectedCommand(command);
-                                    open.Promise.SetException(fault);
-                                    context.System.EventStream.Unsubscribe(state.SubscriptionId);
-                                    throw fault;
-                                }
-                            }
-                            return CompletedTask;
-                        });
+
+                        var promise = new TaskCompletionSource();
+                        context.Spawn(ChannelOpenActor.Create(state, open.Timeout, promise));
+
+                        try {
+                            await promise.Task;
+                            open.Promise.SetResult();
+                            _behaviour.Become(Open(state));
+                        }
+                        catch (Exception fault) {
+                            open.Promise.SetException(fault);
+                        }
                         break;
                     }
                 }
-                return CompletedTask;
             }
 
             Receive Open(State state) =>
@@ -542,6 +538,65 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
             }
+        }
+
+        class ChannelOpenActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public ChannelOpenActor(State state, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new ChannelOpenActor(state, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new ChannelOpen()));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingChannelOpenOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingChannelOpenOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case ChannelOpenOk: {
+                            scheduledTimeout!.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
         }
     }
 }
