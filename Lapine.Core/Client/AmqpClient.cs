@@ -34,7 +34,7 @@ namespace Lapine.Client {
             var command = new OpenChannel(timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
 
-            return new Channel(_system, await command);
+            return new Channel(_system, await command, _connectionConfiguration);
         }
 
         public async ValueTask DisposeAsync() =>

@@ -21,7 +21,7 @@ namespace Lapine.Agents {
     static class ChannelAgent {
         static public class Protocol {
             public record Open(UInt16 ChannelId, PID TxD, TimeSpan Timeout) : AsyncCommand;
-            public record Close : AsyncCommand;
+            public record Close(TimeSpan Timeout) : AsyncCommand;
             public record DeclareExchange(ExchangeDefinition Definition) : AsyncCommand;
             public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition) : AsyncCommand;
             public record DeclareQueue(QueueDefinition Definition) : AsyncCommand;
@@ -120,17 +120,20 @@ namespace Lapine.Agents {
             }
 
             Receive Open(State state) =>
-                (IContext context) => {
+                async (IContext context) => {
                     switch (context.Message) {
                         case Close close: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
-                            _behaviour.Become(Awaiting<ChannelCloseOk>(state,
-                                onReceive: _ => {
-                                    close.SetResult();
-                                    context.System.EventStream.Unsubscribe(state.SubscriptionId);
-                                    context.Stop(context.Self!);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(ChannelCloseActor.Create(state, close.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                close.SetResult();
+                                context.Stop(context.Self!);
+                            }
+                            catch (Exception fault) {
+                                close.SetException(fault);
+                            }
                             break;
                         }
                         case DeclareExchange declare: {
@@ -397,7 +400,6 @@ namespace Lapine.Agents {
                             break;
                         }
                     }
-                    return CompletedTask;
                 };
 
             Receive Awaiting<T>(State state, Action<T> onReceive, Action<IContext>? onUnexpected = null, Action<Exception>? onChannelClosed = null) =>
@@ -572,6 +574,65 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case ChannelOpenOk: {
                             scheduledTimeout!.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class ChannelCloseActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public ChannelCloseActor(State state, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new ChannelCloseActor(state, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingChannelCloseOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingChannelCloseOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case ChannelCloseOk: {
+                            scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);
                             break;

@@ -11,19 +11,21 @@ namespace Lapine.Client {
     public class Channel {
         readonly ActorSystem _system;
         readonly PID _agent;
+        readonly ConnectionConfiguration _connectionConfiguration;
 
         Boolean _closed = false;
 
-        internal Channel(ActorSystem system, PID agent) {
-            _system = system ?? throw new ArgumentNullException(nameof(system));
-            _agent  = agent ?? throw new ArgumentNullException(nameof(agent));
+        internal Channel(ActorSystem system, PID agent, in ConnectionConfiguration connectionConfiguration) {
+            _system                  = system ?? throw new ArgumentNullException(nameof(system));
+            _agent                   = agent ?? throw new ArgumentNullException(nameof(agent));
+            _connectionConfiguration = connectionConfiguration;
         }
 
-        public async ValueTask CloseAsync() {
+        public async ValueTask CloseAsync(TimeSpan? timeout = null) {
             if (_closed)
                 return; // Channel is already closed, nothing to do here...
 
-            var command = new Close();
+            var command = new Close(timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
 
