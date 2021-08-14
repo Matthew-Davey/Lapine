@@ -32,11 +32,11 @@ namespace Lapine.Client {
             _closed = true;
         }
 
-        public async ValueTask DeclareExchangeAsync(ExchangeDefinition definition) {
+        public async ValueTask DeclareExchangeAsync(ExchangeDefinition definition, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new DeclareExchange(definition);
+            var command = new DeclareExchange(definition, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }
