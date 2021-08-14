@@ -183,40 +183,29 @@ namespace Lapine.Agents {
                             break;
                         }
                         case BindQueue bind: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new QueueBind(
-                                queueName   : bind.Binding.Queue,
-                                exchangeName: bind.Binding.Exchange,
-                                routingKey  : bind.Binding.RoutingKey,
-                                noWait      : false,
-                                arguments   : bind.Binding.Arguments
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<QueueBindOk>(state,
-                                onReceive: _ => {
-                                    bind.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    bind.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(QueueBindActor.Create(state, bind.Binding, bind.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                bind.SetResult();
+                            }
+                            catch (Exception fault) {
+                                bind.SetException(fault);
+                            }
                             break;
                         }
                         case UnbindQueue unbind: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new QueueUnbind(
-                                queueName   : unbind.Binding.Queue,
-                                exchangeName: unbind.Binding.Exchange,
-                                routingKey  : unbind.Binding.RoutingKey,
-                                arguments   : unbind.Binding.Arguments
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<QueueUnbindOk>(state,
-                                onReceive: _ => {
-                                    unbind.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    unbind.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(QueueUnbindActor.Create(state, unbind.Binding, unbind.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                unbind.SetResult();
+                            }
+                            catch (Exception fault) {
+                                unbind.SetException(fault);
+                            }
                             break;
                         }
                         case PurgeQueue purge: {
@@ -892,6 +881,151 @@ namespace Lapine.Agents {
                 context => {
                     switch (context.Message) {
                         case QueueDeleteOk: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class QueueBindActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly Binding _binding;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public QueueBindActor(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _binding   = binding;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new QueueBindActor(state, binding, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueBind(
+                            queueName   : _binding.Queue,
+                            exchangeName: _binding.Exchange,
+                            routingKey  : _binding.RoutingKey,
+                            noWait      : false,
+                            arguments   : _binding.Arguments
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingQueueBindOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingQueueBindOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case QueueBindOk: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class QueueUnbindActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly Binding _binding;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public QueueUnbindActor(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _binding   = binding;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new QueueUnbindActor(state, binding, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueUnbind(
+                            queueName   : _binding.Queue,
+                            exchangeName: _binding.Exchange,
+                            routingKey  : _binding.RoutingKey,
+                            arguments   : _binding.Arguments
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingQueueUnbindOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingQueueUnbindOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case QueueUnbindOk: {
                             scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);
