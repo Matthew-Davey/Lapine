@@ -50,11 +50,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask DeclareQueueAsync(QueueDefinition definition) {
+        public async ValueTask DeclareQueueAsync(QueueDefinition definition, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new DeclareQueue(definition);
+            var command = new DeclareQueue(definition, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }

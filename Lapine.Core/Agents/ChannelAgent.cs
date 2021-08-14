@@ -28,7 +28,7 @@ namespace Lapine.Agents {
                 DeleteExchangeCondition Condition,
                 TimeSpan Timeout
             ) : AsyncCommand;
-            public record DeclareQueue(QueueDefinition Definition) : AsyncCommand;
+            public record DeclareQueue(QueueDefinition Definition, TimeSpan Timeout) : AsyncCommand;
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition) : AsyncCommand;
             public record BindQueue(
                 String Exchange,
@@ -167,24 +167,16 @@ namespace Lapine.Agents {
                             break;
                         }
                         case DeclareQueue declare: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new QueueDeclare(
-                                queueName : declare.Definition.Name,
-                                passive   : false,
-                                durable   : declare.Definition.Durability > Durability.Transient,
-                                exclusive : declare.Definition.Exclusive,
-                                autoDelete: declare.Definition.AutoDelete,
-                                noWait    : false,
-                                arguments : declare.Definition.Arguments
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<QueueDeclareOk>(state,
-                                onReceive: _ => {
-                                    declare.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    declare.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(QueueDeclareActor.Create(state, declare.Definition, declare.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                declare.SetResult();
+                            }
+                            catch (Exception fault) {
+                                declare.SetException(fault);
+                            }
                             break;
                         }
                         case DeleteQueue delete: {
@@ -766,6 +758,81 @@ namespace Lapine.Agents {
                 context => {
                     switch (context.Message) {
                         case ExchangeDeleteOk: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class QueueDeclareActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly QueueDefinition _definition;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public QueueDeclareActor(State state, QueueDefinition definition, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour  = new Behavior(Unstarted);
+                _state      = state;
+                _timeout    = timeout;
+                _definition = definition;
+                _promise    = promise;
+            }
+
+            static public Props Create(State state, QueueDefinition definition, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new QueueDeclareActor(state, definition, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueDeclare(
+                            queueName : _definition.Name,
+                            passive   : false,
+                            durable   : _definition.Durability > Durability.Transient,
+                            exclusive : _definition.Exclusive,
+                            autoDelete: _definition.AutoDelete,
+                            noWait    : false,
+                            arguments : _definition.Arguments
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingQueueDeclareOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingQueueDeclareOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case QueueDeclareOk ok: {
                             scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);
