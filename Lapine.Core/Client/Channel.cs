@@ -41,11 +41,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None) {
+        public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new DeleteExchange(exchange, condition);
+            var command = new DeleteExchange(exchange, condition, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }

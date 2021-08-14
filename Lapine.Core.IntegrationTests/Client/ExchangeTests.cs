@@ -237,9 +237,9 @@ namespace Lapine.Client {
         }
 
         [Scenario]
-        //[Example("3.9")]
+        [Example("3.9")]
         [Example("3.8")]
-        //[Example("3.7")]
+        [Example("3.7")]
         public void DeleteNonExistentExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception error) {
             $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
                 broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);

@@ -23,7 +23,11 @@ namespace Lapine.Agents {
             public record Open(UInt16 ChannelId, PID TxD, TimeSpan Timeout) : AsyncCommand;
             public record Close(TimeSpan Timeout) : AsyncCommand;
             public record DeclareExchange(ExchangeDefinition Definition, TimeSpan Timeout) : AsyncCommand;
-            public record DeleteExchange(String Exchange, DeleteExchangeCondition Condition) : AsyncCommand;
+            public record DeleteExchange(
+                String Exchange,
+                DeleteExchangeCondition Condition,
+                TimeSpan Timeout
+            ) : AsyncCommand;
             public record DeclareQueue(QueueDefinition Definition) : AsyncCommand;
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition) : AsyncCommand;
             public record BindQueue(
@@ -150,20 +154,16 @@ namespace Lapine.Agents {
                             break;
                         }
                         case DeleteExchange delete: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new ExchangeDelete(
-                                exchangeName: delete.Exchange,
-                                ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
-                                noWait      : false
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<ExchangeDeleteOk>(state,
-                                onReceive: _ => {
-                                    delete.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    delete.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(ExchangeDeleteActor.Create(state, delete.Exchange, delete.Condition, delete.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                delete.SetResult();
+                            }
+                            catch (Exception fault) {
+                                delete.SetException(fault);
+                            }
                             break;
                         }
                         case DeclareQueue declare: {
@@ -693,6 +693,79 @@ namespace Lapine.Agents {
                 context => {
                     switch (context.Message) {
                         case ExchangeDeclareOk: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class ExchangeDeleteActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly String _exchange;
+            readonly DeleteExchangeCondition _condition;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public ExchangeDeleteActor(State state, String exchange, DeleteExchangeCondition condition, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _exchange  = exchange;
+                _condition = condition;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, String exchange, DeleteExchangeCondition condition, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new ExchangeDeleteActor(state, exchange, condition, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new ExchangeDelete(
+                            exchangeName: _exchange,
+                            ifUnused    : _condition.HasFlag(DeleteExchangeCondition.Unused),
+                            noWait      : false
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingExchangeDeleteOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingExchangeDeleteOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case ExchangeDeleteOk: {
                             scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);
