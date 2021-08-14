@@ -68,20 +68,20 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask BindQueueAsync(String exchange, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
+        public async ValueTask BindQueueAsync(Binding binding, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new BindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>());
+            var command = new BindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }
 
-        public async ValueTask UnbindQueueAsync(String exchange, String queue, String routingKey = "#", IReadOnlyDictionary<String, Object>? arguments = null) {
+        public async ValueTask UnbindQueueAsync(Binding binding, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new UnbindQueue(exchange, queue, routingKey, arguments ?? new Dictionary<String, Object>());
+            var command = new UnbindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }

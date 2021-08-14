@@ -30,18 +30,8 @@ namespace Lapine.Agents {
             ) : AsyncCommand;
             public record DeclareQueue(QueueDefinition Definition, TimeSpan Timeout) : AsyncCommand;
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TimeSpan Timeout) : AsyncCommand;
-            public record BindQueue(
-                String Exchange,
-                String Queue,
-                String RoutingKey,
-                IReadOnlyDictionary<String, Object> Arguments
-            ) : AsyncCommand;
-            public record UnbindQueue(
-                String Exchange,
-                String Queue,
-                String RoutingKey,
-                IReadOnlyDictionary<String, Object> Arguments
-            ) : AsyncCommand;
+            public record BindQueue(Binding Binding, TimeSpan Timeout): AsyncCommand;
+            public record UnbindQueue(Binding Binding, TimeSpan Timeout) : AsyncCommand;
             public record PurgeQueue(String Queue) : AsyncCommand;
             public record Publish(
                 String Exchange,
@@ -194,11 +184,11 @@ namespace Lapine.Agents {
                         }
                         case BindQueue bind: {
                             context.Send(state.Dispatcher, Dispatch.Command(new QueueBind(
-                                queueName   : bind.Queue,
-                                exchangeName: bind.Exchange,
-                                routingKey  : bind.RoutingKey,
+                                queueName   : bind.Binding.Queue,
+                                exchangeName: bind.Binding.Exchange,
+                                routingKey  : bind.Binding.RoutingKey,
                                 noWait      : false,
-                                arguments   : bind.Arguments
+                                arguments   : bind.Binding.Arguments
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueBindOk>(state,
                                 onReceive: _ => {
@@ -213,10 +203,10 @@ namespace Lapine.Agents {
                         }
                         case UnbindQueue unbind: {
                             context.Send(state.Dispatcher, Dispatch.Command(new QueueUnbind(
-                                queueName   : unbind.Queue,
-                                exchangeName: unbind.Exchange,
-                                routingKey  : unbind.RoutingKey,
-                                arguments   : unbind.Arguments
+                                queueName   : unbind.Binding.Queue,
+                                exchangeName: unbind.Binding.Exchange,
+                                routingKey  : unbind.Binding.RoutingKey,
+                                arguments   : unbind.Binding.Arguments
                             )));
                             _behaviour.BecomeStacked(Awaiting<QueueUnbindOk>(state,
                                 onReceive: _ => {

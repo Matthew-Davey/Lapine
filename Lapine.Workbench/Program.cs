@@ -25,6 +25,9 @@ namespace Lapine.Workbench {
 
             await amqpClient.ConnectAsync();
             var channel = await amqpClient.OpenChannelAsync();
+            await channel.DeclareExchangeAsync(ExchangeDefinition.Direct("test.exchange"));
+            await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue"));
+            await channel.BindQueueAsync(Binding.Create("test.exchange", "test.queue"));
             await Task.Delay(TimeSpan.FromMilliseconds(-1));
             await channel.CloseAsync();
             await amqpClient.DisposeAsync();
