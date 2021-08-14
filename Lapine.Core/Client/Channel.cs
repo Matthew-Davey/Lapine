@@ -86,11 +86,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask PurgeQueueAsync(String queue) {
+        public async ValueTask PurgeQueueAsync(String queue, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new PurgeQueue(queue);
+            var command = new PurgeQueue(queue, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }

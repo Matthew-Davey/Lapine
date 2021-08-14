@@ -32,7 +32,7 @@ namespace Lapine.Agents {
             public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TimeSpan Timeout) : AsyncCommand;
             public record BindQueue(Binding Binding, TimeSpan Timeout): AsyncCommand;
             public record UnbindQueue(Binding Binding, TimeSpan Timeout) : AsyncCommand;
-            public record PurgeQueue(String Queue) : AsyncCommand;
+            public record PurgeQueue(String Queue, TimeSpan Timeout) : AsyncCommand;
             public record Publish(
                 String Exchange,
                 String RoutingKey,
@@ -209,19 +209,16 @@ namespace Lapine.Agents {
                             break;
                         }
                         case PurgeQueue purge: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new QueuePurge(
-                                queueName: purge.Queue,
-                                noWait   : false
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<QueuePurgeOk>(state,
-                                onReceive: _ => {
-                                    purge.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    purge.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(QueuePurgeActor.Create(state, purge.Queue, purge.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                purge.SetResult();
+                            }
+                            catch (Exception fault) {
+                                purge.SetException(fault);
+                            }
                             break;
                         }
                         case Publish publish: {
@@ -1026,6 +1023,76 @@ namespace Lapine.Agents {
                 context => {
                     switch (context.Message) {
                         case QueueUnbindOk: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class QueuePurgeActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly String _queue;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public QueuePurgeActor(State state, String queue, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _queue     = queue;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, String queue, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new QueuePurgeActor(state, queue, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new QueuePurge(
+                            queueName: _queue,
+                            noWait   : false
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingQueuePurgeOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingQueuePurgeOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case QueuePurgeOk: {
                             scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);
