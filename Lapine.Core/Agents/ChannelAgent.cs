@@ -29,7 +29,7 @@ namespace Lapine.Agents {
                 TimeSpan Timeout
             ) : AsyncCommand;
             public record DeclareQueue(QueueDefinition Definition, TimeSpan Timeout) : AsyncCommand;
-            public record DeleteQueue(String Queue, DeleteQueueCondition Condition) : AsyncCommand;
+            public record DeleteQueue(String Queue, DeleteQueueCondition Condition, TimeSpan Timeout) : AsyncCommand;
             public record BindQueue(
                 String Exchange,
                 String Queue,
@@ -180,21 +180,16 @@ namespace Lapine.Agents {
                             break;
                         }
                         case DeleteQueue delete: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new QueueDelete(
-                                queueName: delete.Queue,
-                                ifUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
-                                ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
-                                noWait   : false
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<QueueDeleteOk>(state,
-                                onReceive: _ => {
-                                    delete.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    delete.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(QueueDeleteActor.Create(state, delete.Queue, delete.Condition, delete.Timeout, promise));
+
+                            try {
+                                await promise.Task;
+                                delete.SetResult();
+                            }
+                            catch (Exception fault) {
+                                delete.SetException(fault);
+                            }
                             break;
                         }
                         case BindQueue bind: {
@@ -833,6 +828,80 @@ namespace Lapine.Agents {
                 context => {
                     switch (context.Message) {
                         case QueueDeclareOk ok: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetResult();
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case TimeoutException timeout: {
+                            _promise.SetException(timeout);
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case ChannelClose close: {
+                            scheduledTimeout.Cancel();
+                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                            context.Stop(context.Self!);
+                            break;
+                        }
+                        case Stopping: {
+                            subscription!.Unsubscribe();
+                            break;
+                        }
+                    }
+                    return CompletedTask;
+                };
+        }
+
+        class QueueDeleteActor : IActor {
+            readonly Behavior _behaviour;
+            readonly State _state;
+            readonly String _queue;
+            readonly DeleteQueueCondition _condition;
+            readonly TimeSpan _timeout;
+            readonly TaskCompletionSource _promise;
+
+            public QueueDeleteActor(State state, String queue, DeleteQueueCondition condition, TimeSpan timeout, TaskCompletionSource promise) {
+                _behaviour = new Behavior(Unstarted);
+                _state     = state;
+                _timeout   = timeout;
+                _queue     = queue;
+                _condition = condition;
+                _promise   = promise;
+            }
+
+            static public Props Create(State state, String queue, DeleteQueueCondition condition, TimeSpan timeout, TaskCompletionSource promise) =>
+                Props.FromProducer(() => new QueueDeleteActor(state, queue, condition, timeout, promise))
+                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
+
+            public Task ReceiveAsync(IContext context) =>
+                _behaviour.ReceiveAsync(context);
+
+            Task Unstarted(IContext context) {
+                switch (context.Message) {
+                    case Started: {
+                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
+                            predicate: message => message.Frame.Channel == _state.ChannelId,
+                            action   : message => context.Send(context.Self!, message)
+                        );
+                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueDelete(
+                            queueName: _queue,
+                            ifUnused : _condition.HasFlag(DeleteQueueCondition.Unused),
+                            ifEmpty  : _condition.HasFlag(DeleteQueueCondition.Empty),
+                            noWait   : false
+                        )));
+                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                        _behaviour.Become(AwaitingQueueDeleteOk(subscription, scheduledTimeout));
+                        break;
+                    }
+                }
+                return CompletedTask;
+            }
+
+            Receive AwaitingQueueDeleteOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+                context => {
+                    switch (context.Message) {
+                        case QueueDeleteOk: {
                             scheduledTimeout.Cancel();
                             _promise.SetResult();
                             context.Stop(context.Self!);

@@ -59,11 +59,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask DeleteQueueAsync(String queue, DeleteQueueCondition condition = DeleteQueueCondition.None) {
+        public async ValueTask DeleteQueueAsync(String queue, DeleteQueueCondition condition = DeleteQueueCondition.None, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new DeleteQueue(queue, condition);
+            var command = new DeleteQueue(queue, condition, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }
