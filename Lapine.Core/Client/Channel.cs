@@ -95,13 +95,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask PublishAsync(String exchange, String routingKey, (MessageProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None) {
+        public async ValueTask PublishAsync(String exchange, String routingKey, (MessageProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var mandatory = routingFlags.HasFlag(RoutingFlags.Mandatory);
-            var immediate = routingFlags.HasFlag(RoutingFlags.Immediate);
-            var command   = new Publish(exchange, routingKey, (message.Properties.ToBasicProperties(), message.Payload), mandatory, immediate);
+            var command   = new Publish(exchange, routingKey, routingFlags, (message.Properties.ToBasicProperties(), message.Payload), timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }

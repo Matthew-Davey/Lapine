@@ -35,9 +35,9 @@ namespace Lapine.Agents {
             public record Publish(
                 String Exchange,
                 String RoutingKey,
+                RoutingFlags RoutingFlags,
                 (BasicProperties Properties, ReadOnlyMemory<Byte> Body) Message,
-                Boolean Mandatory,
-                Boolean Immediate
+                TimeSpan Timeout
             ) : AsyncCommand;
             public record GetMessage(
                 String Queue,
@@ -334,40 +334,27 @@ namespace Lapine.Agents {
                             break;
                         }
                         case Publish publish: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new BasicPublish(
-                                exchangeName: publish.Exchange,
-                                routingKey  : publish.RoutingKey,
-                                mandatory   : publish.Mandatory,
-                                immediate   : publish.Immediate
-                            )));
-                            context.Send(state.Dispatcher, Dispatch.ContentHeader(new ContentHeader(
-                                ClassId   : 0x3C,
-                                BodySize  : (UInt64)publish.Message.Body.Length,
-                                Properties: publish.Message.Properties
-                            )));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(
+                                PublishProcessManager.Create(
+                                    channelId   : state.ChannelId,
+                                    dispatcher  : state.Dispatcher,
+                                    exchange    : publish.Exchange,
+                                    routingKey  : publish.RoutingKey,
+                                    routingFlags: publish.RoutingFlags,
+                                    message     : publish.Message,
+                                    maxFrameSize: _maxFrameSize,
+                                    timeout     : publish.Timeout,
+                                    promise     : promise
+                                )
+                            );
 
-                            foreach (var segment in publish.Message.Body.Split((Int32)_maxFrameSize)) {
-                                context.Send(state.Dispatcher, Dispatch.ContentBody(segment));
-                            }
-
-                            if (publish.Mandatory || publish.Immediate) {
-                                _behaviour.BecomeStacked(Awaiting<BasicReturn>(state,
-                                    onReceive: @return => {
-                                        publish.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
-                                        _behaviour.UnbecomeStacked();
-                                    },
-                                    onUnexpected: context => {
-                                        _behaviour.UnbecomeStacked();
-                                        _behaviour.ReceiveAsync(context);
-                                    },
-                                    onChannelClosed: error => {
-                                        publish.SetException(error);
-                                    }
-                                ));
-                                break;
-                            }
-                            else {
+                            try {
+                                await promise.Task;
                                 publish.SetResult();
+                            }
+                            catch (Exception fault) {
+                                publish.SetException(fault);
                             }
                             break;
                         }
@@ -484,29 +471,6 @@ namespace Lapine.Agents {
                             break;
                         }
                     }
-                };
-
-            Receive Awaiting<T>(State state, Action<T> onReceive, Action<IContext>? onUnexpected = null, Action<Exception>? onChannelClosed = null) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case T expected: {
-                            onReceive(expected);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            var exception = AmqpException.Create(close.ReplyCode, close.ReplyText);
-                            onChannelClosed?.Invoke(exception);
-                            context.Send(state.Dispatcher, Dispatch.Command(new ChannelCloseOk()));
-                            context.System.EventStream.Unsubscribe(state.SubscriptionId);
-                            _behaviour.Become(Closed);
-                            break;
-                        }
-                        default: {
-                            onUnexpected?.Invoke(context);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
                 };
 
             Receive AwaitingGetOkOrEmpty(GetMessage getMessage) =>
