@@ -3,14 +3,13 @@ namespace Lapine.Agents {
     using System.Buffers;
     using System.Collections.Generic;
     using System.Collections.Immutable;
-    using System.Threading;
     using System.Threading.Tasks;
     using Lapine.Agents.Middleware;
+    using Lapine.Agents.ProcessManagers;
     using Lapine.Client;
     using Lapine.Protocol;
     using Lapine.Protocol.Commands;
     using Proto;
-    using Proto.Timers;
 
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.DispatcherAgent.Protocol;
@@ -46,11 +45,12 @@ namespace Lapine.Agents {
             ) : AsyncCommand<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>;
             public record Acknowledge(UInt64 DeliveryTag, Boolean Multiple) : AsyncCommand;
             public record Reject(UInt64 DeliveryTag, Boolean Requeue) : AsyncCommand;
-            public record SetPrefetchLimit(UInt16 Limit, Boolean Global) : AsyncCommand;
+            public record SetPrefetchLimit(UInt16 Limit, Boolean Global, TimeSpan Timeout) : AsyncCommand;
             public record Consume(
                 String Queue,
                 ConsumerConfiguration ConsumerConfiguration,
-                IReadOnlyDictionary<String, Object>? Arguments
+                IReadOnlyDictionary<String, Object>? Arguments,
+                TimeSpan Timeout
             ) : AsyncCommand<String>;
         }
 
@@ -98,7 +98,15 @@ namespace Lapine.Agents {
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
 
                         var promise = new TaskCompletionSource();
-                        context.Spawn(ChannelOpenActor.Create(state, open.Timeout, promise));
+                        context.Spawn(
+                            RequestReplyProcessManager<ChannelOpen, ChannelOpenOk>.Create(
+                                channelId : state.ChannelId,
+                                dispatcher: state.Dispatcher,
+                                request   : new ChannelOpen(),
+                                timeout   : open.Timeout,
+                                promise   : promise
+                            )
+                        );
 
                         try {
                             await promise.Task;
@@ -118,7 +126,15 @@ namespace Lapine.Agents {
                     switch (context.Message) {
                         case Close close: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(ChannelCloseActor.Create(state, close.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<ChannelClose, ChannelCloseOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new ChannelClose(0, String.Empty, (0, 0)),
+                                    timeout   : close.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -132,7 +148,24 @@ namespace Lapine.Agents {
                         }
                         case DeclareExchange declare: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(ExchangeDeclareActor.Create(state, declare.Definition, declare.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<ExchangeDeclare, ExchangeDeclareOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request: new ExchangeDeclare(
+                                        exchangeName: declare.Definition.Name,
+                                        exchangeType: declare.Definition.Type,
+                                        passive     : false,
+                                        durable     : declare.Definition.Durability == Durability.Durable,
+                                        autoDelete  : declare.Definition.AutoDelete,
+                                        @internal   : false,
+                                        noWait      : false,
+                                        arguments   : declare.Definition.Arguments
+                                    ),
+                                    timeout   : declare.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -145,7 +178,19 @@ namespace Lapine.Agents {
                         }
                         case DeleteExchange delete: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(ExchangeDeleteActor.Create(state, delete.Exchange, delete.Condition, delete.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<ExchangeDelete, ExchangeDeleteOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request: new ExchangeDelete(
+                                        exchangeName: delete.Exchange,
+                                        ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
+                                        noWait      : false
+                                    ),
+                                    timeout   : delete.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -158,7 +203,23 @@ namespace Lapine.Agents {
                         }
                         case DeclareQueue declare: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(QueueDeclareActor.Create(state, declare.Definition, declare.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<QueueDeclare, QueueDeclareOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new QueueDeclare(
+                                        queueName : declare.Definition.Name,
+                                        passive   : false,
+                                        durable   : declare.Definition.Durability == Durability.Durable,
+                                        exclusive : declare.Definition.Exclusive,
+                                        autoDelete: declare.Definition.AutoDelete,
+                                        noWait    : false,
+                                        arguments : declare.Definition.Arguments
+                                    ),
+                                    timeout   : declare.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -171,7 +232,20 @@ namespace Lapine.Agents {
                         }
                         case DeleteQueue delete: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(QueueDeleteActor.Create(state, delete.Queue, delete.Condition, delete.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<QueueDelete, QueueDeleteOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new QueueDelete(
+                                        queueName: delete.Queue,
+                                        ifUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
+                                        ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
+                                        noWait   : false
+                                    ),
+                                    timeout   : delete.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -184,7 +258,21 @@ namespace Lapine.Agents {
                         }
                         case BindQueue bind: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(QueueBindActor.Create(state, bind.Binding, bind.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<QueueBind, QueueBindOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new QueueBind(
+                                        queueName   : bind.Binding.Queue,
+                                        exchangeName: bind.Binding.Exchange,
+                                        routingKey  : bind.Binding.RoutingKey,
+                                        noWait      : false,
+                                        arguments   : bind.Binding.Arguments
+                                    ),
+                                    timeout   : bind.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -197,7 +285,20 @@ namespace Lapine.Agents {
                         }
                         case UnbindQueue unbind: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(QueueUnbindActor.Create(state, unbind.Binding, unbind.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<QueueUnbind, QueueUnbindOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new QueueUnbind(
+                                        queueName   : unbind.Binding.Queue,
+                                        exchangeName: unbind.Binding.Exchange,
+                                        routingKey  : unbind.Binding.RoutingKey,
+                                        arguments   : unbind.Binding.Arguments
+                                    ),
+                                    timeout   : unbind.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -210,7 +311,18 @@ namespace Lapine.Agents {
                         }
                         case PurgeQueue purge: {
                             var promise = new TaskCompletionSource();
-                            context.Spawn(QueuePurgeActor.Create(state, purge.Queue, purge.Timeout, promise));
+                            context.Spawn(
+                                RequestReplyProcessManager<QueuePurge, QueuePurgeOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new QueuePurge(
+                                        queueName: purge.Queue,
+                                        noWait   : false
+                                    ),
+                                    timeout   : purge.Timeout,
+                                    promise   : promise
+                                )
+                            );
 
                             try {
                                 await promise.Task;
@@ -288,56 +400,74 @@ namespace Lapine.Agents {
                             break;
                         }
                         case SetPrefetchLimit prefetch: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new BasicQos(
-                                prefetchSize : 0,
-                                prefetchCount: prefetch.Limit,
-                                global       : prefetch.Global
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<BasicQosOk>(state,
-                                onReceive: _ => {
-                                    prefetch.SetResult();
-                                    _behaviour.UnbecomeStacked();
-                                },
-                                onChannelClosed: error => {
-                                    prefetch.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(
+                                RequestReplyProcessManager<BasicQos, BasicQosOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new BasicQos(
+                                        prefetchSize : 0,
+                                        prefetchCount: prefetch.Limit,
+                                        global       : prefetch.Global
+                                    ),
+                                    timeout   : prefetch.Timeout,
+                                    promise   : promise
+                                )
+                            );
+
+                            try {
+                                await promise.Task;
+                                prefetch.SetResult();
+                            }
+                            catch (Exception fault) {
+                                prefetch.SetException(fault);
+                            }
                             break;
                         }
                         case Consume consume: {
                             var consumerTag = $"{Guid.NewGuid()}";
-                            context.Send(state.Dispatcher, Dispatch.Command(new BasicConsume(
-                                queueName  : consume.Queue,
-                                consumerTag: consumerTag,
-                                noLocal    : false,
-                                noAck      : consume.ConsumerConfiguration.Acknowledgements switch {
-                                    Acknowledgements.Auto => true,
-                                    _                     => false
-                                },
-                                exclusive  : consume.ConsumerConfiguration.Exclusive,
-                                noWait     : false,
-                                arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
-                            )));
-                            _behaviour.BecomeStacked(Awaiting<BasicConsumeOk>(state,
-                                onReceive: _ => {
-                                    var consumer = context.SpawnNamed(
-                                        name: $"consumer_{consumerTag}",
-                                        props: ConsumerAgent.Create()
-                                    );
-                                    context.Send(consumer, new StartConsuming(
-                                        ConsumerTag          : consumerTag,
-                                        Dispatcher           : state.Dispatcher,
-                                        ConsumerConfiguration: consume.ConsumerConfiguration
-                                    ));
-                                    _behaviour.Become(Open(state with {
-                                        Consumers = state.Consumers.Add(consumerTag, consumer)
-                                    }));
-                                    consume.SetResult(consumerTag);
-                                },
-                                onChannelClosed: error => {
-                                    consume.SetException(error);
-                                }
-                            ));
+                            var promise = new TaskCompletionSource();
+                            context.Spawn(
+                                RequestReplyProcessManager<BasicConsume, BasicConsumeOk>.Create(
+                                    channelId : state.ChannelId,
+                                    dispatcher: state.Dispatcher,
+                                    request   : new BasicConsume(
+                                        queueName  : consume.Queue,
+                                        consumerTag: consumerTag,
+                                        noLocal    : false,
+                                        noAck      : consume.ConsumerConfiguration.Acknowledgements switch {
+                                            Acknowledgements.Auto => true,
+                                            _                     => false
+                                        },
+                                        exclusive  : consume.ConsumerConfiguration.Exclusive,
+                                        noWait     : false,
+                                        arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
+                                    ),
+                                    timeout   : consume.Timeout,
+                                    promise   : promise
+                                )
+                            );
+
+                            try {
+                                await promise.Task;
+
+                                var consumer = context.SpawnNamed(
+                                    name : $"consumer_{consumerTag}",
+                                    props: ConsumerAgent.Create()
+                                );
+                                context.Send(consumer, new StartConsuming(
+                                    ConsumerTag          : consumerTag,
+                                    Dispatcher           : state.Dispatcher,
+                                    ConsumerConfiguration: consume.ConsumerConfiguration
+                                ));
+                                _behaviour.Become(Open(state with {
+                                    Consumers = state.Consumers.Add(consumerTag, consumer)
+                                }));
+                                consume.SetResult(consumerTag);
+                            }
+                            catch (Exception fault) {
+                                consume.SetException(fault);
+                            }
                             break;
                         }
                         case BasicDeliver deliver: {
@@ -485,637 +615,6 @@ namespace Lapine.Agents {
                     return CompletedTask;
                 };
             }
-        }
-
-        class ChannelOpenActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public ChannelOpenActor(State state, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new ChannelOpenActor(state, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new ChannelOpen()));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingChannelOpenOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingChannelOpenOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case ChannelOpenOk: {
-                            scheduledTimeout!.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class ChannelCloseActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public ChannelCloseActor(State state, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new ChannelCloseActor(state, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new ChannelClose(0, String.Empty, (0, 0))));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingChannelCloseOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingChannelCloseOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case ChannelCloseOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class ExchangeDeclareActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly ExchangeDefinition _definition;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public ExchangeDeclareActor(State state, ExchangeDefinition definition, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour  = new Behavior(Unstarted);
-                _state      = state;
-                _timeout    = timeout;
-                _definition = definition;
-                _promise    = promise;
-            }
-
-            static public Props Create(State state, ExchangeDefinition definition, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new ExchangeDeclareActor(state, definition, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new ExchangeDeclare(
-                            exchangeName: _definition.Name,
-                            exchangeType: _definition.Type,
-                            passive     : false,
-                            durable     : _definition.Durability > Durability.Transient,
-                            autoDelete  : _definition.AutoDelete,
-                            @internal   : _definition.Internal,
-                            noWait      : false,
-                            arguments   : _definition.Arguments
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingExchangeDeclareOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingExchangeDeclareOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case ExchangeDeclareOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class ExchangeDeleteActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly String _exchange;
-            readonly DeleteExchangeCondition _condition;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public ExchangeDeleteActor(State state, String exchange, DeleteExchangeCondition condition, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _exchange  = exchange;
-                _condition = condition;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, String exchange, DeleteExchangeCondition condition, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new ExchangeDeleteActor(state, exchange, condition, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new ExchangeDelete(
-                            exchangeName: _exchange,
-                            ifUnused    : _condition.HasFlag(DeleteExchangeCondition.Unused),
-                            noWait      : false
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingExchangeDeleteOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingExchangeDeleteOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case ExchangeDeleteOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class QueueDeclareActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly QueueDefinition _definition;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public QueueDeclareActor(State state, QueueDefinition definition, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour  = new Behavior(Unstarted);
-                _state      = state;
-                _timeout    = timeout;
-                _definition = definition;
-                _promise    = promise;
-            }
-
-            static public Props Create(State state, QueueDefinition definition, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new QueueDeclareActor(state, definition, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueDeclare(
-                            queueName : _definition.Name,
-                            passive   : false,
-                            durable   : _definition.Durability > Durability.Transient,
-                            exclusive : _definition.Exclusive,
-                            autoDelete: _definition.AutoDelete,
-                            noWait    : false,
-                            arguments : _definition.Arguments
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingQueueDeclareOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingQueueDeclareOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case QueueDeclareOk ok: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class QueueDeleteActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly String _queue;
-            readonly DeleteQueueCondition _condition;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public QueueDeleteActor(State state, String queue, DeleteQueueCondition condition, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _queue     = queue;
-                _condition = condition;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, String queue, DeleteQueueCondition condition, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new QueueDeleteActor(state, queue, condition, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueDelete(
-                            queueName: _queue,
-                            ifUnused : _condition.HasFlag(DeleteQueueCondition.Unused),
-                            ifEmpty  : _condition.HasFlag(DeleteQueueCondition.Empty),
-                            noWait   : false
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingQueueDeleteOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingQueueDeleteOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case QueueDeleteOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class QueueBindActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly Binding _binding;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public QueueBindActor(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _binding   = binding;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new QueueBindActor(state, binding, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueBind(
-                            queueName   : _binding.Queue,
-                            exchangeName: _binding.Exchange,
-                            routingKey  : _binding.RoutingKey,
-                            noWait      : false,
-                            arguments   : _binding.Arguments
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingQueueBindOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingQueueBindOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case QueueBindOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class QueueUnbindActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly Binding _binding;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public QueueUnbindActor(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _binding   = binding;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, Binding binding, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new QueueUnbindActor(state, binding, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new QueueUnbind(
-                            queueName   : _binding.Queue,
-                            exchangeName: _binding.Exchange,
-                            routingKey  : _binding.RoutingKey,
-                            arguments   : _binding.Arguments
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingQueueUnbindOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingQueueUnbindOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case QueueUnbindOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-        }
-
-        class QueuePurgeActor : IActor {
-            readonly Behavior _behaviour;
-            readonly State _state;
-            readonly String _queue;
-            readonly TimeSpan _timeout;
-            readonly TaskCompletionSource _promise;
-
-            public QueuePurgeActor(State state, String queue, TimeSpan timeout, TaskCompletionSource promise) {
-                _behaviour = new Behavior(Unstarted);
-                _state     = state;
-                _timeout   = timeout;
-                _queue     = queue;
-                _promise   = promise;
-            }
-
-            static public Props Create(State state, String queue, TimeSpan timeout, TaskCompletionSource promise) =>
-                Props.FromProducer(() => new QueuePurgeActor(state, queue, timeout, promise))
-                    .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
-
-            public Task ReceiveAsync(IContext context) =>
-                _behaviour.ReceiveAsync(context);
-
-            Task Unstarted(IContext context) {
-                switch (context.Message) {
-                    case Started: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == _state.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
-                        context.Send(_state.Dispatcher, Dispatch.Command(new QueuePurge(
-                            queueName: _queue,
-                            noWait   : false
-                        )));
-                        var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
-                        _behaviour.Become(AwaitingQueuePurgeOk(subscription, scheduledTimeout));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            }
-
-            Receive AwaitingQueuePurgeOk(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
-                context => {
-                    switch (context.Message) {
-                        case QueuePurgeOk: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult();
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case TimeoutException timeout: {
-                            _promise.SetException(timeout);
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case ChannelClose close: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                            context.Stop(context.Self!);
-                            break;
-                        }
-                        case Stopping: {
-                            subscription!.Unsubscribe();
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
         }
     }
 }

@@ -136,7 +136,7 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer) {
+        public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
@@ -144,16 +144,16 @@ namespace Lapine.Client {
                 PrefetchLimitScope.Consumer => false,
                 PrefetchLimitScope.Channel  => true,
                 _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
-            });
+            }, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             await command;
         }
 
-        public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null) {
+        public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new Consume(queue, consumerConfiguration, arguments);
+            var command = new Consume(queue, consumerConfiguration, arguments, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             return await command;
         }
