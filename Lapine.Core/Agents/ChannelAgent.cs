@@ -41,7 +41,8 @@ namespace Lapine.Agents {
             ) : AsyncCommand;
             public record GetMessage(
                 String Queue,
-                Acknowledgements Acknowledgements
+                Acknowledgements Acknowledgements,
+                TimeSpan Timeout
             ) : AsyncCommand<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>;
             public record Acknowledge(UInt64 DeliveryTag, Boolean Multiple) : AsyncCommand;
             public record Reject(UInt64 DeliveryTag, Boolean Requeue) : AsyncCommand;
@@ -359,15 +360,25 @@ namespace Lapine.Agents {
                             break;
                         }
                         case GetMessage get: {
-                            context.Send(state.Dispatcher, Dispatch.Command(new BasicGet(
-                                queueName: get.Queue,
-                                noAck    : get.Acknowledgements switch {
-                                    Acknowledgements.Auto   => true,
-                                    Acknowledgements.Manual => false,
-                                    _                       => false
-                                }
-                            )));
-                            _behaviour.BecomeStacked(AwaitingGetOkOrEmpty(get));
+                            var promise = new TaskCompletionSource<(DeliveryInfo, BasicProperties, ReadOnlyMemory<Byte>)?>();
+                            context.Spawn(
+                                GetMessageProcessManager.Create(
+                                    channelId       : state.ChannelId,
+                                    dispatcher      : state.Dispatcher,
+                                    queue           : get.Queue,
+                                    acknowledgements: get.Acknowledgements,
+                                    timeout         : get.Timeout,
+                                    promise         : promise
+                                )
+                            );
+
+                            try {
+                                var result = await promise.Task;
+                                get.SetResult(result);
+                            }
+                            catch (Exception fault) {
+                                get.SetException(fault);
+                            }
                             break;
                         }
                         case Acknowledge ack: {
@@ -472,64 +483,6 @@ namespace Lapine.Agents {
                         }
                     }
                 };
-
-            Receive AwaitingGetOkOrEmpty(GetMessage getMessage) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case BasicGetEmpty _: {
-                            getMessage.SetResult(null);
-                            _behaviour.UnbecomeStacked();
-                            break;
-                        }
-                        case BasicGetOk ok: {
-                            _behaviour.UnbecomeStacked();
-                            _behaviour.BecomeStacked(AwaitingContentHeader(DeliveryInfo.FromBasicGetOk(ok), getMessage));
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingContentHeader(DeliveryInfo delivery, GetMessage getMessage) {
-                return (IContext context) => {
-                    switch (context.Message) {
-                        case ContentHeader header: {
-                            _behaviour.UnbecomeStacked();
-                            switch (header.BodySize) {
-                                case 0: {
-                                    getMessage.SetResult((delivery, header.Properties, Memory<Byte>.Empty));
-                                    break;
-                                }
-                                default: {
-                                    _behaviour.BecomeStacked(AwaitingContentBody(delivery, header, getMessage));
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-            }
-
-            Receive AwaitingContentBody(DeliveryInfo delivery, ContentHeader header, GetMessage getMessage) {
-                var buffer = new ArrayBufferWriter<Byte>((Int32)header.BodySize);
-                return (IContext context) => {
-                    switch (context.Message) {
-                        case ReadOnlyMemory<Byte> bodySegment: {
-                            buffer.Write(bodySegment.Span);
-
-                            if ((UInt64)buffer.WrittenCount >= header.BodySize) {
-                                getMessage.SetResult((delivery, header.Properties, buffer.WrittenMemory));
-                                _behaviour.UnbecomeStacked();
-                            }
-
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-            }
 
             Receive AwaitingContentHeader(DeliveryInfo delivery, PID consumer) =>
                 (IContext context) => {

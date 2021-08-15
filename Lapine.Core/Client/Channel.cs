@@ -104,11 +104,11 @@ namespace Lapine.Client {
             await command;
         }
 
-        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements) {
+        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements, TimeSpan? timeout = null) {
             if (_closed)
                 throw new InvalidOperationException("Channel is closed.");
 
-            var command = new GetMessage(queue, acknowledgements);
+            var command = new GetMessage(queue, acknowledgements, timeout ?? _connectionConfiguration.CommandTimeout);
             _system.Root.Send(_agent, command);
             return await command switch {
                 null => null,
