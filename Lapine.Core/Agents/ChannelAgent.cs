@@ -108,15 +108,13 @@ namespace Lapine.Agents {
                                 promise   : promise
                             )
                         );
-
-                        try {
-                            await promise.Task;
-                            open.SetResult();
-                            _behaviour.Become(Open(state));
-                        }
-                        catch (Exception fault) {
-                            open.SetException(fault);
-                        }
+                        await promise.Task.ContinueWith(
+                            onCompleted: () => {
+                                open.SetResult();
+                                _behaviour.Become(Open(state));
+                            },
+                            onFaulted: open.SetException
+                        );
                         break;
                     }
                 }
@@ -136,15 +134,13 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                close.SetResult();
-                                context.Stop(context.Self!);
-                            }
-                            catch (Exception fault) {
-                                close.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: () => {
+                                    close.SetResult();
+                                    context.Stop(context.Self!);
+                                },
+                                onFaulted: close.SetException
+                            );
                             break;
                         }
                         case DeclareExchange declare: {
@@ -167,14 +163,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                declare.SetResult();
-                            }
-                            catch (Exception fault) {
-                                declare.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: declare.SetResult,
+                                onFaulted  : declare.SetException
+                            );
                             break;
                         }
                         case DeleteExchange delete: {
@@ -192,14 +184,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                delete.SetResult();
-                            }
-                            catch (Exception fault) {
-                                delete.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: delete.SetResult,
+                                onFaulted  : delete.SetException
+                            );
                             break;
                         }
                         case DeclareQueue declare: {
@@ -221,14 +209,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                declare.SetResult();
-                            }
-                            catch (Exception fault) {
-                                declare.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: declare.SetResult,
+                                onFaulted  : declare.SetException
+                            );
                             break;
                         }
                         case DeleteQueue delete: {
@@ -247,14 +231,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                delete.SetResult();
-                            }
-                            catch (Exception fault) {
-                                delete.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: delete.SetResult,
+                                onFaulted  : delete.SetException
+                            );
                             break;
                         }
                         case BindQueue bind: {
@@ -274,14 +254,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                bind.SetResult();
-                            }
-                            catch (Exception fault) {
-                                bind.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: bind.SetResult,
+                                onFaulted  : bind.SetException
+                            );
                             break;
                         }
                         case UnbindQueue unbind: {
@@ -300,14 +276,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                unbind.SetResult();
-                            }
-                            catch (Exception fault) {
-                                unbind.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: unbind.SetResult,
+                                onFaulted  : unbind.SetException
+                            );
                             break;
                         }
                         case PurgeQueue purge: {
@@ -324,14 +296,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                purge.SetResult();
-                            }
-                            catch (Exception fault) {
-                                purge.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: purge.SetResult,
+                                onFaulted  : purge.SetException
+                            );
                             break;
                         }
                         case Publish publish: {
@@ -349,14 +317,10 @@ namespace Lapine.Agents {
                                     promise     : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                publish.SetResult();
-                            }
-                            catch (Exception fault) {
-                                publish.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: publish.SetResult,
+                                onFaulted  : publish.SetException
+                            );
                             break;
                         }
                         case GetMessage get: {
@@ -371,14 +335,10 @@ namespace Lapine.Agents {
                                     promise         : promise
                                 )
                             );
-
-                            try {
-                                var result = await promise.Task;
-                                get.SetResult(result);
-                            }
-                            catch (Exception fault) {
-                                get.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: get.SetResult,
+                                onFaulted  : get.SetException
+                            );
                             break;
                         }
                         case Acknowledge ack: {
@@ -412,14 +372,10 @@ namespace Lapine.Agents {
                                     promise   : promise
                                 )
                             );
-
-                            try {
-                                await promise.Task;
-                                prefetch.SetResult();
-                            }
-                            catch (Exception fault) {
-                                prefetch.SetException(fault);
-                            }
+                            await promise.Task.ContinueWith(
+                                onCompleted: prefetch.SetResult,
+                                onFaulted  : prefetch.SetException
+                            );
                             break;
                         }
                         case Consume consume: {
