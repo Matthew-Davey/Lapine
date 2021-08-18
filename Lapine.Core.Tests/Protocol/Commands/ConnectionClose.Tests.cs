@@ -5,9 +5,9 @@ namespace Lapine.Protocol.Commands {
 
     public class ConnectionCloseTests : Faker {
         ConnectionClose RandomSubject => new (
-            replyCode    : Random.UShort(),
-            replyText    : Lorem.Sentence(wordCount: Random.Int(min: 1, max: 16)),
-            failingMethod: (Random.UShort(), Random.UShort())
+            ReplyCode    : Random.UShort(),
+            ReplyText    : Lorem.Sentence(wordCount: Random.Int(min: 1, max: 16)),
+            FailingMethod: (Random.UShort(), Random.UShort())
         );
 
         [Fact]
@@ -18,9 +18,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionClose.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.FailingMethod, actual: deserialized.FailingMethod);
-            Assert.Equal(expected: value.ReplyCode, actual: deserialized.ReplyCode);
-            Assert.Equal(expected: value.ReplyText, actual: deserialized.ReplyText);
+            Assert.Equal(expected: value.FailingMethod, actual: deserialized?.FailingMethod);
+            Assert.Equal(expected: value.ReplyCode, actual: deserialized?.ReplyCode);
+            Assert.Equal(expected: value.ReplyText, actual: deserialized?.ReplyText);
         }
 
         [Fact]

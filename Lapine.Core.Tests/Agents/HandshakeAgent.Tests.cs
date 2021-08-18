@@ -41,10 +41,10 @@ namespace Lapine.Agents {
             });
             "When the agent receives a ConnectionStart command with an unsupported auth mechanism".x(() => {
                 _rootContext.Send(_subject, new ConnectionStart(
-                    version         : (0, 9),
-                    serverProperties: new Dictionary<String, Object>(),
-                    mechanisms      : new [] { "unsupported" },
-                    locales         : new [] { "en_US" }
+                    Version         : (0, 9),
+                    ServerProperties: new Dictionary<String, Object>(),
+                    Mechanisms      : new [] { "unsupported" },
+                    Locales         : new [] { "en_US" }
                 ));
             });
             "Then it should publish a handshake failed event".x(() => {
@@ -62,10 +62,10 @@ namespace Lapine.Agents {
             });
             "When the agent receives a ConnectionStart message with an unsupported locale".x(() => {
                 _rootContext.Send(_subject, new ConnectionStart(
-                    version         : (0, 9),
-                    serverProperties: new Dictionary<String, Object>(),
-                    mechanisms      : new [] { "PLAIN" },
-                    locales         : new [] { "unsupported" }
+                    Version         : (0, 9),
+                    ServerProperties: new Dictionary<String, Object>(),
+                    Mechanisms      : new [] { "PLAIN" },
+                    Locales         : new [] { "unsupported" }
                 ));
             });
             "Then it should publish a handshake failed event".x(() => {
@@ -83,10 +83,10 @@ namespace Lapine.Agents {
             });
             "When the agent receives a ConnectionStart message with a supported auth mechanism".x(() => {
                 _rootContext.Send(_subject, new ConnectionStart(
-                    version         : (0, 9),
-                    serverProperties: new Dictionary<String, Object>(),
-                    mechanisms      : new [] { "PLAIN" },
-                    locales         : new [] { "en_US" }
+                    Version         : (0, 9),
+                    ServerProperties: new Dictionary<String, Object>(),
+                    Mechanisms      : new [] { "PLAIN" },
+                    Locales         : new [] { "en_US" }
                 ));
             });
             "Then it should send a ConnectionStartOk message".x(() => {
@@ -104,17 +104,17 @@ namespace Lapine.Agents {
             });
             "And the connection has already been started".x(() => {
                 _rootContext.Send(_subject, new ConnectionStart(
-                    version         : (0, 9),
-                    serverProperties: new Dictionary<String, Object>(),
-                    mechanisms      : new [] { "PLAIN" },
-                    locales         : new [] { "en_US" }
+                    Version         : (0, 9),
+                    ServerProperties: new Dictionary<String, Object>(),
+                    Mechanisms      : new [] { "PLAIN" },
+                    Locales         : new [] { "en_US" }
                 ));
             });
             "When the agent receives a ConnectionTune message".x(() => {
                 _rootContext.Send(_subject, new ConnectionTune(
-                    channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
-                    frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
-                    heartbeat : 60
+                    ChannelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
+                    FrameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
+                    Heartbeat : 60
                 ));
             });
             "Then it should send a ConnectionTuneOk message".x(() => {
@@ -138,15 +138,15 @@ namespace Lapine.Agents {
             });
             "And the connection has already been started and tuned".x(() => {
                 _rootContext.Send(_subject, new ConnectionStart(
-                    version         : (0, 9),
-                    serverProperties: new Dictionary<String, Object>(),
-                    mechanisms      : new [] { "PLAIN" },
-                    locales         : new [] { "en_US" }
+                    Version         : (0, 9),
+                    ServerProperties: new Dictionary<String, Object>(),
+                    Mechanisms      : new [] { "PLAIN" },
+                    Locales         : new [] { "en_US" }
                 ));
                 _rootContext.Send(_subject, new ConnectionTune(
-                    channelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
-                    frameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
-                    heartbeat : 60
+                    ChannelMax: ConnectionConfiguration.DefaultMaximumChannelCount,
+                    FrameMax  : ConnectionConfiguration.DefaultMaximumFrameSize,
+                    Heartbeat : 60
                 ));
             });
             "When the agent receives a ConnectionOpenOk message".x(() => {

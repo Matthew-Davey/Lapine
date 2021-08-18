@@ -4,7 +4,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionTuneTests : Faker {
-        ConnectionTune RandomSubject => new (channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
+        ConnectionTune RandomSubject => new (ChannelMax: Random.UShort(), FrameMax: Random.UInt(), Heartbeat: Random.UShort());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -14,9 +14,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionTune.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ChannelMax, actual: deserialized.ChannelMax);
-            Assert.Equal(expected: value.FrameMax, actual: deserialized.FrameMax);
-            Assert.Equal(expected: value.Heartbeat, actual: deserialized.Heartbeat);
+            Assert.Equal(expected: value.ChannelMax, actual: deserialized?.ChannelMax);
+            Assert.Equal(expected: value.FrameMax, actual: deserialized?.FrameMax);
+            Assert.Equal(expected: value.Heartbeat, actual: deserialized?.Heartbeat);
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ConnectionTuneOkTests : Faker {
-        ConnectionTuneOk RandomSubject => new (channelMax: Random.UShort(), frameMax: Random.UInt(), heartbeat: Random.UShort());
+        ConnectionTuneOk RandomSubject => new (ChannelMax: Random.UShort(), FrameMax: Random.UInt(), Heartbeat: Random.UShort());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -53,9 +53,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionTuneOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ChannelMax, actual: deserialized.ChannelMax);
-            Assert.Equal(expected: value.FrameMax, actual: deserialized.FrameMax);
-            Assert.Equal(expected: value.Heartbeat, actual: deserialized.Heartbeat);
+            Assert.Equal(expected: value.ChannelMax, actual: deserialized?.ChannelMax);
+            Assert.Equal(expected: value.FrameMax, actual: deserialized?.FrameMax);
+            Assert.Equal(expected: value.Heartbeat, actual: deserialized?.Heartbeat);
         }
 
         [Fact]

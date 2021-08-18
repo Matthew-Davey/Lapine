@@ -3,20 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicReturn : ICommand {
+    record struct BasicReturn(UInt16 ReplyCode, String ReplyText, String ExchangeName, String RoutingKey) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x32);
-
-        public UInt16 ReplyCode { get; }
-        public String ReplyText { get; }
-        public String ExchangeName { get; }
-        public String RoutingKey { get; }
-
-        public BasicReturn(UInt16 replyCode, String replyText, String exchangeName, String routingKey) {
-            ReplyCode    = replyCode;
-            ReplyText    = replyText;
-            ExchangeName = exchangeName;
-            RoutingKey   = routingKey;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(ReplyCode)

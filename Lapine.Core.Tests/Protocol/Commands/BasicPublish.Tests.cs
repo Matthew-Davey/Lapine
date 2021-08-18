@@ -5,10 +5,10 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicPublishTests : Faker {
         BasicPublish RandomSubject => new (
-            exchangeName: Random.Word(),
-            routingKey  : Random.Word(),
-            mandatory   : Random.Bool(),
-            immediate   : Random.Bool()
+            ExchangeName: Random.Word(),
+            RoutingKey  : Random.Word(),
+            Mandatory   : Random.Bool(),
+            Immediate   : Random.Bool()
         );
 
         [Fact]
@@ -19,10 +19,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicPublish.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.Immediate, actual: deserialized.Immediate);
-            Assert.Equal(expected: value.Mandatory, actual: deserialized.Mandatory);
-            Assert.Equal(expected: value.RoutingKey, actual: deserialized.RoutingKey);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.Immediate, actual: deserialized?.Immediate);
+            Assert.Equal(expected: value.Mandatory, actual: deserialized?.Mandatory);
+            Assert.Equal(expected: value.RoutingKey, actual: deserialized?.RoutingKey);
         }
 
         [Fact]

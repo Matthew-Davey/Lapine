@@ -7,13 +7,13 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicConsumeTests : Faker {
         BasicConsume RandomSubject => new (
-            queueName   : Random.Word(),
-            consumerTag : Random.Word(),
-            noLocal     : Random.Bool(),
-            noAck       : Random.Bool(),
-            exclusive   : Random.Bool(),
-            noWait      : Random.Bool(),
-            arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
+            QueueName   : Random.Word(),
+            ConsumerTag : Random.Word(),
+            NoLocal     : Random.Bool(),
+            NoAck       : Random.Bool(),
+            Exclusive   : Random.Bool(),
+            NoWait      : Random.Bool(),
+            Arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
         );
 
         [Fact]
@@ -24,13 +24,13 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized.Arguments.ToList());
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized.ConsumerTag);
-            Assert.Equal(expected: value.Exclusive, actual: deserialized.Exclusive);
-            Assert.Equal(expected: value.NoAck, actual: deserialized.NoAck);
-            Assert.Equal(expected: value.NoLocal, actual: deserialized.NoLocal);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
+            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+            Assert.Equal(expected: value.Exclusive, actual: deserialized?.Exclusive);
+            Assert.Equal(expected: value.NoAck, actual: deserialized?.NoAck);
+            Assert.Equal(expected: value.NoLocal, actual: deserialized?.NoLocal);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicConsumeOkTests : Faker {
         BasicConsumeOk RandomSubject => new (
-            consumerTag: Random.Word()
+            ConsumerTag: Random.Word()
         );
 
         [Fact]
@@ -69,7 +69,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized.ConsumerTag);
+            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
         }
 
         [Fact]

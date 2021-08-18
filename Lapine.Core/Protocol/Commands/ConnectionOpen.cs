@@ -3,13 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ConnectionOpen : ICommand {
+    record struct ConnectionOpen(String VirtualHost) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x28);
-
-        public String VirtualHost { get; }
-
-        public ConnectionOpen(String virtualHost) =>
-            VirtualHost = virtualHost ?? throw new ArgumentNullException(nameof(virtualHost));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteShortString(VirtualHost)
@@ -31,7 +26,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ConnectionOpenOk : ICommand {
+    record struct ConnectionOpenOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x29);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

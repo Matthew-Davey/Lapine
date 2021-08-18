@@ -4,28 +4,8 @@ namespace Lapine.Protocol.Commands {
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ExchangeDeclare : ICommand {
+    record struct ExchangeDeclare(String ExchangeName, String ExchangeType, Boolean Passive, Boolean Durable, Boolean AutoDelete, Boolean Internal, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0A);
-
-        public String ExchangeName { get; }
-        public String ExchangeType { get; }
-        public Boolean Passive { get; }
-        public Boolean Durable { get; }
-        public Boolean AutoDelete { get; }
-        public Boolean Internal { get; }
-        public Boolean NoWait { get; }
-        public IReadOnlyDictionary<String, Object> Arguments { get; }
-
-        public ExchangeDeclare(String exchangeName, String exchangeType, Boolean passive, Boolean durable, Boolean autoDelete, Boolean @internal, Boolean noWait, IReadOnlyDictionary<String, Object> arguments) {
-            ExchangeName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
-            ExchangeType = exchangeType ?? throw new ArgumentNullException(nameof(exchangeType));
-            Passive      = passive;
-            AutoDelete   = autoDelete;
-            Durable      = durable;
-            Internal     = @internal;
-            NoWait       = noWait;
-            Arguments    = arguments ?? throw new ArgumentNullException(nameof(arguments));
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer
@@ -52,7 +32,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ExchangeDeclareOk : ICommand {
+    record struct ExchangeDeclareOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

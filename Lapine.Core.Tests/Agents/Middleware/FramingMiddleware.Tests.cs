@@ -43,19 +43,19 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsConnectionStartMethodFrame() {
             var message = new ConnectionStart(
-                version: (0, 9),
-                serverProperties: new Dictionary<String, Object> {
+                Version: (0, 9),
+                ServerProperties: new Dictionary<String, Object> {
                     ["product"] = "RabbitMQ",
                     ["version"] = "3.8.1"
                 },
-                mechanisms: new [] { "PLAIN", "AMQPLAIN" },
-                locales: new [] { "en_US" }
+                Mechanisms: new [] { "PLAIN", "AMQPLAIN" },
+                Locales: new [] { "en_US" }
             );
 
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ConnectionStart;
+                var unwrappedMessage = (ConnectionStart)_unwrappedMessage;
 
                 Assert.Equal(expected: message.Locales.ToArray(), actual: unwrappedMessage.Locales.ToArray());
                 Assert.Equal(expected: message.Mechanisms.ToArray(), actual: unwrappedMessage.Mechanisms.ToArray());
@@ -70,12 +70,12 @@ namespace Lapine.Agents.Middleware {
 
         [Fact]
         public void UnwrapsConnectionSecureMethodFrame() {
-            var message = new ConnectionSecure(challenge: Random.Hash());
+            var message = new ConnectionSecure(Challenge: Random.Hash());
 
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ConnectionSecure;
+                var unwrappedMessage = (ConnectionSecure)_unwrappedMessage;
                 Assert.Equal(expected: message.Challenge, actual: unwrappedMessage.Challenge);
             }
             else {
@@ -87,15 +87,15 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsConnectionTuneMethodFrame() {
             var message = new ConnectionTune(
-                channelMax: Random.UShort(),
-                frameMax  : Random.UInt(),
-                heartbeat : Random.UShort()
+                ChannelMax: Random.UShort(),
+                FrameMax  : Random.UInt(),
+                Heartbeat : Random.UShort()
             );
 
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ConnectionTune;
+                var unwrappedMessage = (ConnectionTune)_unwrappedMessage;
                 Assert.Equal(expected: message.ChannelMax, actual: unwrappedMessage.ChannelMax);
                 Assert.Equal(expected: message.FrameMax, actual: unwrappedMessage.FrameMax);
                 Assert.Equal(expected: message.Heartbeat, actual: unwrappedMessage.Heartbeat);
@@ -122,14 +122,14 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsConnectionCloseMethodFrame() {
             var message = new ConnectionClose(
-                replyCode    : Random.UShort(),
-                replyText    : Random.Word(),
-                failingMethod: (Random.UShort(), Random.UShort())
+                ReplyCode    : Random.UShort(),
+                ReplyText    : Random.Word(),
+                FailingMethod: (Random.UShort(), Random.UShort())
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ConnectionClose;
+                var unwrappedMessage = (ConnectionClose)_unwrappedMessage;
 
                 Assert.Equal(expected: message.FailingMethod, actual: unwrappedMessage.FailingMethod);
                 Assert.Equal(expected: message.ReplyCode, actual: unwrappedMessage.ReplyCode);
@@ -170,12 +170,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsChannelFlowMethodFrame() {
             var message = new ChannelFlow(
-                active: Random.Bool()
+                Active: Random.Bool()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ChannelFlow;
+                var unwrappedMessage = (ChannelFlow)_unwrappedMessage;
 
                 Assert.Equal(expected: message.Active, actual: unwrappedMessage.Active);
             }
@@ -188,12 +188,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsChannelFlowOkMethodFrame() {
             var message = new ChannelFlowOk(
-                active: Random.Bool()
+                Active: Random.Bool()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ChannelFlowOk;
+                var unwrappedMessage = (ChannelFlowOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.Active, actual: unwrappedMessage.Active);
             }
@@ -206,14 +206,14 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsChannelCloseMethodFrame() {
             var message = new ChannelClose(
-                replyCode    : Random.UShort(),
-                replyText    : Random.Word(),
-                failingMethod: (Random.UShort(), Random.UShort())
+                ReplyCode    : Random.UShort(),
+                ReplyText    : Random.Word(),
+                FailingMethod: (Random.UShort(), Random.UShort())
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as ChannelClose;
+                var unwrappedMessage = (ChannelClose)_unwrappedMessage;
 
                 Assert.Equal(expected: message.FailingMethod, actual: unwrappedMessage.FailingMethod);
                 Assert.Equal(expected: message.ReplyCode, actual: unwrappedMessage.ReplyCode);
@@ -267,14 +267,14 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsQueueDeclareOkMethodFrame() {
             var message = new QueueDeclareOk(
-                queueName    : Random.Word(),
-                messageCount : Random.UInt(),
-                consumerCount: Random.UInt()
+                QueueName    : Random.Word(),
+                MessageCount : Random.UInt(),
+                ConsumerCount: Random.UInt()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as QueueDeclareOk;
+                var unwrappedMessage = (QueueDeclareOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.ConsumerCount, actual: unwrappedMessage.ConsumerCount);
                 Assert.Equal(expected: message.MessageCount, actual: unwrappedMessage.MessageCount);
@@ -315,12 +315,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsQueuePurgeOkMethodFrame() {
             var message = new QueuePurgeOk(
-                messageCount: Random.UInt()
+                MessageCount: Random.UInt()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as QueuePurgeOk;
+                var unwrappedMessage = (QueuePurgeOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.MessageCount, actual: unwrappedMessage.MessageCount);
             }
@@ -333,12 +333,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsQueueDeleteOkMethodFrame() {
             var message = new QueueDeleteOk(
-                messageCount: Random.UInt()
+                MessageCount: Random.UInt()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as QueueDeleteOk;
+                var unwrappedMessage = (QueueDeleteOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.MessageCount, actual: unwrappedMessage.MessageCount);
             }
@@ -364,12 +364,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsBasicConsumeOkMethodFrame() {
             var message = new BasicConsumeOk(
-                consumerTag: Random.Word()
+                ConsumerTag: Random.Word()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as BasicConsumeOk;
+                var unwrappedMessage = (BasicConsumeOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.ConsumerTag, actual: unwrappedMessage.ConsumerTag);
             }
@@ -382,12 +382,12 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsBasicCancelOkMethodFrame() {
             var message = new BasicCancelOk(
-                consumerTag: Random.Word()
+                ConsumerTag: Random.Word()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as BasicCancelOk;
+                var unwrappedMessage = (BasicCancelOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.ConsumerTag, actual: unwrappedMessage.ConsumerTag);
             }
@@ -400,15 +400,15 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsBasicReturnMethodFrame() {
             var message = new BasicReturn(
-                replyCode   : Random.UShort(),
-                replyText   : Random.Word(),
-                exchangeName: Random.Word(),
-                routingKey  : Random.Word()
+                ReplyCode   : Random.UShort(),
+                ReplyText   : Random.Word(),
+                ExchangeName: Random.Word(),
+                RoutingKey  : Random.Word()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as BasicReturn;
+                var unwrappedMessage = (BasicReturn)_unwrappedMessage;
 
                 Assert.Equal(expected: message.ExchangeName, actual: unwrappedMessage.ExchangeName);
                 Assert.Equal(expected: message.ReplyCode, actual: unwrappedMessage.ReplyCode);
@@ -424,15 +424,15 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsBasicDeliverMethodFrame() {
             var message = new BasicDeliver(
-                consumerTag : Random.Word(),
-                deliveryTag : Random.ULong(),
-                redelivered : Random.Bool(),
-                exchangeName: Random.Word()
+                ConsumerTag : Random.Word(),
+                DeliveryTag : Random.ULong(),
+                Redelivered : Random.Bool(),
+                ExchangeName: Random.Word()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as BasicDeliver;
+                var unwrappedMessage = (BasicDeliver)_unwrappedMessage;
 
                 Assert.Equal(expected: message.ConsumerTag, actual: unwrappedMessage.ConsumerTag);
                 Assert.Equal(expected: message.DeliveryTag, actual: unwrappedMessage.DeliveryTag);
@@ -448,16 +448,16 @@ namespace Lapine.Agents.Middleware {
         [Fact]
         public void UnwrapsBasicGetOkMethodFrame() {
             var message = new BasicGetOk(
-                deliveryTag : Random.ULong(),
-                redelivered : Random.Bool(),
-                exchangeName: Random.Word(),
-                routingKey  : Random.Word(),
-                messageCount: Random.UInt()
+                DeliveryTag : Random.ULong(),
+                Redelivered : Random.Bool(),
+                ExchangeName: Random.Word(),
+                RoutingKey  : Random.Word(),
+                MessageCount: Random.UInt()
             );
             _context.Send(_subject, new SocketAgent.Protocol.FrameReceived(RawFrame.Wrap(_channelNumber, message)));
 
             if (_messageReceivedSignal.Wait(timeout: TimeSpan.FromMilliseconds(100))) {
-                var unwrappedMessage = _unwrappedMessage as BasicGetOk;
+                var unwrappedMessage = (BasicGetOk)_unwrappedMessage;
 
                 Assert.Equal(expected: message.DeliveryTag, actual: unwrappedMessage.DeliveryTag);
                 Assert.Equal(expected: message.ExchangeName, actual: unwrappedMessage.ExchangeName);

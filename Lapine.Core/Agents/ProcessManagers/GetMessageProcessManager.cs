@@ -49,8 +49,8 @@ namespace Lapine.Agents.ProcessManagers {
                         action   : message => context.Send(context.Self!, message)
                     );
                     context.Send(_dispatcher, Dispatch.Command(new BasicGet(
-                        queueName: _queue,
-                        noAck    : _acknowledgements switch {
+                        QueueName: _queue,
+                        NoAck    : _acknowledgements switch {
                             Acknowledgements.Auto   => true,
                             Acknowledgements.Manual => false,
                             _ => false

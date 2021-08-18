@@ -53,10 +53,10 @@ namespace Lapine.Agents.ProcessManagers {
                         action: message => context.Send(context.Self!, message)
                     );
                     context.Send(_dispatcher, Dispatch.Command(new BasicPublish(
-                        exchangeName: _exchange,
-                        routingKey  : _routingKey,
-                        mandatory   : _routingFlags.HasFlag(RoutingFlags.Mandatory),
-                        immediate   : _routingFlags.HasFlag(RoutingFlags.Immediate)
+                        ExchangeName: _exchange,
+                        RoutingKey  : _routingKey,
+                        Mandatory   : _routingFlags.HasFlag(RoutingFlags.Mandatory),
+                        Immediate   : _routingFlags.HasFlag(RoutingFlags.Immediate)
                     )));
                     context.Send(_dispatcher, Dispatch.ContentHeader(new ContentHeader(
                         ClassId   : 0x3C,

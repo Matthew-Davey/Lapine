@@ -5,8 +5,8 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicAckTests : Faker {
         BasicAck RandomSubject => new (
-            deliveryTag: Random.ULong(),
-            multiple   : Random.Bool()
+            DeliveryTag: Random.ULong(),
+            Multiple   : Random.Bool()
         );
 
         [Fact]
@@ -17,8 +17,8 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicAck.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.DeliveryTag, actual: deserialized.DeliveryTag);
-            Assert.Equal(expected: value.Multiple, actual: deserialized.Multiple);
+            Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
+            Assert.Equal(expected: value.Multiple, actual: deserialized?.Multiple);
         }
 
         [Fact]

@@ -14,6 +14,7 @@ namespace Lapine.Agents {
 
     static class HeartbeatAgent {
         static public class Protocol {
+            // TODO: Publish to event stream rather than listener PID
             public record StartHeartbeat(PID Dispatcher, TimeSpan Frequency, PID Listener);
             public record RemoteFlatline;
 

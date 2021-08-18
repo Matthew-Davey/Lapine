@@ -114,10 +114,10 @@ namespace Lapine.Agents {
                                 challenge: Span<Byte>.Empty
                             );
                             context.Send(state.Dispatcher, Dispatch.Command(new ConnectionStartOk(
-                                peerProperties: state.ConnectionConfiguration.PeerProperties.ToDictionary(),
-                                mechanism     : state.ConnectionConfiguration.AuthenticationStrategy.Mechanism,
-                                response      : UTF8.GetString(authenticationResponse),
-                                locale        : state.ConnectionConfiguration.Locale
+                                PeerProperties: state.ConnectionConfiguration.PeerProperties.ToDictionary(),
+                                Mechanism     : state.ConnectionConfiguration.AuthenticationStrategy.Mechanism,
+                                Response      : UTF8.GetString(authenticationResponse),
+                                Locale        : state.ConnectionConfiguration.Locale
                             )));
                             _behaviour.Become(AwaitConnectionSecureOrTune(
                                 authenticationStage: 0,
@@ -147,7 +147,7 @@ namespace Lapine.Agents {
                                 challenge: challenge
                             );
                             context.Send(state.Dispatcher, Dispatch.Command(new ConnectionSecureOk(
-                                response: UTF8.GetString(authenticationResponse)
+                                Response: UTF8.GetString(authenticationResponse)
                             )));
                             _behaviour.Become(AwaitConnectionSecureOrTune(
                                 state              : state,
@@ -161,12 +161,12 @@ namespace Lapine.Agents {
                             var maxChannelCount    = Min(tune.ChannelMax, state.ConnectionConfiguration.MaximumChannelCount);
 
                             context.Send(state.Dispatcher, Dispatch.Command(new ConnectionTuneOk(
-                                channelMax: maxChannelCount,
-                                frameMax  : maxFrameSize,
-                                heartbeat : heartbeatFrequency
+                                ChannelMax: maxChannelCount,
+                                FrameMax  : maxFrameSize,
+                                Heartbeat : heartbeatFrequency
                             )));
                             context.Send(state.Dispatcher, Dispatch.Command(new ConnectionOpen(
-                                virtualHost: state.ConnectionConfiguration.VirtualHost
+                                VirtualHost: state.ConnectionConfiguration.VirtualHost
                             )));
                             _behaviour.Become(AwaitConnectionOpenOk(new NegotiationCompleteState(
                                 SubscriptionId    : state.SubscriptionId,

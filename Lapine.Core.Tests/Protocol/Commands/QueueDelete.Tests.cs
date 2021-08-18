@@ -5,10 +5,10 @@ namespace Lapine.Protocol.Commands {
 
     public class QueueDeleteTests : Faker {
         QueueDelete RandomSubject => new (
-            queueName : Random.Word(),
-            ifUnused  : Random.Bool(),
-            ifEmpty   : Random.Bool(),
-            noWait    : Random.Bool()
+            QueueName : Random.Word(),
+            IfUnused  : Random.Bool(),
+            IfEmpty   : Random.Bool(),
+            NoWait    : Random.Bool()
         );
 
         [Fact]
@@ -19,10 +19,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueueDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.IfEmpty, actual: deserialized.IfEmpty);
-            Assert.Equal(expected: value.IfUnused, actual: deserialized.IfUnused);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.IfEmpty, actual: deserialized?.IfEmpty);
+            Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace Lapine.Protocol.Commands {
 
     public class QueueDeleteOkTests : Faker {
         QueueDeleteOk RandomSubject => new (
-            messageCount : Random.UInt()
+            MessageCount : Random.UInt()
         );
 
         [Fact]
@@ -61,7 +61,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueueDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.MessageCount, actual: deserialized.MessageCount);
+            Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
         }
 
         [Fact]

@@ -5,8 +5,8 @@ namespace Lapine.Protocol.Commands {
 
     public class QueuePurgeTests : Faker {
         QueuePurge RandomSubject => new (
-            queueName : Random.Word(),
-            noWait    : Random.Bool()
+            QueueName : Random.Word(),
+            NoWait    : Random.Bool()
         );
 
         [Fact]
@@ -17,8 +17,8 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueuePurge.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]
@@ -46,7 +46,7 @@ namespace Lapine.Protocol.Commands {
 
     public class QueuePurgeOkTests : Faker {
         QueuePurgeOk RandomSubject => new (
-            messageCount : Random.UInt()
+            MessageCount : Random.UInt()
         );
 
         [Fact]
@@ -57,7 +57,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueuePurgeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.MessageCount, actual: deserialized.MessageCount);
+            Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
         }
 
         [Fact]

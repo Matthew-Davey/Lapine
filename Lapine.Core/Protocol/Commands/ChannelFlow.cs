@@ -3,13 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ChannelFlow : ICommand {
+    record struct ChannelFlow(Boolean Active) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x14);
-
-        public Boolean Active { get; }
-
-        public ChannelFlow(Boolean active) =>
-            Active = active;
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteBoolean(Active);
@@ -26,13 +21,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ChannelFlowOk : ICommand {
+    record struct ChannelFlowOk(Boolean Active) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x15);
-
-        public Boolean Active { get; }
-
-        public ChannelFlowOk(Boolean active) =>
-            Active = active;
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteBoolean(Active);

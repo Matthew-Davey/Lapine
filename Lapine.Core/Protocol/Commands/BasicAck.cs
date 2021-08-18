@@ -3,16 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicAck : ICommand {
+    record struct BasicAck(UInt64 DeliveryTag, Boolean Multiple) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x50);
-
-        public UInt64 DeliveryTag { get; }
-        public Boolean Multiple { get; }
-
-        public BasicAck(UInt64 deliveryTag, Boolean multiple) {
-            DeliveryTag = deliveryTag;
-            Multiple    = multiple;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt64BE(DeliveryTag)

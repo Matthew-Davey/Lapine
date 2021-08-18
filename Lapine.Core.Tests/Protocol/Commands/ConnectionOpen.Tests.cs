@@ -4,7 +4,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionOpenTests : Faker {
-        ConnectionOpen RandomSubject => new (virtualHost: Random.Word());
+        ConnectionOpen RandomSubject => new (VirtualHost: Random.Word());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -14,7 +14,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionOpen.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.VirtualHost, actual: deserialized.VirtualHost);
+            Assert.Equal(expected: value.VirtualHost, actual: deserialized?.VirtualHost);
         }
 
         [Fact]

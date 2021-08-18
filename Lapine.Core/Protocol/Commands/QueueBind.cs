@@ -4,22 +4,8 @@ namespace Lapine.Protocol.Commands {
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class QueueBind : ICommand {
+    record struct QueueBind(String QueueName, String ExchangeName, String RoutingKey, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x14);
-
-        public String QueueName { get; }
-        public String ExchangeName { get; }
-        public String RoutingKey { get; }
-        public Boolean NoWait { get; }
-        public IReadOnlyDictionary<String, Object> Arguments { get; }
-
-        public QueueBind(String queueName, String exchangeName, String routingKey, Boolean noWait, IReadOnlyDictionary<String, Object> arguments) {
-            QueueName    = queueName ?? throw new ArgumentNullException(nameof(queueName));
-            ExchangeName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
-            RoutingKey   = routingKey ?? throw new ArgumentNullException(nameof(routingKey));
-            NoWait       = noWait;
-            Arguments    = arguments ?? throw new ArgumentNullException(nameof(arguments));
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(0) // reserved-1
@@ -47,7 +33,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class QueueBindOk : ICommand {
+    record struct QueueBindOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x15);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

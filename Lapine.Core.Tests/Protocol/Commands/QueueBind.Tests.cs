@@ -7,11 +7,11 @@ namespace Lapine.Protocol.Commands {
 
     public class QueueBindTests : Faker {
         QueueBind RandomSubject => new (
-            queueName   : Random.Word(),
-            exchangeName: Random.Word(),
-            routingKey  : Random.Word(),
-            noWait      : Random.Bool(),
-            arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
+            QueueName   : Random.Word(),
+            ExchangeName: Random.Word(),
+            RoutingKey  : Random.Word(),
+            NoWait      : Random.Bool(),
+            Arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
         );
 
         [Fact]
@@ -22,11 +22,11 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueueBind.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized.Arguments.ToList());
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
-            Assert.Equal(expected: value.RoutingKey, actual: deserialized.RoutingKey);
+            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
+            Assert.Equal(expected: value.RoutingKey, actual: deserialized?.RoutingKey);
         }
 
         [Fact]

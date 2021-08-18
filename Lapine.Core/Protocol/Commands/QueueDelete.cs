@@ -3,20 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class QueueDelete : ICommand {
+    record struct QueueDelete(String QueueName, Boolean IfUnused, Boolean IfEmpty, Boolean NoWait) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x28);
-
-        public String QueueName { get; }
-        public Boolean IfUnused { get; }
-        public Boolean IfEmpty { get; }
-        public Boolean NoWait { get; }
-
-        public QueueDelete(String queueName, Boolean ifUnused, Boolean ifEmpty, Boolean noWait) {
-            QueueName = queueName ?? throw new ArgumentNullException(nameof(queueName));
-            IfUnused  = ifUnused;
-            IfEmpty   = ifEmpty;
-            NoWait    = noWait;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(0) // reserved-1
@@ -38,13 +26,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class QueueDeleteOk : ICommand {
+    record struct QueueDeleteOk(UInt32 MessageCount) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x29);
-
-        public UInt32 MessageCount { get; }
-
-        public QueueDeleteOk(UInt32 messageCount) =>
-            MessageCount = messageCount;
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt32BE(MessageCount);

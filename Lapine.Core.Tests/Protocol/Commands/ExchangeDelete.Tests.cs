@@ -5,9 +5,9 @@ namespace Lapine.Protocol.Commands {
 
     public class ExchangeDeleteTests : Faker {
         ExchangeDelete RandomSubject => new (
-            exchangeName: Random.Word(),
-            ifUnused    : Random.Bool(),
-            noWait      : Random.Bool()
+            ExchangeName: Random.Word(),
+            IfUnused    : Random.Bool(),
+            NoWait      : Random.Bool()
         );
 
         [Fact]
@@ -18,9 +18,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ExchangeDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.IfUnused, actual: deserialized.IfUnused);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
         }
 
         [Fact]

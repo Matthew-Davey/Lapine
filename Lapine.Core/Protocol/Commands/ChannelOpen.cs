@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ChannelOpen : ICommand {
+    record struct ChannelOpen : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0A);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -21,7 +21,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ChannelOpenOk : ICommand {
+    record struct ChannelOpenOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x0B);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

@@ -6,20 +6,8 @@ namespace Lapine.Protocol.Commands {
 
     using static System.String;
 
-    sealed class ConnectionStart : ICommand {
+    record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDictionary<String, Object> ServerProperties, IList<String> Mechanisms, IList<String> Locales) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0A);
-
-        public (Byte Major, Byte Minor) Version { get; }
-        public IReadOnlyDictionary<String, Object> ServerProperties { get; }
-        public IList<String> Mechanisms { get; }
-        public IList<String> Locales { get; }
-
-        public ConnectionStart((Byte Major, Byte Minor) version, IReadOnlyDictionary<String, Object> serverProperties, IList<String> mechanisms, IList<String> locales) {
-            Version          = version;
-            ServerProperties = serverProperties ?? throw new ArgumentNullException(nameof(serverProperties));
-            Mechanisms       = mechanisms ?? throw new ArgumentNullException(nameof(mechanisms));
-            Locales          = locales ?? throw new ArgumentNullException(nameof(locales));
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt8(Version.Major)
@@ -45,20 +33,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ConnectionStartOk : ICommand {
+    record struct ConnectionStartOk(IReadOnlyDictionary<String, Object> PeerProperties, String Mechanism, String Response, String Locale) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0B);
-
-        public IReadOnlyDictionary<String, Object> PeerProperties { get; }
-        public String Mechanism { get; }
-        public String Response { get; }
-        public String Locale { get; }
-
-        public ConnectionStartOk(IReadOnlyDictionary<String, Object> peerProperties, String mechanism, String response, String locale) {
-            PeerProperties = peerProperties ?? throw new ArgumentNullException(nameof(peerProperties));
-            Mechanism      = mechanism ?? throw new ArgumentNullException(nameof(mechanism));
-            Response       = response ?? throw new ArgumentNullException(nameof(response));
-            Locale         = locale ?? throw new ArgumentNullException(nameof(locale));
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteFieldTable(PeerProperties)

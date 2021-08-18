@@ -7,14 +7,14 @@ namespace Lapine.Protocol.Commands {
 
     public class ExchangeDeclareTests : Faker {
         ExchangeDeclare RandomSubject => new (
-            exchangeName: Random.Word(),
-            exchangeType: Random.Word(),
-            passive     : Random.Bool(),
-            durable     : Random.Bool(),
-            autoDelete  : Random.Bool(),
-            @internal   : Random.Bool(),
-            noWait      : Random.Bool(),
-            arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
+            ExchangeName: Random.Word(),
+            ExchangeType: Random.Word(),
+            Passive     : Random.Bool(),
+            Durable     : Random.Bool(),
+            AutoDelete  : Random.Bool(),
+            Internal    : Random.Bool(),
+            NoWait      : Random.Bool(),
+            Arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
         );
 
         [Fact]
@@ -25,14 +25,14 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ExchangeDeclare.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized.Arguments.ToList());
-            Assert.Equal(expected: value.AutoDelete, actual: deserialized.AutoDelete);
-            Assert.Equal(expected: value.Durable, actual: deserialized.Durable);
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.ExchangeType, actual: deserialized.ExchangeType);
-            Assert.Equal(expected: value.Internal, actual: deserialized.Internal);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.Passive, actual: deserialized.Passive);
+            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
+            Assert.Equal(expected: value.AutoDelete, actual: deserialized?.AutoDelete);
+            Assert.Equal(expected: value.Durable, actual: deserialized?.Durable);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.ExchangeType, actual: deserialized?.ExchangeType);
+            Assert.Equal(expected: value.Internal, actual: deserialized?.Internal);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.Passive, actual: deserialized?.Passive);
         }
 
         [Fact]

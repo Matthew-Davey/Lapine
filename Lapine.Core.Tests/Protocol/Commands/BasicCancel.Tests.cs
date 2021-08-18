@@ -5,8 +5,8 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicCancelTests : Faker {
         BasicCancel RandomSubject => new (
-            consumerTag : Random.Word(),
-            noWait      : Random.Bool()
+            ConsumerTag : Random.Word(),
+            NoWait      : Random.Bool()
         );
 
         [Fact]
@@ -17,8 +17,8 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicCancel.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized.ConsumerTag);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
+            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
         }
 
         [Fact]
@@ -46,7 +46,7 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicCancelOkTests : Faker {
         BasicCancelOk RandomSubject => new (
-            consumerTag: Random.Word()
+            ConsumerTag: Random.Word()
         );
 
         [Fact]
@@ -57,7 +57,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicCancelOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized.ConsumerTag);
+            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
         }
 
         [Fact]

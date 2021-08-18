@@ -3,13 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicRecover : ICommand {
+    record struct BasicRecover(Boolean ReQueue) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x6E);
-
-        public Boolean ReQueue { get; }
-
-        public BasicRecover(Boolean requeue) =>
-            ReQueue = requeue;
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteBoolean(ReQueue);
@@ -26,7 +21,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class BasicRecoverOk : ICommand {
+    record struct BasicRecoverOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x6F);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;

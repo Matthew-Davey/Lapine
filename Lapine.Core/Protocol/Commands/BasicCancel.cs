@@ -3,16 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicCancel : ICommand {
+    record struct BasicCancel(String ConsumerTag, Boolean NoWait): ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x1E);
-
-        public String ConsumerTag { get; }
-        public Boolean NoWait { get; }
-
-        public BasicCancel(String consumerTag, Boolean noWait) {
-            ConsumerTag = consumerTag ?? throw new ArgumentNullException(nameof(consumerTag));
-            NoWait      = noWait;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteShortString(ConsumerTag)
@@ -32,13 +24,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class BasicCancelOk : ICommand {
+    record struct BasicCancelOk(String ConsumerTag) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x1F);
-
-        public String ConsumerTag { get; }
-
-        public BasicCancelOk(String consumerTag) =>
-            ConsumerTag = consumerTag ?? throw new ArgumentNullException(nameof(consumerTag));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteShortString(ConsumerTag);

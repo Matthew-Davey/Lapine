@@ -7,10 +7,10 @@ namespace Lapine.Protocol.Commands {
 
     public class ConnectionStartTests : Faker {
         ConnectionStart RandomSubject => new (
-            version         : (Random.Byte(), Random.Byte()),
-            serverProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
-            mechanisms      : Make(Random.Number(1, 8), () => Random.AlphaNumeric(Random.Number(4, 24))).ToArray(),
-            locales         : Make(Random.Number(1, 8), () => Random.RandomLocale()).ToArray());
+            Version         : (Random.Byte(), Random.Byte()),
+            ServerProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
+            Mechanisms      : Make(Random.Number(1, 8), () => Random.AlphaNumeric(Random.Number(4, 24))).ToArray(),
+            Locales         : Make(Random.Number(1, 8), () => Random.RandomLocale()).ToArray());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -20,10 +20,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionStart.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Locales, actual: deserialized.Locales);
-            Assert.Equal(expected: value.Mechanisms, actual: deserialized.Mechanisms);
-            Assert.Equal(expected: value.ServerProperties, actual: deserialized.ServerProperties);
-            Assert.Equal(expected: value.Version, actual: deserialized.Version);
+            Assert.Equal(expected: value.Locales, actual: deserialized?.Locales);
+            Assert.Equal(expected: value.Mechanisms, actual: deserialized?.Mechanisms);
+            Assert.Equal(expected: value.ServerProperties, actual: deserialized?.ServerProperties);
+            Assert.Equal(expected: value.Version, actual: deserialized?.Version);
         }
 
         [Fact]
@@ -51,10 +51,10 @@ namespace Lapine.Protocol.Commands {
 
     public class ConnectionStartOkTests : Faker {
         ConnectionStartOk RandomSubject => new (
-            peerProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
-            mechanism     : Random.AlphaNumeric(Random.Number(4, 24)),
-            response      : Random.AlphaNumeric(Random.Number(4, Int16.MaxValue)),
-            locale        : Random.RandomLocale());
+            PeerProperties: new Dictionary<String, Object> { { Random.Word(), Random.UInt() } },
+            Mechanism     : Random.AlphaNumeric(Random.Number(4, 24)),
+            Response      : Random.AlphaNumeric(Random.Number(4, Int16.MaxValue)),
+            Locale        : Random.RandomLocale());
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -64,10 +64,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionStartOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.PeerProperties, actual: deserialized.PeerProperties);
-            Assert.Equal(expected: value.Mechanism, actual: deserialized.Mechanism);
-            Assert.Equal(expected: value.Response, actual: deserialized.Response);
-            Assert.Equal(expected: value.Locale, actual: deserialized.Locale);
+            Assert.Equal(expected: value.PeerProperties, actual: deserialized?.PeerProperties);
+            Assert.Equal(expected: value.Mechanism, actual: deserialized?.Mechanism);
+            Assert.Equal(expected: value.Response, actual: deserialized?.Response);
+            Assert.Equal(expected: value.Locale, actual: deserialized?.Locale);
         }
 
         [Fact]

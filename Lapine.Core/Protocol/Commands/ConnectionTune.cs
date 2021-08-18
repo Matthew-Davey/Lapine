@@ -3,18 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ConnectionTune : ICommand {
+    record struct ConnectionTune(UInt16 ChannelMax, UInt32 FrameMax, UInt16 Heartbeat) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1E);
-
-        public UInt16 ChannelMax { get; }
-        public UInt32 FrameMax { get; }
-        public UInt16 Heartbeat { get; }
-
-        public ConnectionTune(in UInt16 channelMax, in UInt32 frameMax, in UInt16 heartbeat) {
-            ChannelMax = channelMax;
-            FrameMax   = frameMax;
-            Heartbeat  = heartbeat;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(ChannelMax)
@@ -26,7 +16,7 @@ namespace Lapine.Protocol.Commands {
                 surplus.ReadUInt32BE(out var frameMax, out surplus) &&
                 surplus.ReadUInt16BE(out var heartbeat, out surplus))
             {
-                result = new ConnectionTune(in channelMax, in frameMax, in heartbeat);
+                result = new ConnectionTune(channelMax, frameMax, heartbeat);
                 return true;
             }
             else {
@@ -36,18 +26,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ConnectionTuneOk : ICommand {
+    record struct ConnectionTuneOk(UInt16 ChannelMax, UInt32 FrameMax, UInt16 Heartbeat) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x1F);
-
-        public UInt16 ChannelMax { get; }
-        public UInt32 FrameMax { get; }
-        public UInt16 Heartbeat { get; }
-
-        public ConnectionTuneOk(in UInt16 channelMax, in UInt32 frameMax, in UInt16 heartbeat) {
-            ChannelMax = channelMax;
-            FrameMax   = frameMax;
-            Heartbeat  = heartbeat;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(ChannelMax)
@@ -59,7 +39,7 @@ namespace Lapine.Protocol.Commands {
                 surplus.ReadUInt32BE(out var frameMax, out surplus) &&
                 surplus.ReadUInt16BE(out var heartbeat, out surplus))
             {
-                result = new ConnectionTuneOk(in channelMax, in frameMax, in heartbeat);
+                result = new ConnectionTuneOk(channelMax, frameMax, heartbeat);
                 return true;
             }
             else {

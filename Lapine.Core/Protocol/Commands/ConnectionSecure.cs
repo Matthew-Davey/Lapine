@@ -3,13 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ConnectionSecure : ICommand {
+    record struct ConnectionSecure(String Challenge) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x14);
-
-        public String Challenge { get; }
-
-        public ConnectionSecure(String challenge) =>
-            Challenge = challenge ?? throw new ArgumentNullException(nameof(challenge));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteLongString(Challenge);
@@ -26,13 +21,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ConnectionSecureOk : ICommand {
+    record struct ConnectionSecureOk(String Response) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x15);
-
-        public String Response { get; }
-
-        public ConnectionSecureOk(String response) =>
-            Response = response ?? throw new ArgumentNullException(nameof(response));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteLongString(Response);

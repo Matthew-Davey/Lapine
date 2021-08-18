@@ -35,23 +35,23 @@ namespace Lapine.Agents {
                                 body        : handle.Buffer.WrittenMemory
                             );
                             context.Send(handle.Dispatcher, Dispatch.Command(new BasicAck(
-                                deliveryTag: handle.Delivery.DeliveryTag,
-                                multiple   : false
+                                DeliveryTag: handle.Delivery.DeliveryTag,
+                                Multiple   : false
                             )));
                             context.Send(context.Parent!, new HandlerReady(context.Self!));
                         }
                         catch (MessageException) {
                             // nack without requeue...
                             context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
-                                deliveryTag: handle.Delivery.DeliveryTag,
-                                requeue    : false
+                                DeliveryTag: handle.Delivery.DeliveryTag,
+                                ReQueue    : false
                             )));
                         }
                         catch (ConsumerException) {
                             // nack with requeue...
                             context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
-                                deliveryTag: handle.Delivery.DeliveryTag,
-                                requeue    : true
+                                DeliveryTag: handle.Delivery.DeliveryTag,
+                                ReQueue    : true
                             )));
                         }
                         finally {

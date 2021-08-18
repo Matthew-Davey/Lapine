@@ -7,13 +7,13 @@ namespace Lapine.Protocol.Commands {
 
     public class QueueDeclareTests : Faker {
         QueueDeclare RandomSubject => new (
-            queueName : Random.Word(),
-            passive   : Random.Bool(),
-            durable   : Random.Bool(),
-            exclusive : Random.Bool(),
-            autoDelete: Random.Bool(),
-            noWait    : Random.Bool(),
-            arguments : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
+            QueueName : Random.Word(),
+            Passive   : Random.Bool(),
+            Durable   : Random.Bool(),
+            Exclusive : Random.Bool(),
+            AutoDelete: Random.Bool(),
+            NoWait    : Random.Bool(),
+            Arguments : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
         );
 
         [Fact]
@@ -24,13 +24,13 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueueDeclare.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized.Arguments.ToList());
-            Assert.Equal(expected: value.AutoDelete, actual: deserialized.AutoDelete);
-            Assert.Equal(expected: value.Durable, actual: deserialized.Durable);
-            Assert.Equal(expected: value.Exclusive, actual: deserialized.Exclusive);
-            Assert.Equal(expected: value.NoWait, actual: deserialized.NoWait);
-            Assert.Equal(expected: value.Passive, actual: deserialized.Passive);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
+            Assert.Equal(expected: value.AutoDelete, actual: deserialized?.AutoDelete);
+            Assert.Equal(expected: value.Durable, actual: deserialized?.Durable);
+            Assert.Equal(expected: value.Exclusive, actual: deserialized?.Exclusive);
+            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+            Assert.Equal(expected: value.Passive, actual: deserialized?.Passive);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]
@@ -58,9 +58,9 @@ namespace Lapine.Protocol.Commands {
 
     public class QueueDeclareOkTests : Faker {
         QueueDeclareOk RandomSubject => new (
-            queueName   : Random.Word(),
-            messageCount : Random.UInt(),
-            consumerCount: Random.UInt()
+            QueueName   : Random.Word(),
+            MessageCount : Random.UInt(),
+            ConsumerCount: Random.UInt()
         );
 
         [Fact]
@@ -71,9 +71,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             QueueDeclareOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ConsumerCount, actual: deserialized.ConsumerCount);
-            Assert.Equal(expected: value.MessageCount, actual: deserialized.MessageCount);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.ConsumerCount, actual: deserialized?.ConsumerCount);
+            Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]

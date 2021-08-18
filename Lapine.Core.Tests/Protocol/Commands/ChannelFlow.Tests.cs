@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
 
     public class ChannelFlowTests : Faker {
         ChannelFlow RandomSubject => new (
-            active: Random.Bool()
+            Active: Random.Bool()
         );
 
         [Fact]
@@ -16,7 +16,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ChannelFlow.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Active, actual: deserialized.Active);
+            Assert.Equal(expected: value.Active, actual: deserialized?.Active);
         }
 
         [Fact]
@@ -44,7 +44,7 @@ namespace Lapine.Protocol.Commands {
 
     public class ChannelFlowOkTests : Faker {
         ChannelFlowOk RandomSubject => new (
-            active: Random.Bool()
+            Active: Random.Bool()
         );
 
         [Fact]
@@ -55,7 +55,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ChannelFlowOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Active, actual: deserialized.Active);
+            Assert.Equal(expected: value.Active, actual: deserialized?.Active);
         }
 
         [Fact]

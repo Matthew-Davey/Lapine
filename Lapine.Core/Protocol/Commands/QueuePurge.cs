@@ -3,16 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class QueuePurge : ICommand {
+    record struct QueuePurge(String QueueName, Boolean NoWait) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x1E);
-
-        public String QueueName { get; }
-        public Boolean NoWait { get; }
-
-        public QueuePurge(String queueName, Boolean noWait) {
-            QueueName = queueName ?? throw new ArgumentNullException(nameof(queueName));
-            NoWait    = noWait;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(0) // reserved-1
@@ -34,13 +26,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class QueuePurgeOk : ICommand {
+    record struct QueuePurgeOk(UInt32 MessageCount) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x1F);
-
-        public UInt32 MessageCount { get; }
-
-        public QueuePurgeOk(UInt32 messageCount) =>
-            MessageCount = messageCount;
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt32BE(MessageCount);

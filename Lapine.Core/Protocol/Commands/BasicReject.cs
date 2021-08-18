@@ -3,16 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicReject : ICommand {
+    record struct BasicReject(UInt64 DeliveryTag, Boolean ReQueue) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x5A);
-
-        public UInt64 DeliveryTag { get; }
-        public Boolean ReQueue { get; }
-
-        public BasicReject(UInt64 deliveryTag, Boolean requeue) {
-            DeliveryTag = deliveryTag;
-            ReQueue     = requeue;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt64BE(DeliveryTag)

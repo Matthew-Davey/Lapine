@@ -4,26 +4,8 @@ namespace Lapine.Protocol.Commands {
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class BasicConsume : ICommand {
+    record struct BasicConsume(String QueueName, String ConsumerTag, Boolean NoLocal, Boolean NoAck, Boolean Exclusive, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x14);
-
-        public String QueueName { get; }
-        public String ConsumerTag { get; }
-        public Boolean NoLocal { get; }
-        public Boolean NoAck { get; }
-        public Boolean Exclusive { get; }
-        public Boolean NoWait { get; }
-        public IReadOnlyDictionary<String, Object> Arguments { get; }
-
-        public BasicConsume(String queueName, String consumerTag, Boolean noLocal, Boolean noAck, Boolean exclusive, Boolean noWait, IReadOnlyDictionary<String, Object> arguments) {
-            QueueName   = queueName ?? throw new ArgumentNullException(nameof(queueName));
-            ConsumerTag = consumerTag ?? throw new ArgumentNullException(nameof(consumerTag));
-            NoLocal     = noLocal;
-            NoAck       = noAck;
-            Exclusive   = exclusive;
-            NoWait      = noWait;
-            Arguments   = arguments;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(0) // reserved-1
@@ -49,13 +31,8 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class BasicConsumeOk : ICommand {
+    record struct BasicConsumeOk(String ConsumerTag) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x15);
-
-        public String ConsumerTag { get; }
-
-        public BasicConsumeOk(String consumerTag) =>
-            ConsumerTag = consumerTag ?? throw new ArgumentNullException(nameof(consumerTag));
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteShortString(ConsumerTag);

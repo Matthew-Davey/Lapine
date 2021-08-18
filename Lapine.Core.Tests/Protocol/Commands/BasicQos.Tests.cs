@@ -5,9 +5,9 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicQosTests : Faker {
         BasicQos RandomSubject => new (
-            prefetchSize : Random.UInt(),
-            prefetchCount: Random.UShort(),
-            global       : Random.Bool()
+            PrefetchSize : Random.UInt(),
+            PrefetchCount: Random.UShort(),
+            Global       : Random.Bool()
         );
 
         [Fact]
@@ -18,9 +18,9 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicQos.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Global, actual: deserialized.Global);
-            Assert.Equal(expected: value.PrefetchCount, actual: deserialized.PrefetchCount);
-            Assert.Equal(expected: value.PrefetchSize, actual: deserialized.PrefetchSize);
+            Assert.Equal(expected: value.Global, actual: deserialized?.Global);
+            Assert.Equal(expected: value.PrefetchCount, actual: deserialized?.PrefetchCount);
+            Assert.Equal(expected: value.PrefetchSize, actual: deserialized?.PrefetchSize);
         }
 
         [Fact]

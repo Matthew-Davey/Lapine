@@ -3,18 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ExchangeDelete : ICommand {
+    record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWait) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x14);
-
-        public String ExchangeName { get; }
-        public Boolean IfUnused { get; }
-        public Boolean NoWait { get; }
-
-        public ExchangeDelete(String exchangeName, Boolean ifUnused, Boolean noWait) {
-            ExchangeName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
-            IfUnused     = ifUnused;
-            NoWait       = noWait;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(0) // reserved-1
@@ -36,7 +26,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ExchangeDeleteOk : ICommand {
+    record struct ExchangeDeleteOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x15);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

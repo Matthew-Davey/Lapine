@@ -5,10 +5,10 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicReturnTests : Faker {
         BasicReturn RandomSubject => new (
-            replyCode   : Random.UShort(),
-            replyText   : Random.Word(),
-            exchangeName: Random.Word(),
-            routingKey  : Random.Word()
+            ReplyCode   : Random.UShort(),
+            ReplyText   : Random.Word(),
+            ExchangeName: Random.Word(),
+            RoutingKey  : Random.Word()
         );
 
         [Fact]
@@ -19,10 +19,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicReturn.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.ReplyCode, actual: deserialized.ReplyCode);
-            Assert.Equal(expected: value.ReplyText, actual: deserialized.ReplyText);
-            Assert.Equal(expected: value.RoutingKey, actual: deserialized.RoutingKey);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.ReplyCode, actual: deserialized?.ReplyCode);
+            Assert.Equal(expected: value.ReplyText, actual: deserialized?.ReplyText);
+            Assert.Equal(expected: value.RoutingKey, actual: deserialized?.RoutingKey);
         }
 
         [Fact]

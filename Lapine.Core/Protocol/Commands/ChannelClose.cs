@@ -3,19 +3,8 @@ namespace Lapine.Protocol.Commands {
     using System.Buffers;
     using System.Diagnostics.CodeAnalysis;
 
-    sealed class ChannelClose : ICommand {
+    record struct ChannelClose(UInt16 ReplyCode, String ReplyText, (UInt16 ClassId, UInt16 MethodId) FailingMethod) : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x28);
-
-        public UInt16 ReplyCode { get; }
-        public String ReplyText { get; }
-
-        public (UInt16 ClassId, UInt16 MethodId) FailingMethod { get; }
-
-        public ChannelClose(UInt16 replyCode, String replyText, (UInt16 ClassId, UInt16 MethodId) failingMethod) {
-            ReplyCode     = replyCode;
-            ReplyText     = replyText ?? throw new ArgumentNullException(nameof(replyText));
-            FailingMethod = failingMethod;
-        }
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
             writer.WriteUInt16BE(ReplyCode)
@@ -39,7 +28,7 @@ namespace Lapine.Protocol.Commands {
         }
     }
 
-    sealed class ChannelCloseOk : ICommand {
+    record struct ChannelCloseOk : ICommand {
         public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x29);
 
         public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>

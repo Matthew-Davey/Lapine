@@ -5,8 +5,8 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicGetTests : Faker {
         BasicGet RandomSubject => new (
-            queueName: Random.Word(),
-            noAck    : Random.Bool()
+            QueueName: Random.Word(),
+            NoAck    : Random.Bool()
         );
 
         [Fact]
@@ -17,8 +17,8 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicGet.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.NoAck, actual: deserialized.NoAck);
-            Assert.Equal(expected: value.QueueName, actual: deserialized.QueueName);
+            Assert.Equal(expected: value.NoAck, actual: deserialized?.NoAck);
+            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
         }
 
         [Fact]
@@ -63,11 +63,11 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicGetOkTests : Faker {
         BasicGetOk RandomSubject => new (
-            deliveryTag : Random.ULong(),
-            redelivered : Random.Bool(),
-            exchangeName: Random.Word(),
-            routingKey  : Random.Word(),
-            messageCount: Random.UInt()
+            DeliveryTag : Random.ULong(),
+            Redelivered : Random.Bool(),
+            ExchangeName: Random.Word(),
+            RoutingKey  : Random.Word(),
+            MessageCount: Random.UInt()
         );
 
         [Fact]
@@ -78,11 +78,11 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicGetOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.DeliveryTag, actual: deserialized.DeliveryTag);
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.MessageCount, actual: deserialized.MessageCount);
-            Assert.Equal(expected: value.Redelivered, actual: deserialized.Redelivered);
-            Assert.Equal(expected: value.RoutingKey, actual: deserialized.RoutingKey);
+            Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
+            Assert.Equal(expected: value.Redelivered, actual: deserialized?.Redelivered);
+            Assert.Equal(expected: value.RoutingKey, actual: deserialized?.RoutingKey);
         }
 
         [Fact]

@@ -4,7 +4,7 @@ namespace Lapine.Protocol.Commands {
     using Xunit;
 
     public class ConnectionSecureTests : Faker {
-        ConnectionSecure RandomSubject => new (challenge: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
+        ConnectionSecure RandomSubject => new (Challenge: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -14,7 +14,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionSecure.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Challenge, actual: deserialized.Challenge);
+            Assert.Equal(expected: value.Challenge, actual: deserialized?.Challenge);
         }
 
         [Fact]
@@ -41,7 +41,7 @@ namespace Lapine.Protocol.Commands {
     }
 
     public class ConnectionSecureOkTests : Faker {
-        ConnectionSecureOk RandomSubject => new (response: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
+        ConnectionSecureOk RandomSubject => new (Response: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
 
         [Fact]
         public void SerializationIsSymmetric() {
@@ -51,7 +51,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             ConnectionSecureOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.Response, actual: deserialized.Response);
+            Assert.Equal(expected: value.Response, actual: deserialized?.Response);
         }
 
         [Fact]

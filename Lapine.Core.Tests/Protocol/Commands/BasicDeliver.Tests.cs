@@ -5,10 +5,10 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicDeliverTests : Faker {
         BasicDeliver RandomSubject => new (
-            consumerTag : Random.Word(),
-            deliveryTag : Random.ULong(),
-            redelivered : Random.Bool(),
-            exchangeName: Random.Word()
+            ConsumerTag : Random.Word(),
+            DeliveryTag : Random.ULong(),
+            Redelivered : Random.Bool(),
+            ExchangeName: Random.Word()
         );
 
         [Fact]
@@ -19,10 +19,10 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicDeliver.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized.ConsumerTag);
-            Assert.Equal(expected: value.DeliveryTag, actual: deserialized.DeliveryTag);
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized.ExchangeName);
-            Assert.Equal(expected: value.Redelivered, actual: deserialized.Redelivered);
+            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+            Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
+            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+            Assert.Equal(expected: value.Redelivered, actual: deserialized?.Redelivered);
         }
 
         [Fact]

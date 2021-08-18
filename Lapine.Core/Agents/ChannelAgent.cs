@@ -154,14 +154,14 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request: new ExchangeDeclare(
-                                        exchangeName: declare.Definition.Name,
-                                        exchangeType: declare.Definition.Type,
-                                        passive     : false,
-                                        durable     : declare.Definition.Durability == Durability.Durable,
-                                        autoDelete  : declare.Definition.AutoDelete,
-                                        @internal   : false,
-                                        noWait      : false,
-                                        arguments   : declare.Definition.Arguments
+                                        ExchangeName: declare.Definition.Name,
+                                        ExchangeType: declare.Definition.Type,
+                                        Passive     : false,
+                                        Durable     : declare.Definition.Durability == Durability.Durable,
+                                        AutoDelete  : declare.Definition.AutoDelete,
+                                        Internal    : false,
+                                        NoWait      : false,
+                                        Arguments   : declare.Definition.Arguments
                                     ),
                                     timeout   : declare.Timeout,
                                     promise   : promise
@@ -184,9 +184,9 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request: new ExchangeDelete(
-                                        exchangeName: delete.Exchange,
-                                        ifUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
-                                        noWait      : false
+                                        ExchangeName: delete.Exchange,
+                                        IfUnused    : delete.Condition.HasFlag(DeleteExchangeCondition.Unused),
+                                        NoWait      : false
                                     ),
                                     timeout   : delete.Timeout,
                                     promise   : promise
@@ -209,13 +209,13 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new QueueDeclare(
-                                        queueName : declare.Definition.Name,
-                                        passive   : false,
-                                        durable   : declare.Definition.Durability == Durability.Durable,
-                                        exclusive : declare.Definition.Exclusive,
-                                        autoDelete: declare.Definition.AutoDelete,
-                                        noWait    : false,
-                                        arguments : declare.Definition.Arguments
+                                        QueueName : declare.Definition.Name,
+                                        Passive   : false,
+                                        Durable   : declare.Definition.Durability == Durability.Durable,
+                                        Exclusive : declare.Definition.Exclusive,
+                                        AutoDelete: declare.Definition.AutoDelete,
+                                        NoWait    : false,
+                                        Arguments : declare.Definition.Arguments
                                     ),
                                     timeout   : declare.Timeout,
                                     promise   : promise
@@ -238,10 +238,10 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new QueueDelete(
-                                        queueName: delete.Queue,
-                                        ifUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
-                                        ifEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
-                                        noWait   : false
+                                        QueueName: delete.Queue,
+                                        IfUnused : delete.Condition.HasFlag(DeleteQueueCondition.Unused),
+                                        IfEmpty  : delete.Condition.HasFlag(DeleteQueueCondition.Empty),
+                                        NoWait   : false
                                     ),
                                     timeout   : delete.Timeout,
                                     promise   : promise
@@ -264,11 +264,11 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new QueueBind(
-                                        queueName   : bind.Binding.Queue,
-                                        exchangeName: bind.Binding.Exchange,
-                                        routingKey  : bind.Binding.RoutingKey,
-                                        noWait      : false,
-                                        arguments   : bind.Binding.Arguments
+                                        QueueName   : bind.Binding.Queue,
+                                        ExchangeName: bind.Binding.Exchange,
+                                        RoutingKey  : bind.Binding.RoutingKey,
+                                        NoWait      : false,
+                                        Arguments   : bind.Binding.Arguments
                                     ),
                                     timeout   : bind.Timeout,
                                     promise   : promise
@@ -291,10 +291,10 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new QueueUnbind(
-                                        queueName   : unbind.Binding.Queue,
-                                        exchangeName: unbind.Binding.Exchange,
-                                        routingKey  : unbind.Binding.RoutingKey,
-                                        arguments   : unbind.Binding.Arguments
+                                        QueueName   : unbind.Binding.Queue,
+                                        ExchangeName: unbind.Binding.Exchange,
+                                        RoutingKey  : unbind.Binding.RoutingKey,
+                                        Arguments   : unbind.Binding.Arguments
                                     ),
                                     timeout   : unbind.Timeout,
                                     promise   : promise
@@ -317,8 +317,8 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new QueuePurge(
-                                        queueName: purge.Queue,
-                                        noWait   : false
+                                        QueueName: purge.Queue,
+                                        NoWait   : false
                                     ),
                                     timeout   : purge.Timeout,
                                     promise   : promise
@@ -383,16 +383,16 @@ namespace Lapine.Agents {
                         }
                         case Acknowledge ack: {
                             context.Send(state.Dispatcher, Dispatch.Command(new BasicAck(
-                                deliveryTag: ack.DeliveryTag,
-                                multiple   : ack.Multiple
+                                DeliveryTag: ack.DeliveryTag,
+                                Multiple   : ack.Multiple
                             )));
                             ack.SetResult();
                             break;
                         }
                         case Reject reject: {
                             context.Send(state.Dispatcher, Dispatch.Command(new BasicReject(
-                                deliveryTag: reject.DeliveryTag,
-                                requeue    : reject.Requeue
+                                DeliveryTag: reject.DeliveryTag,
+                                ReQueue    : reject.Requeue
                             )));
                             reject.SetResult();
                             break;
@@ -404,9 +404,9 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new BasicQos(
-                                        prefetchSize : 0,
-                                        prefetchCount: prefetch.Limit,
-                                        global       : prefetch.Global
+                                        PrefetchSize : 0,
+                                        PrefetchCount: prefetch.Limit,
+                                        Global       : prefetch.Global
                                     ),
                                     timeout   : prefetch.Timeout,
                                     promise   : promise
@@ -430,16 +430,16 @@ namespace Lapine.Agents {
                                     channelId : state.ChannelId,
                                     dispatcher: state.Dispatcher,
                                     request   : new BasicConsume(
-                                        queueName  : consume.Queue,
-                                        consumerTag: consumerTag,
-                                        noLocal    : false,
-                                        noAck      : consume.ConsumerConfiguration.Acknowledgements switch {
+                                        QueueName  : consume.Queue,
+                                        ConsumerTag: consumerTag,
+                                        NoLocal    : false,
+                                        NoAck      : consume.ConsumerConfiguration.Acknowledgements switch {
                                             Acknowledgements.Auto => true,
                                             _                     => false
                                         },
-                                        exclusive  : consume.ConsumerConfiguration.Exclusive,
-                                        noWait     : false,
-                                        arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
+                                        Exclusive  : consume.ConsumerConfiguration.Exclusive,
+                                        NoWait     : false,
+                                        Arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
                                     ),
                                     timeout   : consume.Timeout,
                                     promise   : promise

@@ -5,7 +5,7 @@ namespace Lapine.Protocol.Commands {
 
     public class BasicRecoverTests : Faker {
         BasicRecover RandomSubject => new (
-            requeue: Random.Bool()
+            ReQueue: Random.Bool()
         );
 
         [Fact]
@@ -16,7 +16,7 @@ namespace Lapine.Protocol.Commands {
             value.Serialize(buffer);
             BasicRecover.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: value.ReQueue, actual: deserialized.ReQueue);
+            Assert.Equal(expected: value.ReQueue, actual: deserialized?.ReQueue);
         }
 
         [Fact]
