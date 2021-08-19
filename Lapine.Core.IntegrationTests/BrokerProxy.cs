@@ -297,6 +297,17 @@ namespace Lapine {
                 .ExecuteBufferedAsync()
             );
 
+        public async ValueTask QueueBindAsync(String exchange, String queue, String routingKey) =>
+            await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+                .WithArguments(arguments => arguments
+                    .Add("exec")
+                    .Add(_container)
+                    .Add("rabbitmqadmin")
+                    .Add($"declare binding source={exchange} destination={queue} routing_key={routingKey}", escape: false))
+                .WithValidation(CommandResultValidation.ZeroExitCode)
+                .ExecuteAsync()
+            );
+
         public async ValueTask PublishMessage(String exchange, String routingKey, String payload) =>
             await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
                 .WithArguments(arguments => arguments
