@@ -30,17 +30,17 @@ namespace Lapine.Workbench {
             await channel.DeclareExchangeAsync(ExchangeDefinition.Direct("test.exchange"));
             await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue"));
             await channel.BindQueueAsync(Binding.Create("test.exchange", "test.queue"));
-            await channel.PublishAsync(
-                exchange: "test.exchange",
-                routingKey: "#",
-                message: (
-                    MessageProperties.Empty,
-                    UTF8.GetBytes("test message")
-                )
-            );
+            await channel.ConsumeAsync("test.queue", ConsumerConfiguration.Create(HandleMessage) with {
+                Acknowledgements = Acknowledgements.Manual
+            });
             await Task.Delay(TimeSpan.FromMilliseconds(-1));
             await channel.CloseAsync();
             await amqpClient.DisposeAsync();
+
+            static Task HandleMessage(DeliveryInfo delivery, MessageProperties properties, ReadOnlyMemory<Byte> body) {
+                Console.WriteLine(UTF8.GetString(body.Span));
+                return Task.CompletedTask;
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 namespace Lapine.Agents {
     using System;
-    using System.Buffers;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Threading.Tasks;
@@ -11,7 +10,6 @@ namespace Lapine.Agents {
     using Lapine.Protocol.Commands;
     using Proto;
 
-    using static System.Threading.Tasks.Task;
     using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.ChannelAgent.Protocol;
     using static Lapine.Agents.ConsumerAgent.Protocol;
@@ -56,13 +54,9 @@ namespace Lapine.Agents {
         }
 
         static public Props Create(UInt32 maxFrameSize) =>
-            Props.FromProducer(() => new Actor(maxFrameSize))
-                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
-                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
-                .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
+            Props.FromProducer(() => new Actor(maxFrameSize));
 
         readonly record struct State(
-            Guid SubscriptionId,
             UInt16 ChannelId,
             PID Dispatcher,
             IImmutableDictionary<String, PID> Consumers
@@ -83,18 +77,13 @@ namespace Lapine.Agents {
             async Task Closed(IContext context) {
                 switch (context.Message) {
                     case Open open: {
-                        var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                            predicate: message => message.Frame.Channel == open.ChannelId,
-                            action   : message => context.Send(context.Self!, message)
-                        );
                         var state = new State(
-                            SubscriptionId: subscription.Id,
-                            ChannelId     : open.ChannelId,
-                            Dispatcher    : context.SpawnNamed(
+                            ChannelId : open.ChannelId,
+                            Dispatcher: context.SpawnNamed(
                                 name : "dispatcher",
                                 props: DispatcherAgent.Create()
                             ),
-                            Consumers     : ImmutableDictionary<String, PID>.Empty
+                            Consumers : ImmutableDictionary<String, PID>.Empty
                         );
                         context.Send(state.Dispatcher, new DispatchTo(open.TxD, open.ChannelId));
 
@@ -380,114 +369,33 @@ namespace Lapine.Agents {
                         }
                         case Consume consume: {
                             var consumerTag = $"{Guid.NewGuid()}";
-                            var promise = new TaskCompletionSource();
-                            context.Spawn(
-                                RequestReplyProcessManager<BasicConsume, BasicConsumeOk>.Create(
-                                    channelId : state.ChannelId,
-                                    dispatcher: state.Dispatcher,
-                                    request   : new BasicConsume(
-                                        QueueName  : consume.Queue,
-                                        ConsumerTag: consumerTag,
-                                        NoLocal    : false,
-                                        NoAck      : consume.ConsumerConfiguration.Acknowledgements switch {
-                                            Acknowledgements.Auto => true,
-                                            _                     => false
-                                        },
-                                        Exclusive  : consume.ConsumerConfiguration.Exclusive,
-                                        NoWait     : false,
-                                        Arguments  : consume.Arguments ?? ImmutableDictionary<String, Object>.Empty
-                                    ),
-                                    timeout   : consume.Timeout,
-                                    promise   : promise
-                                )
+                            var consumer = context.SpawnNamed(
+                                name : $"consume_{consumerTag}",
+                                props: ConsumerAgent.Create()
                             );
-
-                            try {
-                                await promise.Task;
-
-                                var consumer = context.SpawnNamed(
-                                    name : $"consumer_{consumerTag}",
-                                    props: ConsumerAgent.Create()
-                                );
-                                context.Send(consumer, new StartConsuming(
-                                    ConsumerTag          : consumerTag,
-                                    Dispatcher           : state.Dispatcher,
-                                    ConsumerConfiguration: consume.ConsumerConfiguration
-                                ));
-                                _behaviour.Become(Open(state with {
-                                    Consumers = state.Consumers.Add(consumerTag, consumer)
-                                }));
-                                consume.SetResult(consumerTag);
-                            }
-                            catch (Exception fault) {
-                                consume.SetException(fault);
-                            }
-                            break;
-                        }
-                        case BasicDeliver deliver: {
-                            if (state.Consumers.ContainsKey(deliver.ConsumerTag)) {
-                                var consumer = state.Consumers[deliver.ConsumerTag];
-                                _behaviour.BecomeStacked(AwaitingContentHeader(
-                                    delivery: DeliveryInfo.FromBasicDeliver(deliver),
-                                    consumer: consumer
-                                ));
-                            }
-                            else {
-                                // TODO: No handler....
-                            }
+                            var promise = new TaskCompletionSource();
+                            context.Send(consumer, new StartConsuming(
+                                ChannelId            : state.ChannelId,
+                                ConsumerTag          : consumerTag,
+                                Dispatcher           : state.Dispatcher,
+                                Queue                : consume.Queue,
+                                ConsumerConfiguration: consume.ConsumerConfiguration,
+                                Arguments            : consume.Arguments,
+                                Promise              : promise
+                            ));
+                            await promise.Task.ContinueWith(
+                                onCompleted: () => {
+                                    _behaviour.Become(Open(state with {
+                                        Consumers = state.Consumers.Add(consumerTag, consumer)
+                                    }));
+                                    consume.SetResult(consumerTag);
+                                },
+                                onFaulted: consume.SetException
+                            );
                             break;
                         }
                     }
                 };
-
-            Receive AwaitingContentHeader(DeliveryInfo delivery, PID consumer) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case ContentHeader header: {
-                            _behaviour.UnbecomeStacked();
-                            switch (header.BodySize) {
-                                case 0: {
-                                    context.Send(consumer, new ConsumeMessage(
-                                        Delivery  : delivery,
-                                        Properties: header.Properties,
-                                        Buffer    : new MemoryBufferWriter<Byte>()
-                                    ));
-                                    break;
-                                }
-                                default: {
-                                    _behaviour.BecomeStacked(AwaitingContentBody(
-                                        delivery    : delivery,
-                                        consumer    : consumer,
-                                        properties  : header.Properties,
-                                        expectedSize: header.BodySize
-                                    ));
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    return CompletedTask;
-                };
-
-            Receive AwaitingContentBody(DeliveryInfo delivery, PID consumer, BasicProperties properties, UInt64 expectedSize) {
-                var buffer = new MemoryBufferWriter<Byte>((Int32)expectedSize);
-
-                return (IContext context) => {
-                    switch (context.Message) {
-                        case ReadOnlyMemory<Byte> segment: {
-                            buffer.Write(segment.Span);
-                            if ((UInt64)buffer.WrittenCount >= expectedSize) {
-                                context.Send(consumer, new ConsumeMessage(delivery, properties, buffer));
-                                _behaviour.UnbecomeStacked();
-                            }
-                            break;
-                        }
-                    }
-
-                    return CompletedTask;
-                };
-            }
         }
     }
 }
