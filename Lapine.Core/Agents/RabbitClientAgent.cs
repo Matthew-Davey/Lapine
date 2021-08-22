@@ -1,18 +1,20 @@
 namespace Lapine.Agents {
     using System;
+    using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
     using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
+    using Lapine.Agents.ProcessManagers;
     using Lapine.Client;
+    using Lapine.Protocol;
     using Proto;
     using Proto.Timers;
 
     using static System.Threading.Tasks.Task;
     using static Lapine.Agents.ChannelAgent.Protocol;
     using static Lapine.Agents.DispatcherAgent.Protocol;
-    using static Lapine.Agents.HandshakeAgent.Protocol;
     using static Lapine.Agents.HeartbeatAgent.Protocol;
     using static Lapine.Agents.RabbitClientAgent.Protocol;
     using static Lapine.Agents.SocketAgent.Protocol;
@@ -28,42 +30,11 @@ namespace Lapine.Agents {
 
         readonly record struct ConnectingState(
             ConnectionConfiguration ConnectionConfiguration,
-            EstablishConnection Command,
             PID SocketAgent,
             IPEndPoint[] RemainingEndpoints,
             CancellationTokenSource ScheduledTimeout,
             IImmutableList<Exception> AccumulatedFailures
-        ) {
-            public NegotiatingState ToNegotiatingState(PID txd, PID handshakeAgent, PID dispatcher) =>
-                new (
-                    ConnectionConfiguration: ConnectionConfiguration,
-                    Command                : Command,
-                    SocketAgent            : SocketAgent,
-                    ScheduledTimeout       : ScheduledTimeout,
-                    TxD                    : txd,
-                    HandshakeAgent         : handshakeAgent,
-                    Dispatcher             : dispatcher
-                );
-        }
-
-        readonly record struct NegotiatingState(
-            ConnectionConfiguration ConnectionConfiguration,
-            EstablishConnection Command,
-            PID SocketAgent,
-            CancellationTokenSource ScheduledTimeout,
-            PID TxD,
-            PID HandshakeAgent,
-            PID Dispatcher
-        ) {
-            public ConnectedState ToConnectedState(IImmutableList<UInt16> availableChannelIds) =>
-                new (
-                    ConnectionConfiguration: ConnectionConfiguration,
-                    SocketAgent            : SocketAgent,
-                    TxD                    : TxD,
-                    Dispatcher             : Dispatcher,
-                    AvailableChannelIds    : availableChannelIds
-                );
-        }
+        );
 
         readonly record struct ConnectedState(
             ConnectionConfiguration ConnectionConfiguration,
@@ -90,7 +61,6 @@ namespace Lapine.Agents {
                     case EstablishConnection connect: {
                         var state = new ConnectingState(
                             ConnectionConfiguration: connect.Configuration,
-                            Command: connect,
                             SocketAgent: context.SpawnNamed(
                                 name: "socket",
                                 props: SocketAgent.Create()
@@ -103,14 +73,13 @@ namespace Lapine.Agents {
                             ),
                             AccumulatedFailures: ImmutableList<Exception>.Empty
                         );
-
                         if (state.RemainingEndpoints.Length > 0) {
                             context.Send(state.SocketAgent, new Connect(
                                 Endpoint      : state.RemainingEndpoints[0],
                                 ConnectTimeout: connect.Configuration.ConnectionTimeout,
                                 Listener      : context.Self!
                             ));
-                            _behaviour.Become(Connecting(state with {
+                            _behaviour.Become(Connecting(connect, state with {
                                 RemainingEndpoints = state.RemainingEndpoints[1..]
                             }));
                         }
@@ -124,8 +93,8 @@ namespace Lapine.Agents {
                 return CompletedTask;
             }
 
-            Receive Connecting(ConnectingState state) =>
-                (IContext context) => {
+            Receive Connecting(EstablishConnection command, ConnectingState state) =>
+                async (IContext context) => {
                     switch (context.Message) {
                         case ConnectionFailed failed when state.RemainingEndpoints.Length > 0: {
                             context.Send(state.SocketAgent, new Connect(
@@ -133,7 +102,7 @@ namespace Lapine.Agents {
                                 ConnectTimeout: state.ConnectionConfiguration!.ConnectionTimeout,
                                 Listener      : context.Self!
                             ));
-                            _behaviour.Become(Connecting(state with {
+                            _behaviour.Become(Connecting(command, state with {
                                 RemainingEndpoints  = state.RemainingEndpoints[1..],
                                 AccumulatedFailures = state.AccumulatedFailures.Add(failed.Reason)
                             }));
@@ -141,100 +110,83 @@ namespace Lapine.Agents {
                         }
                         case ConnectionFailed failed when state.RemainingEndpoints.Length == 0: {
                             state.ScheduledTimeout.Cancel();
-                            state.Command.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
+                            command.SetException(new AggregateException("Could not connect to any of the configured endpoints", state.AccumulatedFailures.Add(failed.Reason)));
                             context.Stop(state.SocketAgent);
                             _behaviour.Become(Disconnected);
                             break;
                         }
                         case Connected connected: {
-                            var negotiatingState = state.ToNegotiatingState(
-                                txd : connected.TxD,
-                                handshakeAgent: context.SpawnNamed(
-                                    name : "handshake",
-                                    props: HandshakeAgent.Create()
-                                ),
-                                dispatcher: context.SpawnNamed(
-                                    name : "dispatcher",
-                                    props: DispatcherAgent.Create()
-                                )
+                            var dispatcher = context.SpawnNamed(
+                                name : "dispatcher",
+                                props: DispatcherAgent.Create()
                             );
 
                             context.Send(connected.RxD, new BeginPolling());
-                            context.Send(negotiatingState.Dispatcher, new DispatchTo(connected.TxD, 0));
-                            context.Send(negotiatingState.HandshakeAgent, new BeginHandshake(
-                                ConnectionConfiguration: state.ConnectionConfiguration!,
-                                Listener               : context.Self!,
-                                Dispatcher             : negotiatingState.Dispatcher
+                            context.Send(dispatcher, new DispatchTo(connected.TxD, 0));
+
+                            var promise = new TaskCompletionSource<ConnectionAgreement>();
+                            context.Spawn(HandshakeProcessManager.Create(
+                                connectionConfiguration: state.ConnectionConfiguration,
+                                dispatcher             : dispatcher,
+                                timeout                : state.ConnectionConfiguration.ConnectionTimeout,
+                                promise                : promise
                             ));
-                            _behaviour.Become(Negotiating(negotiatingState));
+                            await promise.Task.ContinueWith(
+                                onCompleted: (connectionAgreement) => {
+                                    state.ScheduledTimeout.Cancel();
+                                    context.Send(state.SocketAgent, new Tune(connectionAgreement.MaxFrameSize));
+
+                                    // If amqp heartbeats are enabled, spawn a heartbeat agent...
+                                    if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.HasValue) {
+                                        var heartbeatAgent = context.SpawnNamed(
+                                            name: "heartbeat",
+                                            props: HeartbeatAgent.Create()
+                                        );
+                                        context.Send(heartbeatAgent, new StartHeartbeat(
+                                            Dispatcher: dispatcher,
+                                            Frequency : state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value,
+                                            Listener  : context.Self!
+                                        ));
+                                    }
+
+                                    // If tcp keepalives are enabled, configure the socket...
+                                    if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.HasValue) {
+                                        var (probeTime, retryInterval, retryCount) = state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.Value;
+
+                                        context.Send(state.SocketAgent, new EnableTcpKeepAlives(
+                                            ProbeTime    : probeTime,
+                                            RetryInterval: retryInterval,
+                                            RetryCount   : retryCount
+                                        ));
+                                    }
+
+                                    _behaviour.Become(Connected(new ConnectedState(
+                                        ConnectionConfiguration: state.ConnectionConfiguration,
+                                        SocketAgent            : state.SocketAgent,
+                                        TxD                    : connected.TxD,
+                                        Dispatcher             : dispatcher,
+                                        AvailableChannelIds    : Enumerable.Range(1, connectionAgreement.MaxChannelCount)
+                                            .Select(channelId => (UInt16)channelId)
+                                            .ToImmutableList()
+                                    )));
+
+                                    command.SetResult();
+                                },
+                                onFaulted: (fault) => {
+                                    state.ScheduledTimeout.Cancel();
+                                    command.SetException(fault);
+                                    _behaviour.Become(Disconnected);
+                                }
+                            );
                             break;
                         }
                         case TimeoutExpired _: {
-                            state.Command.SetException(new TimeoutException("Unable to connect to any of the configured endpoints within the connection timeout limit"));
+                            command.SetException(new TimeoutException("Unable to connect to any of the configured endpoints within the connection timeout limit"));
                             context.Stop(state.SocketAgent);
                             _behaviour.Become(Disconnected);
                             break;
                         }
                     }
-                    return CompletedTask;
-                };
-
-            Receive Negotiating(NegotiatingState state) =>
-                (IContext context) => {
-                    switch (context.Message) {
-                        case HandshakeCompleted completed: {
-                            state.ScheduledTimeout.Cancel();
-                            context.Send(state.SocketAgent, new Tune(completed.MaxFrameSize));
-
-                            // If amqp heartbeats are enabled, spawn a heartbeat agent...
-                            if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.HasValue) {
-                                var heartbeatAgent = context.SpawnNamed(
-                                    name: "heartbeat",
-                                    props: HeartbeatAgent.Create()
-                                );
-                                context.Send(heartbeatAgent, new StartHeartbeat(
-                                    Dispatcher: state.Dispatcher,
-                                    Frequency : state.ConnectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value,
-                                    Listener  : context.Self!
-                                ));
-                            }
-
-                            // If tcp keepalives are enabled, configure the socket...
-                            if (state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.HasValue) {
-                                var (probeTime, retryInterval, retryCount) = state.ConnectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.Value;
-
-                                context.Send(state.SocketAgent, new EnableTcpKeepAlives(
-                                    ProbeTime    : probeTime,
-                                    RetryInterval: retryInterval,
-                                    RetryCount   : retryCount
-                                ));
-                            }
-
-                            _behaviour.Become(Connected(state.ToConnectedState(
-                                availableChannelIds: Enumerable.Range(1, completed.MaxChannelCount)
-                                    .Select(channelId => (UInt16)channelId)
-                                    .ToImmutableList()
-                            )));
-
-                            state.Command.SetResult();
-                            break;
-                        }
-                        case HandshakeFailed failed: {
-                            state.ScheduledTimeout.Cancel();
-                            state.Command.SetException(failed.Reason);
-                            _behaviour.Become(Disconnected);
-                            break;
-                        }
-                        case TimeoutExpired _: {
-                            state.Command.SetException(new TimeoutException("A connection to the broker was established but the negotiation did not complete within the specified connection timeout limit"));
-                            context.Stop(state.Dispatcher);
-                            context.Stop(state.HandshakeAgent);
-                            context.Stop(state.SocketAgent);
-                            _behaviour.Become(Disconnected);
-                            break;
-                        }
-                    }
-                    return CompletedTask;
                 };
 
             Receive Connected(ConnectedState state) =>

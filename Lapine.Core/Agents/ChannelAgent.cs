@@ -13,7 +13,6 @@ namespace Lapine.Agents {
     using static Lapine.Agents.DispatcherAgent.Protocol;
     using static Lapine.Agents.ChannelAgent.Protocol;
     using static Lapine.Agents.ConsumerAgent.Protocol;
-    using static Lapine.Agents.SocketAgent.Protocol;
 
     static class ChannelAgent {
         static public class Protocol {
