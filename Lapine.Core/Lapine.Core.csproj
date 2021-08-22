@@ -15,7 +15,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="Proto.Actor" Version="0.21.0" />
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.0.0-2.21310.45">
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.0.0-4.21420.22">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
