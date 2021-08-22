@@ -2,6 +2,7 @@ namespace Lapine.Protocol;
 
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using Lapine.Protocol.Commands;
 
 readonly record struct RawFrame(FrameType Type, UInt16 Channel, ReadOnlyMemory<Byte> Payload) : ISerializable {
@@ -51,7 +52,7 @@ readonly record struct RawFrame(FrameType Type, UInt16 Channel, ReadOnlyMemory<B
             .WriteBytes(Payload.Span)
             .WriteUInt8(FrameTerminator);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out RawFrame result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out RawFrame? result, out ReadOnlySpan<Byte> surplus) {
         if (buffer.ReadUInt8(out var type, out surplus) &&
             surplus.ReadUInt16BE(out var channel, out surplus) &&
             surplus.ReadUInt32BE(out var size, out surplus) &&

@@ -2,6 +2,7 @@ namespace Lapine.Protocol;
 
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 
 readonly record struct ProtocolVersion(Byte Major, Byte Minor, Byte Revision) : ISerializable {
     static public ProtocolVersion Default =>
@@ -12,7 +13,7 @@ readonly record struct ProtocolVersion(Byte Major, Byte Minor, Byte Revision) : 
             .WriteUInt8(Minor)
             .WriteUInt8(Revision);
 
-    public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ProtocolVersion result, out ReadOnlySpan<Byte> surplus) {
+    public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ProtocolVersion? result, out ReadOnlySpan<Byte> surplus) {
         if (buffer.ReadUInt8(out var major, out surplus) &&
             surplus.ReadUInt8(out var minor, out surplus) &&
             surplus.ReadUInt8(out var revision, out surplus))

@@ -1,30 +1,30 @@
-namespace Lapine.Agents {
-    using System;
-    using System.Runtime.CompilerServices;
+namespace Lapine.Agents;
 
-    record AsyncCommand {
-        AsyncValueTaskMethodBuilder _promise = AsyncValueTaskMethodBuilder.Create();
+using System;
+using System.Runtime.CompilerServices;
 
-        public ValueTaskAwaiter GetAwaiter() =>
-            _promise.Task.GetAwaiter();
+record AsyncCommand {
+    AsyncValueTaskMethodBuilder _promise = AsyncValueTaskMethodBuilder.Create();
 
-        public void SetResult() =>
-            _promise.SetResult();
+    public ValueTaskAwaiter GetAwaiter() =>
+        _promise.Task.GetAwaiter();
 
-        public void SetException(Exception exception) =>
-            _promise.SetException(exception);
-    }
+    public void SetResult() =>
+        _promise.SetResult();
 
-    record AsyncCommand<TResult> {
-        AsyncValueTaskMethodBuilder<TResult> _promise = AsyncValueTaskMethodBuilder<TResult>.Create();
+    public void SetException(Exception exception) =>
+        _promise.SetException(exception);
+}
 
-        public ValueTaskAwaiter<TResult> GetAwaiter() =>
-            _promise.Task.GetAwaiter();
+record AsyncCommand<TResult> {
+    AsyncValueTaskMethodBuilder<TResult> _promise = AsyncValueTaskMethodBuilder<TResult>.Create();
 
-        public void SetResult(TResult result) =>
-            _promise.SetResult(result);
+    public ValueTaskAwaiter<TResult> GetAwaiter() =>
+        _promise.Task.GetAwaiter();
 
-        public void SetException(Exception exception) =>
-            _promise.SetException(exception);
-    }
+    public void SetResult(TResult result) =>
+        _promise.SetResult(result);
+
+    public void SetException(Exception exception) =>
+        _promise.SetException(exception);
 }

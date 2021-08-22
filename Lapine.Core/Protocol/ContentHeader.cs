@@ -2,6 +2,7 @@ namespace Lapine.Protocol;
 
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 
 readonly record struct ContentHeader(UInt16 ClassId, UInt64 BodySize, BasicProperties Properties) : ISerializable {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -10,7 +11,7 @@ readonly record struct ContentHeader(UInt16 ClassId, UInt64 BodySize, BasicPrope
             .WriteUInt64BE(BodySize)
             .WriteSerializable(Properties);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out ContentHeader result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ContentHeader? result, out ReadOnlySpan<Byte> surplus) {
         if (buffer.ReadUInt16BE(out var classId, out surplus) &&
             surplus.ReadUInt16BE(out _, out surplus) &&
             surplus.ReadUInt64BE(out var bodySize, out surplus) &&

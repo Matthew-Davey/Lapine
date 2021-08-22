@@ -13,10 +13,10 @@ public class RawFrameTests : Faker {
         value.Serialize(buffer);
         RawFrame.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
-        Assert.Equal(expected: value.Channel, actual: deserialized.Channel);
-        Assert.Equal(expected: value.Payload.ToArray(), actual: deserialized.Payload.ToArray());
-        Assert.Equal(expected: value.Size, actual: deserialized.Size);
-        Assert.Equal(expected: value.Type, actual: deserialized.Type);
+        Assert.Equal(expected: value.Channel, actual: deserialized?.Channel);
+        Assert.Equal(expected: value.Payload.ToArray(), actual: deserialized?.Payload.ToArray());
+        Assert.Equal(expected: value.Size, actual: deserialized?.Size);
+        Assert.Equal(expected: value.Type, actual: deserialized?.Type);
     }
 
     [Fact]
