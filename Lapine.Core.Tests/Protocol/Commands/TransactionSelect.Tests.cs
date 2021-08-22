@@ -1,39 +1,39 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class TransactionSelectTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new TransactionSelect();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+using System;
+using Bogus;
+using Xunit;
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+public class TransactionSelectTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new TransactionSelect();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            TransactionSelect.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        TransactionSelect.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
+}
 
-    public class TransactionSelectOkTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new TransactionSelectOk();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+public class TransactionSelectOkTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new TransactionSelectOk();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            TransactionSelectOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        TransactionSelectOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

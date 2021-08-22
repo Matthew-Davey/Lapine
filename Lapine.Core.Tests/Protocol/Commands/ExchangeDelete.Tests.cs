@@ -1,65 +1,65 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class ExchangeDeleteTests : Faker {
-        ExchangeDelete RandomSubject => new (
-            ExchangeName: Random.Word(),
-            IfUnused    : Random.Bool(),
-            NoWait      : Random.Bool()
-        );
+using System;
+using Bogus;
+using Xunit;
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = RandomSubject;
+public class ExchangeDeleteTests : Faker {
+    ExchangeDelete RandomSubject => new (
+        ExchangeName: Random.Word(),
+        IfUnused    : Random.Bool(),
+        NoWait      : Random.Bool()
+    );
 
-            value.Serialize(buffer);
-            ExchangeDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = RandomSubject;
 
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
-            Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
-            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
-        }
+        value.Serialize(buffer);
+        ExchangeDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = ExchangeDelete.Deserialize(Span<Byte>.Empty, out var _, out var _);
-
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
-
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
-
-            ExchangeDelete.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
-
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+        Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
+        Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
     }
 
-    public class ExchangeDeleteOkTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new ExchangeDeleteOk();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = ExchangeDelete.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+        Assert.False(result);
+    }
 
-            ExchangeDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        ExchangeDelete.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+    }
+}
+
+public class ExchangeDeleteOkTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new ExchangeDeleteOk();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
+
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        ExchangeDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

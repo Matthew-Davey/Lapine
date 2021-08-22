@@ -1,7 +1,6 @@
-namespace Lapine.Client
-{
-    public enum Durability {
-        Transient = 0,
-        Durable = 1,
-    }
+namespace Lapine.Client;
+
+public enum Durability {
+    Transient = 0,
+    Durable = 1,
 }

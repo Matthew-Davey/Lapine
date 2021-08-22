@@ -1,7 +1,7 @@
-namespace Lapine.Protocol.Commands {
-    using System;
+namespace Lapine.Protocol.Commands;
 
-    interface ICommand : ISerializable {
-        (Byte ClassId, Byte MethodId) CommandId { get; }
-    }
+using System;
+
+interface ICommand : ISerializable {
+    (Byte ClassId, Byte MethodId) CommandId { get; }
 }

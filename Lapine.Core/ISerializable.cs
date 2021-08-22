@@ -1,8 +1,8 @@
-namespace Lapine {
-    using System;
-    using System.Buffers;
+namespace Lapine;
 
-    interface ISerializable {
-        IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer);
-    }
+using System;
+using System.Buffers;
+
+interface ISerializable {
+    IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer);
 }

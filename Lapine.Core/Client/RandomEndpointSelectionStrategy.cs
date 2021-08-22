@@ -1,14 +1,14 @@
-namespace Lapine.Client {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Net;
+namespace Lapine.Client;
 
-    public class RandomEndpointSelectionStrategy : IEndpointSelectionStrategy {
-        public IEnumerable<IPEndPoint> GetConnectionSequence(IEnumerable<IPEndPoint> availableEndpoints) {
-            var random = new Random();
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 
-            return availableEndpoints.OrderBy(_ => random.Next());
-        }
+public class RandomEndpointSelectionStrategy : IEndpointSelectionStrategy {
+    public IEnumerable<IPEndPoint> GetConnectionSequence(IEnumerable<IPEndPoint> availableEndpoints) {
+        var random = new Random();
+
+        return availableEndpoints.OrderBy(_ => random.Next());
     }
 }

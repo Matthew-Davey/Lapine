@@ -1,41 +1,41 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using System.Buffers;
-    using System.Diagnostics.CodeAnalysis;
+namespace Lapine.Protocol.Commands;
 
-    record struct ChannelFlow(Boolean Active) : ICommand {
-        public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x14);
+using System;
+using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 
-        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteBoolean(Active);
+record struct ChannelFlow(Boolean Active) : ICommand {
+    public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x14);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlow? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadBoolean(out var active, out surplus)) {
-                result = new ChannelFlow(active);
-                return true;
-            }
-            else {
-                result = default;
-                return false;
-            }
+    public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+        writer.WriteBoolean(Active);
+
+    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlow? result, out ReadOnlySpan<Byte> surplus) {
+        if (buffer.ReadBoolean(out var active, out surplus)) {
+            result = new ChannelFlow(active);
+            return true;
+        }
+        else {
+            result = default;
+            return false;
         }
     }
+}
 
-    record struct ChannelFlowOk(Boolean Active) : ICommand {
-        public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x15);
+record struct ChannelFlowOk(Boolean Active) : ICommand {
+    public (Byte ClassId, Byte MethodId) CommandId => (0x14, 0x15);
 
-        public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
-            writer.WriteBoolean(Active);
+    public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
+        writer.WriteBoolean(Active);
 
-        static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlowOk? result, out ReadOnlySpan<Byte> surplus) {
-            if (buffer.ReadBoolean(out var active, out surplus)) {
-                result = new ChannelFlowOk(active);
-                return true;
-            }
-            else {
-                result = default;
-                return false;
-            }
+    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlowOk? result, out ReadOnlySpan<Byte> surplus) {
+        if (buffer.ReadBoolean(out var active, out surplus)) {
+            result = new ChannelFlowOk(active);
+            return true;
+        }
+        else {
+            result = default;
+            return false;
         }
     }
 }

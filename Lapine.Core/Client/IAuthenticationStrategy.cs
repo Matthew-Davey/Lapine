@@ -1,9 +1,9 @@
-namespace Lapine.Client {
-    using System;
+namespace Lapine.Client;
 
-    public interface IAuthenticationStrategy {
-        String Mechanism { get; }
+using System;
 
-        ReadOnlySpan<Byte> Respond(Byte stage, in ReadOnlySpan<Byte> challenge);
-    }
+public interface IAuthenticationStrategy {
+    String Mechanism { get; }
+
+    ReadOnlySpan<Byte> Respond(Byte stage, in ReadOnlySpan<Byte> challenge);
 }

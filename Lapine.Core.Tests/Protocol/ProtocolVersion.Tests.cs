@@ -1,50 +1,50 @@
-namespace Lapine.Protocol {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol;
 
-    public class ProtocolVersionTests : Faker {
-        [Fact]
-        public void SerializedSizeIsThreeBytes() {
-            var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-            var buffer = new MemoryBufferWriter<Byte>(3);
+using System;
+using Bogus;
+using Xunit;
 
-            value.Serialize(buffer);
+public class ProtocolVersionTests : Faker {
+    [Fact]
+    public void SerializedSizeIsThreeBytes() {
+        var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
+        var buffer = new MemoryBufferWriter<Byte>(3);
 
-            Assert.Equal(expected: 3, actual: buffer.WrittenCount);
-        }
+        value.Serialize(buffer);
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-            var buffer = new MemoryBufferWriter<Byte>(3);
+        Assert.Equal(expected: 3, actual: buffer.WrittenCount);
+    }
 
-            value.Serialize(buffer);
-            ProtocolVersion.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
+        var buffer = new MemoryBufferWriter<Byte>(3);
 
-            Assert.Equal(expected: value, actual: deserialized);
-        }
+        value.Serialize(buffer);
+        ProtocolVersion.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = ProtocolVersion.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        Assert.Equal(expected: value, actual: deserialized);
+    }
 
-            Assert.False(result);
-        }
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = ProtocolVersion.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>(7);
+        Assert.False(result);
+    }
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>(7);
 
-            ProtocolVersion.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        ProtocolVersion.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

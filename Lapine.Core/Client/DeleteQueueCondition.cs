@@ -1,16 +1,16 @@
-namespace Lapine.Client {
-    using System;
+namespace Lapine.Client;
 
-    [Flags]
-    public enum DeleteQueueCondition {
-        None = 0x00,
-        /// <summary>
-        /// The server will only delete the queue if it has no consumers.
-        /// </summary>
-        Unused = 0x01,
-        /// <summary>
-        /// The server will only delete the queue if it has no messages.
-        /// </summary>
-        Empty = 0x02
-    }
+using System;
+
+[Flags]
+public enum DeleteQueueCondition {
+    None = 0x00,
+    /// <summary>
+    /// The server will only delete the queue if it has no consumers.
+    /// </summary>
+    Unused = 0x01,
+    /// <summary>
+    /// The server will only delete the queue if it has no messages.
+    /// </summary>
+    Empty = 0x02
 }

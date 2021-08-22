@@ -1,10 +1,10 @@
-namespace Lapine.Client {
-    using System;
+namespace Lapine.Client;
 
-    [Flags]
-    public enum RoutingFlags {
-        None = 0x00,
-        Mandatory = 0x01,
-        Immediate = 0x02
-    }
+using System;
+
+[Flags]
+public enum RoutingFlags {
+    None = 0x00,
+    Mandatory = 0x01,
+    Immediate = 0x02
 }

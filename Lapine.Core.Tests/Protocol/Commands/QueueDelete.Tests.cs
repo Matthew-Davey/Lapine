@@ -1,89 +1,89 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class QueueDeleteTests : Faker {
-        QueueDelete RandomSubject => new (
-            QueueName : Random.Word(),
-            IfUnused  : Random.Bool(),
-            IfEmpty   : Random.Bool(),
-            NoWait    : Random.Bool()
-        );
+using System;
+using Bogus;
+using Xunit;
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = RandomSubject;
+public class QueueDeleteTests : Faker {
+    QueueDelete RandomSubject => new (
+        QueueName : Random.Word(),
+        IfUnused  : Random.Bool(),
+        IfEmpty   : Random.Bool(),
+        NoWait    : Random.Bool()
+    );
 
-            value.Serialize(buffer);
-            QueueDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = RandomSubject;
 
-            Assert.Equal(expected: value.IfEmpty, actual: deserialized?.IfEmpty);
-            Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
-            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
-        }
+        value.Serialize(buffer);
+        QueueDelete.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDelete.Deserialize(Span<Byte>.Empty, out var _, out var _);
-
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
-
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
-
-            QueueDelete.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
-
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.IfEmpty, actual: deserialized?.IfEmpty);
+        Assert.Equal(expected: value.IfUnused, actual: deserialized?.IfUnused);
+        Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+        Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
     }
 
-    public class QueueDeleteOkTests : Faker {
-        QueueDeleteOk RandomSubject => new (
-            MessageCount : Random.UInt()
-        );
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = QueueDelete.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>();
-            var value  = RandomSubject;
+        Assert.False(result);
+    }
 
-            value.Serialize(buffer);
-            QueueDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
-        }
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = QueueDeleteOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        QueueDelete.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
 
-            Assert.False(result);
-        }
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+    }
+}
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+public class QueueDeleteOkTests : Faker {
+    QueueDeleteOk RandomSubject => new (
+        MessageCount : Random.UInt()
+    );
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>();
+        var value  = RandomSubject;
 
-            QueueDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        value.Serialize(buffer);
+        QueueDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
+    }
+
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = QueueDeleteOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
+
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        QueueDeleteOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

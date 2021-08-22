@@ -1,23 +1,23 @@
-namespace Lapine.Client {
-    using System;
+namespace Lapine.Client;
 
-    using static System.Text.Encoding;
+using System;
 
-    public class PlainAuthenticationStrategy : IAuthenticationStrategy {
-        public String Mechanism => "PLAIN";
+using static System.Text.Encoding;
 
-        public const String DefaultUsername = "guest";
-        public const String DefaultPassword = "guest";
+public class PlainAuthenticationStrategy : IAuthenticationStrategy {
+    public String Mechanism => "PLAIN";
 
-        public String Username { get; }
-        public String Password { get; }
+    public const String DefaultUsername = "guest";
+    public const String DefaultPassword = "guest";
 
-        public PlainAuthenticationStrategy(String username = DefaultUsername, String password = DefaultPassword) {
-            Username = username;
-            Password = password;
-        }
+    public String Username { get; }
+    public String Password { get; }
 
-        public ReadOnlySpan<Byte> Respond(Byte stage, in ReadOnlySpan<Byte> challenge) =>
-            UTF8.GetBytes($"\0{Username}\0{Password}");
+    public PlainAuthenticationStrategy(String username = DefaultUsername, String password = DefaultPassword) {
+        Username = username;
+        Password = password;
     }
+
+    public ReadOnlySpan<Byte> Respond(Byte stage, in ReadOnlySpan<Byte> challenge) =>
+        UTF8.GetBytes($"\0{Username}\0{Password}");
 }

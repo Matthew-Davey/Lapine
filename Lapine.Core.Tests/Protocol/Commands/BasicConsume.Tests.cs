@@ -1,97 +1,97 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class BasicConsumeTests : Faker {
-        BasicConsume RandomSubject => new (
-            QueueName   : Random.Word(),
-            ConsumerTag : Random.Word(),
-            NoLocal     : Random.Bool(),
-            NoAck       : Random.Bool(),
-            Exclusive   : Random.Bool(),
-            NoWait      : Random.Bool(),
-            Arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
-        );
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Bogus;
+using Xunit;
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = RandomSubject;
+public class BasicConsumeTests : Faker {
+    BasicConsume RandomSubject => new (
+        QueueName   : Random.Word(),
+        ConsumerTag : Random.Word(),
+        NoLocal     : Random.Bool(),
+        NoAck       : Random.Bool(),
+        Exclusive   : Random.Bool(),
+        NoWait      : Random.Bool(),
+        Arguments   : new Dictionary<String, Object> {{ Random.Word(), Random.UInt() }}
+    );
 
-            value.Serialize(buffer);
-            BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = RandomSubject;
 
-            Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
-            Assert.Equal(expected: value.Exclusive, actual: deserialized?.Exclusive);
-            Assert.Equal(expected: value.NoAck, actual: deserialized?.NoAck);
-            Assert.Equal(expected: value.NoLocal, actual: deserialized?.NoLocal);
-            Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
-            Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
-        }
+        value.Serialize(buffer);
+        BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = BasicConsume.Deserialize(Span<Byte>.Empty, out var _, out var _);
-
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
-
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
-
-            BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
-
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
+        Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+        Assert.Equal(expected: value.Exclusive, actual: deserialized?.Exclusive);
+        Assert.Equal(expected: value.NoAck, actual: deserialized?.NoAck);
+        Assert.Equal(expected: value.NoLocal, actual: deserialized?.NoLocal);
+        Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
+        Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
     }
 
-    public class BasicConsumeOkTests : Faker {
-        BasicConsumeOk RandomSubject => new (
-            ConsumerTag: Random.Word()
-        );
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = BasicConsume.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>();
-            var value  = RandomSubject;
+        Assert.False(result);
+    }
 
-            value.Serialize(buffer);
-            BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
-        }
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = BasicConsumeOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
 
-            Assert.False(result);
-        }
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+    }
+}
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+public class BasicConsumeOkTests : Faker {
+    BasicConsumeOk RandomSubject => new (
+        ConsumerTag: Random.Word()
+    );
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>();
+        var value  = RandomSubject;
 
-            BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        value.Serialize(buffer);
+        BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+    }
+
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = BasicConsumeOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
+
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

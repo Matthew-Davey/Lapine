@@ -1,25 +1,25 @@
-namespace Lapine.Client {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Net;
-    using System.Net.NetworkInformation;
+namespace Lapine.Client;
 
-    public class FastestEndpointSelectionStrategy : IEndpointSelectionStrategy {
-        public const UInt16 DefaultPingTimeout = 3000;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
 
-        public UInt16 PingTimeout { get; }
+public class FastestEndpointSelectionStrategy : IEndpointSelectionStrategy {
+    public const UInt16 DefaultPingTimeout = 3000;
 
-        readonly Ping _ping = new ();
+    public UInt16 PingTimeout { get; }
 
-        public FastestEndpointSelectionStrategy(UInt16 pingTimeout = DefaultPingTimeout) =>
-            PingTimeout = pingTimeout;
+    readonly Ping _ping = new ();
 
-        public IEnumerable<IPEndPoint> GetConnectionSequence(IEnumerable<IPEndPoint> availableEndpoints) =>
-            from endpoint in availableEndpoints.AsParallel()
-            let reply = _ping.Send(endpoint.Address, PingTimeout)
-            where reply.Status is IPStatus.Success
-            orderby reply.RoundtripTime
-            select endpoint;
-    }
+    public FastestEndpointSelectionStrategy(UInt16 pingTimeout = DefaultPingTimeout) =>
+        PingTimeout = pingTimeout;
+
+    public IEnumerable<IPEndPoint> GetConnectionSequence(IEnumerable<IPEndPoint> availableEndpoints) =>
+        from endpoint in availableEndpoints.AsParallel()
+        let reply = _ping.Send(endpoint.Address, PingTimeout)
+        where reply.Status is IPStatus.Success
+        orderby reply.RoundtripTime
+        select endpoint;
 }

@@ -1,6 +1,6 @@
-namespace Lapine.Client {
-    public enum Acknowledgements {
-        Manual,
-        Auto
-    }
+namespace Lapine.Client;
+
+public enum Acknowledgements {
+    Manual,
+    Auto
 }

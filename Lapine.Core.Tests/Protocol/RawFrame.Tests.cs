@@ -1,67 +1,67 @@
-namespace Lapine.Protocol {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol;
 
-    public class RawFrameTests : Faker {
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>();
-            var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
+using System;
+using Bogus;
+using Xunit;
 
-            value.Serialize(buffer);
-            RawFrame.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+public class RawFrameTests : Faker {
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>();
+        var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
-            Assert.Equal(expected: value.Channel, actual: deserialized.Channel);
-            Assert.Equal(expected: value.Payload.ToArray(), actual: deserialized.Payload.ToArray());
-            Assert.Equal(expected: value.Size, actual: deserialized.Size);
-            Assert.Equal(expected: value.Type, actual: deserialized.Type);
-        }
+        value.Serialize(buffer);
+        RawFrame.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = RawFrame.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        Assert.Equal(expected: value.Channel, actual: deserialized.Channel);
+        Assert.Equal(expected: value.Payload.ToArray(), actual: deserialized.Payload.ToArray());
+        Assert.Equal(expected: value.Size, actual: deserialized.Size);
+        Assert.Equal(expected: value.Type, actual: deserialized.Type);
+    }
 
-            Assert.False(result);
-        }
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = RawFrame.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInvalidFrameType() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
+        Assert.False(result);
+    }
 
-            value.Serialize(buffer);
-            var modifiedBuffer = buffer.WrittenMemory.ToArray();
-            modifiedBuffer[0] = Random.Byte(min: 10);
+    [Fact]
+    public void DeserializationFailsWithInvalidFrameType() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
-            Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
-        }
+        value.Serialize(buffer);
+        var modifiedBuffer = buffer.WrittenMemory.ToArray();
+        modifiedBuffer[0] = Random.Byte(min: 10);
 
-        [Fact]
-        public void DeserializationFailsWithInvalidFrameTerminator() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
+        Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
+    }
 
-            value.Serialize(buffer);
-            var modifiedBuffer = buffer.WrittenMemory.ToArray();
-            modifiedBuffer[^1] = 0x00;
+    [Fact]
+    public void DeserializationFailsWithInvalidFrameTerminator() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
 
-            Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
-        }
+        value.Serialize(buffer);
+        var modifiedBuffer = buffer.WrittenMemory.ToArray();
+        modifiedBuffer[^1] = 0x00;
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>(12);
+        Assert.Throws<FramingErrorException>(() => RawFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
+    }
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new RawFrame(Random.Enum<FrameType>(), Random.UShort(), Random.Bytes(Random.UShort()));
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>(12);
 
-            RawFrame.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        RawFrame.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

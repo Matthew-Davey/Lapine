@@ -1,25 +1,25 @@
-namespace Lapine.Client {
-    using System;
+namespace Lapine.Client;
 
-    public readonly record struct ConnectionIntegrityStrategy(TimeSpan? HeartbeatFrequency, (TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount)? KeepAliveSettings) {
-        static public ConnectionIntegrityStrategy None => new (
-            HeartbeatFrequency: null,
-            KeepAliveSettings : null
-        );
+using System;
 
-        static public ConnectionIntegrityStrategy Default => new (
-            HeartbeatFrequency: TimeSpan.FromSeconds(60),
-            KeepAliveSettings : null
-        );
+public readonly record struct ConnectionIntegrityStrategy(TimeSpan? HeartbeatFrequency, (TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount)? KeepAliveSettings) {
+    static public ConnectionIntegrityStrategy None => new (
+        HeartbeatFrequency: null,
+        KeepAliveSettings : null
+    );
 
-        static public ConnectionIntegrityStrategy AmqpHeartbeats(TimeSpan frequency) => new (
-            HeartbeatFrequency: frequency,
-            KeepAliveSettings : null
-        );
+    static public ConnectionIntegrityStrategy Default => new (
+        HeartbeatFrequency: TimeSpan.FromSeconds(60),
+        KeepAliveSettings : null
+    );
 
-        static public ConnectionIntegrityStrategy TcpKeepAlives(TimeSpan probeTime, TimeSpan retryInterval, Int32 retryCount) => new (
-            HeartbeatFrequency: null,
-            KeepAliveSettings : (probeTime, retryInterval, retryCount)
-        );
-    }
+    static public ConnectionIntegrityStrategy AmqpHeartbeats(TimeSpan frequency) => new (
+        HeartbeatFrequency: frequency,
+        KeepAliveSettings : null
+    );
+
+    static public ConnectionIntegrityStrategy TcpKeepAlives(TimeSpan probeTime, TimeSpan retryInterval, Int32 retryCount) => new (
+        HeartbeatFrequency: null,
+        KeepAliveSettings : (probeTime, retryInterval, retryCount)
+    );
 }

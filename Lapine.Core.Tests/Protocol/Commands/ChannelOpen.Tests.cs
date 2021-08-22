@@ -1,39 +1,39 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class ChannelOpenTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new ChannelOpen();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+using System;
+using Bogus;
+using Xunit;
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+public class ChannelOpenTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new ChannelOpen();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            ChannelOpen.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        ChannelOpen.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
+}
 
-    public class ChannelOpenOkTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new ChannelOpenOk();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+public class ChannelOpenOkTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new ChannelOpenOk();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            ChannelOpenOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        ChannelOpenOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

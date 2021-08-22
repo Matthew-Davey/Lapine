@@ -1,50 +1,50 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class BasicDeliverTests : Faker {
-        BasicDeliver RandomSubject => new (
-            ConsumerTag : Random.Word(),
-            DeliveryTag : Random.ULong(),
-            Redelivered : Random.Bool(),
-            ExchangeName: Random.Word()
-        );
+using System;
+using Bogus;
+using Xunit;
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = RandomSubject;
+public class BasicDeliverTests : Faker {
+    BasicDeliver RandomSubject => new (
+        ConsumerTag : Random.Word(),
+        DeliveryTag : Random.ULong(),
+        Redelivered : Random.Bool(),
+        ExchangeName: Random.Word()
+    );
 
-            value.Serialize(buffer);
-            BasicDeliver.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = RandomSubject;
 
-            Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
-            Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
-            Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
-            Assert.Equal(expected: value.Redelivered, actual: deserialized?.Redelivered);
-        }
+        value.Serialize(buffer);
+        BasicDeliver.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = BasicDeliver.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
+        Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
+        Assert.Equal(expected: value.ExchangeName, actual: deserialized?.ExchangeName);
+        Assert.Equal(expected: value.Redelivered, actual: deserialized?.Redelivered);
+    }
 
-            Assert.False(result);
-        }
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = BasicDeliver.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+        Assert.False(result);
+    }
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            BasicDeliver.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        BasicDeliver.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

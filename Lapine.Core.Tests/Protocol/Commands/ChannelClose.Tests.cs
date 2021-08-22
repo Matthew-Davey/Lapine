@@ -1,65 +1,65 @@
-namespace Lapine.Protocol.Commands {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol.Commands;
 
-    public class ChannelCloseTests : Faker {
-        ChannelClose RandomSubject => new (
-            ReplyCode    : Random.UShort(),
-            ReplyText    : Lorem.Sentence(),
-            FailingMethod: (Random.UShort(), Random.UShort())
-        );
+using System;
+using Bogus;
+using Xunit;
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>();
-            var value  = RandomSubject;
+public class ChannelCloseTests : Faker {
+    ChannelClose RandomSubject => new (
+        ReplyCode    : Random.UShort(),
+        ReplyText    : Lorem.Sentence(),
+        FailingMethod: (Random.UShort(), Random.UShort())
+    );
 
-            value.Serialize(buffer);
-            ChannelClose.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>();
+        var value  = RandomSubject;
 
-            Assert.Equal(expected: value.FailingMethod, actual: deserialized?.FailingMethod);
-            Assert.Equal(expected: value.ReplyCode, actual: deserialized?.ReplyCode);
-            Assert.Equal(expected: value.ReplyText, actual: deserialized?.ReplyText);
-        }
+        value.Serialize(buffer);
+        ChannelClose.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = ChannelClose.Deserialize(Span<Byte>.Empty, out var _, out var _);
-
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = RandomSubject;
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
-
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
-
-            ChannelClose.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
-
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        Assert.Equal(expected: value.FailingMethod, actual: deserialized?.FailingMethod);
+        Assert.Equal(expected: value.ReplyCode, actual: deserialized?.ReplyCode);
+        Assert.Equal(expected: value.ReplyText, actual: deserialized?.ReplyText);
     }
 
-    public class ChannelCloseOkTests : Faker {
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = new ChannelCloseOk();
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>();
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = ChannelClose.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+        Assert.False(result);
+    }
 
-            ChannelCloseOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = RandomSubject;
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        ChannelClose.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+    }
+}
+
+public class ChannelCloseOkTests : Faker {
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = new ChannelCloseOk();
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>();
+
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
+
+        ChannelCloseOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }

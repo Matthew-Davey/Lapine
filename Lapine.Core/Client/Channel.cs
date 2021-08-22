@@ -1,159 +1,159 @@
-namespace Lapine.Client {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Threading.Tasks;
-    using Lapine.Protocol;
-    using Proto;
+namespace Lapine.Client;
 
-    using static Lapine.Agents.ChannelAgent.Protocol;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Threading.Tasks;
+using Lapine.Protocol;
+using Proto;
 
-    public class Channel {
-        readonly ActorSystem _system;
-        readonly PID _agent;
-        readonly ConnectionConfiguration _connectionConfiguration;
+using static Lapine.Agents.ChannelAgent.Protocol;
 
-        Boolean _closed = false;
+public class Channel {
+    readonly ActorSystem _system;
+    readonly PID _agent;
+    readonly ConnectionConfiguration _connectionConfiguration;
 
-        internal Channel(ActorSystem system, PID agent, in ConnectionConfiguration connectionConfiguration) {
-            _system                  = system ?? throw new ArgumentNullException(nameof(system));
-            _agent                   = agent ?? throw new ArgumentNullException(nameof(agent));
-            _connectionConfiguration = connectionConfiguration;
-        }
+    Boolean _closed = false;
 
-        public async ValueTask CloseAsync(TimeSpan? timeout = null) {
-            if (_closed)
-                return; // Channel is already closed, nothing to do here...
+    internal Channel(ActorSystem system, PID agent, in ConnectionConfiguration connectionConfiguration) {
+        _system                  = system ?? throw new ArgumentNullException(nameof(system));
+        _agent                   = agent ?? throw new ArgumentNullException(nameof(agent));
+        _connectionConfiguration = connectionConfiguration;
+    }
 
-            var command = new Close(timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
+    public async ValueTask CloseAsync(TimeSpan? timeout = null) {
+        if (_closed)
+            return; // Channel is already closed, nothing to do here...
 
-            _closed = true;
-        }
+        var command = new Close(timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
 
-        public async ValueTask DeclareExchangeAsync(ExchangeDefinition definition, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        _closed = true;
+    }
 
-            var command = new DeclareExchange(definition, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask DeclareExchangeAsync(ExchangeDefinition definition, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new DeclareExchange(definition, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new DeleteExchange(exchange, condition, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask DeleteExchangeAsync(String exchange, DeleteExchangeCondition condition = DeleteExchangeCondition.None, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask DeclareQueueAsync(QueueDefinition definition, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new DeleteExchange(exchange, condition, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new DeclareQueue(definition, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask DeclareQueueAsync(QueueDefinition definition, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask DeleteQueueAsync(String queue, DeleteQueueCondition condition = DeleteQueueCondition.None, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new DeclareQueue(definition, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new DeleteQueue(queue, condition, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask DeleteQueueAsync(String queue, DeleteQueueCondition condition = DeleteQueueCondition.None, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask BindQueueAsync(Binding binding, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new DeleteQueue(queue, condition, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new BindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask BindQueueAsync(Binding binding, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask UnbindQueueAsync(Binding binding, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new BindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new UnbindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask UnbindQueueAsync(Binding binding, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask PurgeQueueAsync(String queue, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new UnbindQueue(binding, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new PurgeQueue(queue, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask PurgeQueueAsync(String queue, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask PublishAsync(String exchange, String routingKey, (MessageProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new PurgeQueue(queue, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command   = new Publish(exchange, routingKey, routingFlags, (message.Properties.ToBasicProperties(), message.Payload), timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask PublishAsync(String exchange, String routingKey, (MessageProperties Properties, ReadOnlyMemory<Byte> Payload) message, RoutingFlags routingFlags = RoutingFlags.None, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command   = new Publish(exchange, routingKey, routingFlags, (message.Properties.ToBasicProperties(), message.Payload), timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new GetMessage(queue, acknowledgements, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            return await command switch {
-                null => null,
-                (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
-            };
-        }
+    public async ValueTask<(DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)?> GetMessageAsync(String queue, Acknowledgements acknowledgements, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask AcknowledgeAsync(UInt64 deliveryTag, Boolean multiple = false) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new GetMessage(queue, acknowledgements, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        return await command switch {
+            null => null,
+            (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body) => (delivery, MessageProperties.FromBasicProperties(properties), body)
+        };
+    }
 
-            var command = new Acknowledge(deliveryTag, multiple);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask AcknowledgeAsync(UInt64 deliveryTag, Boolean multiple = false) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask RejectAsync(UInt64 deliveryTag, Boolean requeue) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new Acknowledge(deliveryTag, multiple);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new Reject(deliveryTag, requeue);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask RejectAsync(UInt64 deliveryTag, Boolean requeue) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new Reject(deliveryTag, requeue);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new SetPrefetchLimit(limit, scope switch {
-                PrefetchLimitScope.Consumer => false,
-                PrefetchLimitScope.Channel  => true,
-                _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
-            }, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            await command;
-        }
+    public async ValueTask SetPrefetchLimitAsync(UInt16 limit, PrefetchLimitScope scope = PrefetchLimitScope.Consumer, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
 
-        public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null, TimeSpan? timeout = null) {
-            if (_closed)
-                throw new InvalidOperationException("Channel is closed.");
+        var command = new SetPrefetchLimit(limit, scope switch {
+            PrefetchLimitScope.Consumer => false,
+            PrefetchLimitScope.Channel  => true,
+            _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
+        }, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 
-            var command = new Consume(queue, consumerConfiguration, arguments, timeout ?? _connectionConfiguration.CommandTimeout);
-            _system.Root.Send(_agent, command);
-            return await command;
-        }
+    public async ValueTask<String> ConsumeAsync(String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null, TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed.");
+
+        var command = new Consume(queue, consumerConfiguration, arguments, timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        return await command;
     }
 }

@@ -1,50 +1,50 @@
-namespace Lapine.Protocol {
-    using System;
-    using Bogus;
-    using Xunit;
+namespace Lapine.Protocol;
 
-    public class ProtocolHeaderTests : Faker {
-        [Fact]
-        public void SerializedSizeIsEightBytes() {
-            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
-            var buffer = new MemoryBufferWriter<Byte>(8);
+using System;
+using Bogus;
+using Xunit;
 
-            value.Serialize(buffer);
+public class ProtocolHeaderTests : Faker {
+    [Fact]
+    public void SerializedSizeIsEightBytes() {
+        var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+        var buffer = new MemoryBufferWriter<Byte>(8);
 
-            Assert.Equal(expected: 8, actual: buffer.WrittenCount);
-        }
+        value.Serialize(buffer);
 
-        [Fact]
-        public void SerializationIsSymmetric() {
-            var buffer = new MemoryBufferWriter<Byte>(8);
-            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+        Assert.Equal(expected: 8, actual: buffer.WrittenCount);
+    }
 
-            value.Serialize(buffer);
-            ProtocolHeader.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+    [Fact]
+    public void SerializationIsSymmetric() {
+        var buffer = new MemoryBufferWriter<Byte>(8);
+        var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
 
-            Assert.Equal(expected: value, actual: deserialized);
-        }
+        value.Serialize(buffer);
+        ProtocolHeader.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
 
-        [Fact]
-        public void DeserializationFailsWithInsufficientData() {
-            var result = ProtocolHeader.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        Assert.Equal(expected: value, actual: deserialized);
+    }
 
-            Assert.False(result);
-        }
+    [Fact]
+    public void DeserializationFailsWithInsufficientData() {
+        var result = ProtocolHeader.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
-        [Fact]
-        public void DeserializationReturnsSurplusData() {
-            var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
-            var extra  = Random.UInt();
-            var buffer = new MemoryBufferWriter<Byte>(12);
+        Assert.False(result);
+    }
 
-            buffer.WriteSerializable(value)
-                .WriteUInt32LE(extra);
+    [Fact]
+    public void DeserializationReturnsSurplusData() {
+        var value  = ProtocolHeader.Create(Random.Chars(count: 4), Random.Byte(), new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte()));
+        var extra  = Random.UInt();
+        var buffer = new MemoryBufferWriter<Byte>(12);
 
-            ProtocolHeader.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        buffer.WriteSerializable(value)
+            .WriteUInt32LE(extra);
 
-            Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-            Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
-        }
+        ProtocolHeader.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
     }
 }
