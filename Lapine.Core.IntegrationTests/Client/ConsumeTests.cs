@@ -1,6 +1,8 @@
 namespace Lapine.Client;
 
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Bogus;
 using FluentAssertions;
 using Xbehave;
@@ -218,6 +220,51 @@ public class ConsumeTests : Faker {
             await channel.RejectAsync(message!.Value.Delivery.DeliveryTag, requeue: false);
         });
         "Then the message is not requeued".x(async () => {
+            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
+                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+                messagesCount.Should().Be(0);
+            });
+        });
+    }
+
+    [Scenario]
+    [Example("3.9")]
+    [Example("3.8")]
+    [Example("3.7")]
+    public void PurgeQueue(String brokerVersion, BrokerProxy broker, QueueDefinition queueDefinition, AmqpClient subject, Channel channel) {
+        $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+            broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
+        }).Teardown(async () => await broker.DisposeAsync());
+        "And the broker has a queue declared".x(async () => {
+            await broker.QueueDeclareAsync(queueDefinition = QueueDefinition.Create(Lorem.Word()));
+        });
+        "And the queue has 10 messages".x(async () => {
+            await Task.WhenAll(
+                Enumerable.Range(0, 10)
+                    .Select(_ =>
+                        broker.PublishMessage(
+                            exchange  : "amq.default",
+                            routingKey: queueDefinition.Name,
+                            payload   : Lorem.Sentence()
+                        ).AsTask()
+                    )
+            );
+
+            // Wait a few moments for the message to show up in the queue...
+            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
+                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+                messagesCount.Should().Be(10);
+            });
+        });
+        "And a client connected to the broker with an open channel".x(async () => {
+            subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+            await subject.ConnectAsync();
+            channel = await subject.OpenChannelAsync();
+        }).Teardown(async () => await subject.DisposeAsync());
+        "When the client purges the queue".x(async () => {
+            await channel.PurgeQueueAsync(queueDefinition.Name);
+        });
+        "Then the queue is empty".x(async () => {
             await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
                 var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
                 messagesCount.Should().Be(0);
