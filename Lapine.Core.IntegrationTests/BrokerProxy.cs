@@ -30,7 +30,7 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
-    public record Channel(String Name, Int32 Number, String User, String Vhost);
+    public record Channel(String Name, Int32 Number, String User, String Vhost, Boolean Confirm);
 
     static readonly IAsyncPolicy CommandRetryPolicy =
         Handle<CommandExecutionException>()
@@ -152,7 +152,7 @@ public class BrokerProxy : IAsyncDisposable {
                 .Add("exec")
                 .Add(_container)
                 .Add("rabbitmqctl")
-                .Add("list_channels name number user vhost", escape: false)
+                .Add("list_channels name number user vhost confirm", escape: false)
                 .Add("--formatter json", escape: false))
             .WithValidation(CommandResultValidation.ZeroExitCode)
             .ExecuteBufferedAsync()
@@ -161,12 +161,13 @@ public class BrokerProxy : IAsyncDisposable {
         var channels = JArray.Parse(process.StandardOutput);
 
         foreach (var channel in channels) {
-            var name   = (String)channel.SelectToken("$.name");
-            var number = (Int32)channel.SelectToken("$.number");
-            var user   = (String)channel.SelectToken("$.user");
-            var vhost  = (String)channel.SelectToken("$.vhost");
+            var name    = (String)channel.SelectToken("$.name");
+            var number  = (Int32)channel.SelectToken("$.number");
+            var user    = (String)channel.SelectToken("$.user");
+            var vhost   = (String)channel.SelectToken("$.vhost");
+            var confirm = (Boolean)channel.SelectToken("$.confirm");
 
-            yield return new Channel(name, number, user, vhost);
+            yield return new Channel(name, number, user, vhost, confirm);
         }
     }
 

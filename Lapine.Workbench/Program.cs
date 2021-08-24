@@ -30,17 +30,33 @@ namespace Lapine.Workbench {
             await channel.DeclareExchangeAsync(ExchangeDefinition.Direct("test.exchange"));
             await channel.DeclareQueueAsync(QueueDefinition.Create("test.queue"));
             await channel.BindQueueAsync(Binding.Create("test.exchange", "test.queue"));
-            await channel.ConsumeAsync("test.queue", ConsumerConfiguration.Create(HandleMessage) with {
-                Acknowledgements = Acknowledgements.Manual
-            });
+
+            await channel.PublishAsync(
+                exchange    : "test.exchange",
+                routingKey  : "#",
+                message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 1")),
+                routingFlags: RoutingFlags.None
+            );
+
+            await channel.EnablePublisherConfirms();
+
+            await channel.PublishAsync(
+                exchange    : "test.exchange",
+                routingKey  : "#",
+                message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 2")),
+                routingFlags: RoutingFlags.None
+            );
+
+            await channel.PublishAsync(
+                exchange    : "test.exchange",
+                routingKey  : "#",
+                message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 3")),
+                routingFlags: RoutingFlags.None
+            );
+
             await Task.Delay(TimeSpan.FromMilliseconds(-1));
             await channel.CloseAsync();
             await amqpClient.DisposeAsync();
-
-            static Task HandleMessage(DeliveryInfo delivery, MessageProperties properties, ReadOnlyMemory<Byte> body) {
-                Console.WriteLine(UTF8.GetString(body.Span));
-                return Task.CompletedTask;
-            }
         }
     }
 }

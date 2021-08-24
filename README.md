@@ -1,12 +1,12 @@
 # Lapine
-A C# client library for the Advanced Message Queueing Protocol (AMQP) v0.9.1
+A C# client library for RabbitMQ 3.7+
 
 ![.NET Core](https://github.com/Matthew-Davey/Lapine/workflows/.NET%20Core/badge.svg?branch=develop)
 
-## Project Status (2021-07-22)
+## Project Status (2021-08-24)
 Lapine is in the early stages of development and is **definitely not** suitable for use in your project(s) yet.
 
-## Implementation Status
+## Implementation Status (AMQP Protocol)
 
 #### Protocol
 - [x] Basic framing
@@ -62,8 +62,10 @@ Lapine is in the early stages of development and is **definitely not** suitable 
   - [x] Concurrent message processing
 - [x] Ack
 - [x] Reject
-- [ ] Return
 - [ ] Cancel
+- [ ] Return
+  - [ ] Empty messages (context header only)
+  - [ ] Large messages (> MaxFrameSize)
 - [ ] Recover
 
 #### Transaction
@@ -72,13 +74,13 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [ ] Rollback
 
 #### RabbitMQ Extensions
-- [ ] Publisher Confirms
+- [x] Publisher Confirms
 - [ ] Consumer Cancel
 - [ ] Consumer Prefetch
 - [ ] Consumer Priorities
 - [ ] Direct Reply-to
 - [ ] Blocked Connections
-- [ ] Basic Nack
+- [x] Basic Nack
 - [ ] Exchange To Exchange Binding
 - [ ] Alternate Exchanges
 - [ ] Sender Routing
@@ -89,3 +91,6 @@ Lapine is in the early stages of development and is **definitely not** suitable 
 - [ ] Auth Failure
 - [ ] Quorum Queues
 - [ ] Streams (via AMQP)
+
+## Implementation Status (Streams Protocol)
+TODO

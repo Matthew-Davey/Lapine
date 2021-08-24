@@ -23,24 +23,28 @@ class PublishProcessManager : IActor {
     readonly RoutingFlags _routingFlags;
     readonly (BasicProperties Properties, ReadOnlyMemory<Byte> Body) _message;
     readonly UInt64 _maxFrameSize;
+    readonly Boolean _publisherConfirmsEnabled;
+    readonly UInt64 _deliveryTag;
     readonly TimeSpan _timeout;
     readonly TaskCompletionSource _promise;
 
-    public PublishProcessManager(UInt16 channelId, PID dispatcher, String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message, UInt64 maxFrameSize, TimeSpan timeout, TaskCompletionSource promise) {
-        _behaviour    = new Behavior(Unstarted);
-        _channelId    = channelId;
-        _dispatcher   = dispatcher;
-        _exchange     = exchange;
-        _routingKey   = routingKey;
-        _routingFlags = routingFlags;
-        _message      = message;
-        _maxFrameSize = maxFrameSize;
-        _promise      = promise;
-        _timeout      = timeout;
+    public PublishProcessManager(UInt16 channelId, PID dispatcher, String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message, UInt64 maxFrameSize, Boolean publisherConfirmsEnabled, UInt64 deliveryTag, TimeSpan timeout, TaskCompletionSource promise) {
+        _behaviour                = new Behavior(Unstarted);
+        _channelId                = channelId;
+        _dispatcher               = dispatcher;
+        _exchange                 = exchange;
+        _routingKey               = routingKey;
+        _routingFlags             = routingFlags;
+        _message                  = message;
+        _maxFrameSize             = maxFrameSize;
+        _publisherConfirmsEnabled = publisherConfirmsEnabled;
+        _deliveryTag              = deliveryTag;
+        _timeout                  = timeout;
+        _promise                  = promise;
     }
 
-    static public Props Create(UInt16 channelId, PID dispatcher, String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message, UInt64 maxFrameSize, TimeSpan timeout, TaskCompletionSource promise) =>
-        Props.FromProducer(() => new PublishProcessManager(channelId, dispatcher, exchange, routingKey, routingFlags, message, maxFrameSize, timeout, promise))
+    static public Props Create(UInt16 channelId, PID dispatcher, String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message, UInt64 maxFrameSize, Boolean publisherConfirmsEnabled, UInt64 deliveryTag, TimeSpan timeout, TaskCompletionSource promise) =>
+        Props.FromProducer(() => new PublishProcessManager(channelId, dispatcher, exchange, routingKey, routingFlags, message, maxFrameSize, publisherConfirmsEnabled, deliveryTag, timeout, promise))
             .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames());
 
     public Task ReceiveAsync(IContext context) =>
@@ -51,7 +55,7 @@ class PublishProcessManager : IActor {
             case Started: {
                 var subscription = context.System.EventStream.Subscribe<FrameReceived>(
                     predicate: message => message.Frame.Channel == _channelId,
-                    action: message => context.Send(context.Self!, message)
+                    action   : message => context.Send(context.Self!, message)
                 );
                 context.Send(_dispatcher, Dispatch.Command(new BasicPublish(
                     ExchangeName: _exchange,
@@ -67,15 +71,9 @@ class PublishProcessManager : IActor {
                 foreach (var segment in _message.Body.Split((Int32)_maxFrameSize)) {
                     context.Send(_dispatcher, Dispatch.ContentBody(segment));
                 }
-
-                if (_routingFlags.HasFlag(RoutingFlags.Mandatory) || _routingFlags.HasFlag(RoutingFlags.Immediate)) {
-                    var scheduledTimeout = context.Scheduler().SendOnce(
-                        delay  : _timeout,
-                        target : context.Self!,
-                        message: new TimeoutException()
-                    );
-                    _behaviour.Become(AwaitingBasicReturn(subscription, scheduledTimeout));
-                    break;
+                if (_publisherConfirmsEnabled) {
+                    var scheduledTimeout = context.Scheduler().SendOnce(_timeout, context.Self!, new TimeoutException());
+                    _behaviour.Become(AwaitingPublisherConfirm(subscription, scheduledTimeout));
                 }
                 else {
                     _promise.SetResult();
@@ -88,12 +86,19 @@ class PublishProcessManager : IActor {
         return CompletedTask;
     }
 
-    Receive AwaitingBasicReturn(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
+    Receive AwaitingPublisherConfirm(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout) =>
         (IContext context) => {
             switch (context.Message) {
-                case BasicReturn @return: {
+                case BasicAck ack when ack.DeliveryTag == _deliveryTag: {
                     scheduledTimeout.Cancel();
-                    _promise.SetException(AmqpException.Create(@return.ReplyCode, @return.ReplyText));
+                    _promise.SetResult();
+                    _behaviour.Become(Done(subscription));
+                    context.Stop(context.Self!);
+                    break;
+                }
+                case BasicNack nack when nack.DeliveryTag == _deliveryTag: {
+                    scheduledTimeout.Cancel();
+                    _promise.SetException(new AmqpException("Server rejected the message")); // Why?
                     _behaviour.Become(Done(subscription));
                     context.Stop(context.Self!);
                     break;
@@ -107,12 +112,6 @@ class PublishProcessManager : IActor {
                 case ChannelClose close: {
                     scheduledTimeout.Cancel();
                     _promise.SetException(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                    _behaviour.Become(Done(subscription));
-                    context.Stop(context.Self!);
-                    break;
-                }
-                case ICommand command: {
-                    scheduledTimeout.Cancel();
                     _behaviour.Become(Done(subscription));
                     context.Stop(context.Self!);
                     break;

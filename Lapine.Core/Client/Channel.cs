@@ -156,4 +156,13 @@ public class Channel {
         _system.Root.Send(_agent, command);
         return await command;
     }
+
+    public async ValueTask EnablePublisherConfirms(TimeSpan? timeout = null) {
+        if (_closed)
+            throw new InvalidOperationException("Channel is closed");
+
+        var command = new EnablePublisherConfirms(timeout ?? _connectionConfiguration.CommandTimeout);
+        _system.Root.Send(_agent, command);
+        await command;
+    }
 }

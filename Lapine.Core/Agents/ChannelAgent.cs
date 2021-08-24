@@ -50,6 +50,7 @@ static class ChannelAgent {
             IReadOnlyDictionary<String, Object>? Arguments,
             TimeSpan Timeout
         ) : AsyncCommand<String>;
+        public record EnablePublisherConfirms(TimeSpan Timeout) : AsyncCommand;
     }
 
     static public Props Create(UInt32 maxFrameSize) =>
@@ -58,7 +59,9 @@ static class ChannelAgent {
     readonly record struct State(
         UInt16 ChannelId,
         PID Dispatcher,
-        IImmutableDictionary<String, PID> Consumers
+        IImmutableDictionary<String, PID> Consumers,
+        Boolean PublisherConfirmsEnabled = false,
+        UInt64 DeliveryTag = 1
     );
 
     class Actor : IActor {
@@ -294,20 +297,29 @@ static class ChannelAgent {
                         var promise = new TaskCompletionSource();
                         context.Spawn(
                             PublishProcessManager.Create(
-                                channelId   : state.ChannelId,
-                                dispatcher  : state.Dispatcher,
-                                exchange    : publish.Exchange,
-                                routingKey  : publish.RoutingKey,
-                                routingFlags: publish.RoutingFlags,
-                                message     : publish.Message,
-                                maxFrameSize: _maxFrameSize,
-                                timeout     : publish.Timeout,
-                                promise     : promise
+                                channelId               : state.ChannelId,
+                                dispatcher              : state.Dispatcher,
+                                exchange                : publish.Exchange,
+                                routingKey              : publish.RoutingKey,
+                                routingFlags            : publish.RoutingFlags,
+                                message                 : publish.Message,
+                                maxFrameSize            : _maxFrameSize,
+                                publisherConfirmsEnabled: state.PublisherConfirmsEnabled,
+                                deliveryTag             : state.DeliveryTag,
+                                timeout                 : publish.Timeout,
+                                promise                 : promise
                             )
                         );
                         await promise.Task.ContinueWith(
-                            onCompleted: publish.SetResult,
-                            onFaulted  : publish.SetException
+                            onCompleted: () => {
+                                publish.SetResult();
+                                if (state.PublisherConfirmsEnabled) {
+                                    state = state with {
+                                        DeliveryTag = state.DeliveryTag +1
+                                    };
+                                }
+                            },
+                            onFaulted: publish.SetException
                         );
                         break;
                     }
@@ -390,6 +402,30 @@ static class ChannelAgent {
                                 consume.SetResult(consumerTag);
                             },
                             onFaulted: consume.SetException
+                        );
+                        break;
+                    }
+                    case EnablePublisherConfirms command: {
+                        var promise = new TaskCompletionSource();
+                        context.Spawn(
+                            RequestReplyProcessManager<ConfirmSelect, ConfirmSelectOk>.Create(
+                                channelId : state.ChannelId,
+                                dispatcher: state.Dispatcher,
+                                request   : new ConfirmSelect(
+                                    NoWait: false
+                                ),
+                                timeout   : command.Timeout,
+                                promise   : promise
+                            )
+                        );
+                        await promise.Task.ContinueWith(
+                            onCompleted: () => {
+                                command.SetResult();
+                                _behaviour.Become(Open(state with {
+                                    PublisherConfirmsEnabled = true
+                                }));
+                            },
+                            onFaulted: command.SetException
                         );
                         break;
                     }

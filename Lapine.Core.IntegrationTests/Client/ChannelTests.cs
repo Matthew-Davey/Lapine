@@ -80,6 +80,29 @@ public class ChannelTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
+    public void EnablePublisherConfirms(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel) {
+        $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
+            broker = await BrokerProxy.StartAsync(brokerVersion);
+        }).Teardown(async () => await broker.DisposeAsync());
+        "And a client connected to the broker with an open channel".x(async () => {
+            subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
+            await subject.ConnectAsync();
+            channel = await subject.OpenChannelAsync();
+        }).Teardown(async () => await subject.DisposeAsync());
+        "When publisher confirms is enabled on the channel".x(async () => {
+            await channel.EnablePublisherConfirms();
+        });
+        "Then the broker reports the channel in confirm mode".x(async () => {
+            var channels = await broker.GetChannelsAsync().ToListAsync();
+            channels.Should().HaveCount(1);
+            channels.Single().Confirm.Should().BeTrue();
+        });
+    }
+
+    [Scenario]
+    [Example("3.9")]
+    [Example("3.8")]
+    [Example("3.7")]
     public void Close(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion);
