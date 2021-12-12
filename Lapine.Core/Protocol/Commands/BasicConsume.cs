@@ -1,8 +1,6 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 record struct BasicConsume(String QueueName, String ConsumerTag, Boolean NoLocal, Boolean NoAck, Boolean Exclusive, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {

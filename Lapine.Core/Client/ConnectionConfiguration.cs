@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-using System.Linq;
 using System.Net;
 
 public readonly record struct ConnectionConfiguration(

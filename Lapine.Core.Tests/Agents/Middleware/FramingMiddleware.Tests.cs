@@ -1,14 +1,8 @@
 namespace Lapine.Agents.Middleware;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
-using Bogus;
 using Proto;
-using Xunit;
 
 using static System.Threading.Tasks.Task;
 

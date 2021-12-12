@@ -1,6 +1,5 @@
 namespace Lapine;
 
-using System;
 using System.Buffers;
 
 using static System.Math;

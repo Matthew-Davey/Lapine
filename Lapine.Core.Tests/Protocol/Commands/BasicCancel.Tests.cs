@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class BasicCancelTests : Faker {
     BasicCancel RandomSubject => new (
         ConsumerTag : Random.Word(),

@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 public interface IAuthenticationStrategy {
     String Mechanism { get; }
 

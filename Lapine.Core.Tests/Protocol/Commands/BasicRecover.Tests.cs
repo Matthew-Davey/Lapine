@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class BasicRecoverTests : Faker {
     BasicRecover RandomSubject => new (
         ReQueue: Random.Bool()

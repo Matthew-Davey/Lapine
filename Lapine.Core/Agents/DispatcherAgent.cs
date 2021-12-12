@@ -1,7 +1,5 @@
 namespace Lapine.Agents;
 
-using System;
-using System.Threading.Tasks;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 using Proto;

@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 [Flags]
 public enum RoutingFlags {
     None = 0x00,

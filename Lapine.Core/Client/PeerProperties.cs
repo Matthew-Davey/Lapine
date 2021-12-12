@@ -1,8 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-using System.Collections.Generic;
-
 using static System.Runtime.InteropServices.RuntimeInformation;
 
 public readonly record struct PeerProperties(

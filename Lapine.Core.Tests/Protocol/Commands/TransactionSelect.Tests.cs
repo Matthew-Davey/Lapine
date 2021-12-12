@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class TransactionSelectTests : Faker {
     [Fact]
     public void DeserializationReturnsSurplusData() {

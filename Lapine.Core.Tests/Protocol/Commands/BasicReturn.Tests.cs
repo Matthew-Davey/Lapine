@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class BasicReturnTests : Faker {
     BasicReturn RandomSubject => new (
         ReplyCode   : Random.UShort(),

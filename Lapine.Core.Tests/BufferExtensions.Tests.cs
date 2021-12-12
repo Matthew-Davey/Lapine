@@ -1,8 +1,5 @@
 namespace Lapine;
 
-using System;
-using Xunit;
-
 public class BufferExtensionsTests {
     [Theory]
     [InlineData(false, new Byte[0], null, new Byte[0])]

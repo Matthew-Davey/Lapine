@@ -1,10 +1,7 @@
 namespace Lapine;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 using static System.Buffers.Binary.BinaryPrimitives;
 using static System.Text.Encoding;

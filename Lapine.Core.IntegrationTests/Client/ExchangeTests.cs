@@ -1,12 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-using System.Linq;
-using Bogus;
-using FluentAssertions;
-using Xbehave;
-using Xunit;
-
 public class ExchangeTests : Faker {
     [Scenario]
     [Example("3.9")]

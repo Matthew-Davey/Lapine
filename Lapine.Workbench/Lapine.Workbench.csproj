@@ -6,16 +6,13 @@
 
   <ItemGroup>
     <PackageReference Include="Proto.Actor" Version="0.21.0" />
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.0.0-4.21420.22">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <LangVersion>preview</LangVersion>
+	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
 </Project>

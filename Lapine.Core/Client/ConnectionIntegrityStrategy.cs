@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 public readonly record struct ConnectionIntegrityStrategy(TimeSpan? HeartbeatFrequency, (TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount)? KeepAliveSettings) {
     static public ConnectionIntegrityStrategy None => new (
         HeartbeatFrequency: null,

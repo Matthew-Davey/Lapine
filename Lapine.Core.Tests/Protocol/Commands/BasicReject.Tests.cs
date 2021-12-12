@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class BasicRejectTests : Faker {
     BasicReject RandomSubject => new (
         DeliveryTag: Random.ULong(),

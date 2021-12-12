@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class ConnectionTuneTests : Faker {
     ConnectionTune RandomSubject => new (ChannelMax: Random.UShort(), FrameMax: Random.UInt(), Heartbeat: Random.UShort());
 

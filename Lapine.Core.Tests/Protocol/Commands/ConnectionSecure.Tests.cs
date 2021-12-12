@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class ConnectionSecureTests : Faker {
     ConnectionSecure RandomSubject => new (Challenge: Random.AlphaNumeric(Random.Number(1, Int16.MaxValue)));
 

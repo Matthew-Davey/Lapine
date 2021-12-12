@@ -1,8 +1,6 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 record struct QueueDeclare(String QueueName, Boolean Passive, Boolean Durable, Boolean Exclusive, Boolean AutoDelete, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {

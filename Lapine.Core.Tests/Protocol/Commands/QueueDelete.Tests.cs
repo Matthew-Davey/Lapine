@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class QueueDeleteTests : Faker {
     QueueDelete RandomSubject => new (
         QueueName : Random.Word(),

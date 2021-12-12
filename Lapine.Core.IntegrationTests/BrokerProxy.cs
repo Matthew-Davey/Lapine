@@ -1,12 +1,8 @@
 namespace Lapine;
 
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using Lapine.Client;
 using CliWrap;
 using CliWrap.Buffered;

@@ -1,6 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
 using Lapine.Protocol.Commands;
 
 class ProtocolErrorException : ApplicationException {

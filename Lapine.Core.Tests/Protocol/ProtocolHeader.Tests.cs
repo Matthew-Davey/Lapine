@@ -1,9 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class ProtocolHeaderTests : Faker {
     [Fact]
     public void SerializedSizeIsEightBytes() {

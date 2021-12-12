@@ -1,6 +1,5 @@
 namespace Lapine.Client;
 
-using System;
 using System.Collections.Immutable;
 using Lapine.Protocol;
 

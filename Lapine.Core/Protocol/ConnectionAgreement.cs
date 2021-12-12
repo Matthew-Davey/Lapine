@@ -1,8 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
-using System.Collections.Generic;
-
 /// <summary>
 /// Represents the outcome of a connection negotiation - the agreed connection properties.
 /// </summary>

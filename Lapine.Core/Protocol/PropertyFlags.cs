@@ -1,7 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
-
 [Flags]
 enum PropertyFlags : UInt16 {
     None            = 0b0000000000000000,

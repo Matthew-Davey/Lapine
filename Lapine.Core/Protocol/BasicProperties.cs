@@ -1,8 +1,6 @@
 namespace Lapine.Protocol;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 readonly record struct BasicProperties(

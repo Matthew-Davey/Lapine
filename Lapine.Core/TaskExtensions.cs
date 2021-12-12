@@ -1,8 +1,5 @@
 namespace Lapine;
 
-using System;
-using System.Threading.Tasks;
-
 static class TaskExtensions {
     static public Task ContinueWith(this Task task, Action? onCompleted = null, Action<Exception>? onFaulted = null, Action? onCancelled = null) =>
         task.ContinueWith(antecedent => {

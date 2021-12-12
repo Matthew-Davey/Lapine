@@ -1,11 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Bogus;
-using Xunit;
-
 public class QueueDeclareTests : Faker {
     QueueDeclare RandomSubject => new (
         QueueName : Random.Word(),

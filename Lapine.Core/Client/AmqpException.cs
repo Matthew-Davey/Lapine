@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 public class AmqpException : ApplicationException {
     public AmqpException(String message) : base(message) {
         // Intentionally empty...

@@ -1,8 +1,6 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 record struct QueueUnbind(String QueueName, String ExchangeName, String RoutingKey, IReadOnlyDictionary<String, Object> Arguments) : ICommand {

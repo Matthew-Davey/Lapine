@@ -1,6 +1,5 @@
 namespace Lapine.Agents;
 
-using System;
 using System.Runtime.CompilerServices;
 
 record AsyncCommand {

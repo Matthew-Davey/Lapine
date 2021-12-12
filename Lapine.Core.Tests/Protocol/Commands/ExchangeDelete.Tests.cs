@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class ExchangeDeleteTests : Faker {
     ExchangeDelete RandomSubject => new (
         ExchangeName: Random.Word(),

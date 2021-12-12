@@ -1,6 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
 using System.Buffers;
 
 record struct TransactionSelect : ICommand {

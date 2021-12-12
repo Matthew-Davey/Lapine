@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 using static System.Text.Encoding;
 
 public class PlainAuthenticationStrategy : IAuthenticationStrategy {

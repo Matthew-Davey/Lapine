@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 public readonly record struct QueueDefinition(

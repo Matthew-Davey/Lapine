@@ -1,8 +1,6 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 record struct ExchangeDeclare(String ExchangeName, String ExchangeType, Boolean Passive, Boolean Durable, Boolean AutoDelete, Boolean Internal, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {

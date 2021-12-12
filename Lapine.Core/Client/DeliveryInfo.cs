@@ -1,6 +1,5 @@
 namespace Lapine.Client;
 
-using System;
 using Lapine.Protocol.Commands;
 
 public readonly record struct DeliveryInfo(

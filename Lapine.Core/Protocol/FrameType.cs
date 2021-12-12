@@ -1,7 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
-
 enum FrameType : Byte {
     Method = 0x01,
     Header = 0x02,

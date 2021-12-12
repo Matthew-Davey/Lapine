@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class BasicAckTests : Faker {
     BasicAck RandomSubject => new (
         DeliveryTag: Random.ULong(),

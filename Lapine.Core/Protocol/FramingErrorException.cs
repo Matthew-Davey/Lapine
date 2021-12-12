@@ -1,7 +1,5 @@
 namespace Lapine.Protocol;
 
-using System;
-
 class FramingErrorException : ProtocolErrorException {
     public FramingErrorException() : base() {
     }

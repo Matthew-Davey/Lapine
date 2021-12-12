@@ -1,6 +1,5 @@
 namespace Lapine.Agents.Middleware;
 
-using System;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 using Proto;

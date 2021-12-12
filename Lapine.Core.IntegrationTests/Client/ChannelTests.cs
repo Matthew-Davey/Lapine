@@ -1,12 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Bogus;
-using FluentAssertions;
-using Xbehave;
-
 public class ChannelTests : Faker {
     [Scenario]
     [Example("3.9")]

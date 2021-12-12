@@ -1,9 +1,5 @@
 namespace Lapine.Protocol.Commands;
 
-using System;
-using Bogus;
-using Xunit;
-
 public class ConfirmSelectTests : Faker {
     ConfirmSelect RandomSubject => new (
         NoWait: Random.Bool()

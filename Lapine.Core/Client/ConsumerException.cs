@@ -1,7 +1,5 @@
 namespace Lapine.Client;
 
-using System;
-
 public class ConsumerException : ApplicationException {
     public ConsumerException(String message)
         : base(message) {
