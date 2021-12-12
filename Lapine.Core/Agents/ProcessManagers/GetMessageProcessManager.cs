@@ -104,20 +104,15 @@ class GetMessageProcessManager : IActor {
     Receive AwaitingContentHeader(EventStreamSubscription<Object> subscription, CancellationTokenSource scheduledTimeout, DeliveryInfo deliveryInfo) =>
         (IContext context) => {
             switch (context.Message) {
-                case ContentHeader header: {
-                    switch (header.BodySize) {
-                        case 0: {
-                            scheduledTimeout.Cancel();
-                            _promise.SetResult((deliveryInfo, header.Properties, Memory<Byte>.Empty));
-                            context.Stop(context.Self!);
-                            _behaviour.Become(Done(subscription));
-                            break;
-                        }
-                        default: {
-                            _behaviour.Become(AwaitingContentBody(subscription, scheduledTimeout, deliveryInfo, header));
-                            break;
-                        }
-                    }
+                case ContentHeader { BodySize: 0 } header: {
+                    scheduledTimeout.Cancel();
+                    _promise.SetResult((deliveryInfo, header.Properties, Memory<Byte>.Empty));
+                    context.Stop(context.Self!);
+                    _behaviour.Become(Done(subscription));
+                    break;
+                }
+                case ContentHeader { BodySize: > 0 } header: {
+                    _behaviour.Become(AwaitingContentBody(subscription, scheduledTimeout, deliveryInfo, header));
                     break;
                 }
                 case TimeoutException timeout: {
