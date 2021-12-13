@@ -137,8 +137,28 @@ public class BrokerProxy : IAsyncDisposable {
                 Platform           = (String)connection.SelectToken("$.client_properties[2][2]"),
                 Copyright          = (String)connection.SelectToken("$.client_properties[3][2]"),
                 Information        = (String)connection.SelectToken("$.client_properties[4][2]"),
-                ClientProvidedName = (String)connection.SelectToken("$.client_properties[5][2]")
+                ClientProvidedName = (String)connection.SelectToken("$.client_properties[5][2]"),
+                Capabilities       = ParseCapabilities((JArray)connection.SelectToken("$.client_properties[6][2]"))
             });
+        }
+
+        static ClientCapabilities ParseCapabilities(JArray capabilitiesJson) {
+            var capabilities = ClientCapabilities.None;
+
+            foreach (var capability in capabilitiesJson) {
+                switch ((String)capability[0]) {
+                    case "basic_nack": {
+                        capabilities = capabilities with { BasicNack = (Boolean)capability[2] };
+                        break;
+                    }
+                    case "publisher_confirms": {
+                        capabilities = capabilities with { PublisherConfirms = (Boolean)capability[2] };
+                        break;
+                    }
+                }
+            }
+
+            return capabilities;
         }
     }
 

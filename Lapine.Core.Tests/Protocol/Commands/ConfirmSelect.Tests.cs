@@ -40,7 +40,7 @@ public class ConfirmSelectTests : Faker {
 }
 
 public class ConfirmSelectOkTests : Faker {
-    ConfirmSelectOk RandomSubject => new ();
+    static ConfirmSelectOk RandomSubject => new ();
 
     [Fact]
     public void DeserializationReturnsSurplusData() {

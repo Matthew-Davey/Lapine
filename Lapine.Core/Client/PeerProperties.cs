@@ -9,7 +9,7 @@ public readonly record struct PeerProperties(
     String? Copyright,
     String? Information,
     String? ClientProvidedName,
-    IReadOnlyDictionary<String, Object>? Capabilities
+    ClientCapabilities Capabilities
 ) {
     static public PeerProperties Default => new (
         Product           : "Lapine",
@@ -18,10 +18,7 @@ public readonly record struct PeerProperties(
         Copyright         : "© Lapine Contributors 2019-2021",
         Information       : "Licensed under the MIT License https://opensource.org/licenses/MIT",
         ClientProvidedName: "Lapine 0.1.0",
-        Capabilities      : new Dictionary<String, Object> {
-            ["basic_nack"]         = true,
-            ["publisher_confirms"] = true
-        }
+        Capabilities      : ClientCapabilities.Default
     );
 
     static public PeerProperties Empty => new(
@@ -31,7 +28,7 @@ public readonly record struct PeerProperties(
         Copyright         : null,
         Information       : null,
         ClientProvidedName: null,
-        Capabilities      : null
+        Capabilities      : ClientCapabilities.None
     );
 
     public IReadOnlyDictionary<String, Object> ToDictionary() => new Dictionary<String, Object> {
@@ -41,6 +38,6 @@ public readonly record struct PeerProperties(
         ["copyright"]       = Copyright ?? String.Empty,
         ["information"]     = Information ?? String.Empty,
         ["connection_name"] = ClientProvidedName ?? String.Empty,
-        ["capabilities"]    = Capabilities ?? new Dictionary<String, Object>()
+        ["capabilities"]    = Capabilities.ToDictionary()
     };
 }
