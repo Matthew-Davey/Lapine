@@ -73,7 +73,7 @@ static class BufferExtensions {
             return false;
         }
 
-        result  = ASCII.GetString(buffer.Slice(0, number)).AsSpan();
+        result  = ASCII.GetString(buffer[0..number]).AsSpan();
         surplus = buffer[number..];
         return true;
     }

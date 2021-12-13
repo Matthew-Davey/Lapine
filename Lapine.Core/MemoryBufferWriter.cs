@@ -94,7 +94,7 @@ internal sealed class MemoryBufferWriter<T> : IBufferWriter<T>, IMemoryOwner<T>,
     /// </summary>
     /// <returns>The data written to the underlying buffer.</returns>
     public ReadOnlyMemory<T> WrittenMemory =>
-        _owner.Memory.Slice(0, _offset);
+        _owner.Memory[0.._offset];
 
     /// <summary>
     /// Gets the <see cref="T:System.ReadOnlySpan`1" /> that contains the data written to the underlying
