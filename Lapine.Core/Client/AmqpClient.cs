@@ -36,6 +36,9 @@ public class AmqpClient : IAsyncDisposable {
         return new Channel(_system, await command, _connectionConfiguration);
     }
 
-    public async ValueTask DisposeAsync() =>
+    public async ValueTask DisposeAsync() {
         await _system.Root.StopAsync(_agent);
+
+        GC.SuppressFinalize(this);
+    }
 }

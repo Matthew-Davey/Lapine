@@ -337,10 +337,13 @@ public class BrokerProxy : IAsyncDisposable {
             .SingleOrDefault();
     }
 
-    public async ValueTask DisposeAsync() =>
+    public async ValueTask DisposeAsync() {
         await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
             .WithArguments($"stop {_container}")
             .WithValidation(CommandResultValidation.ZeroExitCode)
             .ExecuteAsync()
         );
+
+        GC.SuppressFinalize(this);
+    }
 }
