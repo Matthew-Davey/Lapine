@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Buffer.fs" />
+        <Compile Include="Amqp.fs" />
+        <Compile Include="EventStream.fs" />
+        <Compile Include="SocketAgent.fs" />
+        <Compile Include="HandshakeAgent.fs" />
+    </ItemGroup>
+
+</Project>
