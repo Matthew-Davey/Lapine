@@ -4,7 +4,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
-	<ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Lapine</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
