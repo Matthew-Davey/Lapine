@@ -351,3 +351,4 @@ MigrationBackup/
 
 # Vagrant working folder
 .vagrant/
+/.idea/
