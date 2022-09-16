@@ -6,10 +6,10 @@ open System.Buffers.Binary
 open System.Text
 
 type ReadOnlyMemory<'a> with
-    member this.GetSlice(startIdx, endIdx) =
+    member this.GetSlice (startIdx, endIdx) =
         let s = defaultArg startIdx 0
         let e = defaultArg endIdx this.Length
-        this.Slice(s, e - s)
+        this.Slice (s, e - s)
 
 type DeserializerBuilder() =
     let run state (f: (ReadOnlyMemory<uint8> -> ReadOnlyMemory<uint8> * 'T)) =

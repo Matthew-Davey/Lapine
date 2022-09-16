@@ -3,14 +3,16 @@ module HandshakeAgent
 open System
 
 open Amqp
+open Client
 open EventStream
 open SocketAgent
 
 type private Context = {
-    SocketAgent: SocketAgent
-    Self       : MailboxProcessor<EventMessage>
-    Message    : EventMessage
-    Behaviour  : Context->Async<Context>
+    ConnectionConfiguration: ConnectionConfiguration
+    SocketAgent            : SocketAgent
+    Self                   : MailboxProcessor<EventMessage>
+    Message                : EventMessage
+    Behaviour              : Context->Async<Context>
 }
 
 let rec private awaitingConnection context = async {
@@ -22,30 +24,36 @@ let rec private awaitingConnection context = async {
 }
 and private awaitingConnectionStart context = async {
     match context.Message with
+    | FrameReceived { Content = Method (ConnectionStart message) } when not (List.contains context.ConnectionConfiguration.Locale message.Locales) ->
+        // TODO: fail handshake...
+        return { context with Behaviour = awaitingConnection }
+    | FrameReceived { Content = Method (ConnectionStart message) } when not (List.contains context.ConnectionConfiguration.AuthenticationStrategy.Mechanism message.Mechanisms) ->
+        // TODO: fail handshake...
+        return { context with Behaviour = awaitingConnection }
     | FrameReceived { Channel = channel; Content = Method (ConnectionStart message) } ->
         let response = ConnectionStartOk {|
-            Locale         = "en_US"
-            Mechanism      = "PLAIN"
-            PeerProperties = Map.empty
-            Response       = "\000guest\000guest"
+            Locale         = context.ConnectionConfiguration.Locale
+            Mechanism      = context.ConnectionConfiguration.AuthenticationStrategy.Mechanism
+            PeerProperties = context.ConnectionConfiguration.PeerProperties.ToMap ()
+            Response       = context.ConnectionConfiguration.Authenticate 0uy String.Empty
         |}
         context.SocketAgent.Transmit { Channel = channel; Content = Method response }
-        return { context with Behaviour = awaitingConnectionSecureOrTune }
+        return { context with Behaviour = awaitingConnectionSecureOrTune 1uy }
     | _ -> return context
 }
-and private awaitingConnectionSecureOrTune context = async {
+and private awaitingConnectionSecureOrTune stage context = async {
     match context.Message with
     | FrameReceived { Channel = channel; Content = Method (ConnectionSecure message) } ->
         let response = ConnectionSecureOk {|
-            Response = "uhm"
+            Response = context.ConnectionConfiguration.Authenticate stage message.Challenge
         |}
         context.SocketAgent.Transmit { Channel = channel; Content = Method response }
-        return context
+        return { context with Behaviour = awaitingConnectionSecureOrTune (stage + 1uy) }
     | FrameReceived { Channel = channel; Content = Method (ConnectionTune message) } ->
         let response = ConnectionTuneOk {|
-            ChannelMax = message.ChannelMax
-            FrameMax   = message.FrameMax
-            Heartbeat  = message.Heartbeat
+            ChannelMax = min message.ChannelMax context.ConnectionConfiguration.MaximumChannelCount
+            FrameMax   = min message.FrameMax context.ConnectionConfiguration.MaximumFrameSize
+            Heartbeat  = min message.Heartbeat context.ConnectionConfiguration.HeartbeatFrequency
         |}
         context.SocketAgent.Transmit { Channel = channel; Content = Method response }
         let connectionOpen = ConnectionOpen {|
@@ -58,11 +66,12 @@ and private awaitingConnectionSecureOrTune context = async {
 and private awaitingConnectionOpenOk context = async {
     match context.Message with
     | FrameReceived { Channel = channel; Content = Method ConnectionOpenOk } ->
+        // TODO: handshake succeeded...
         return { context with Behaviour = awaitingConnection }
     | _ -> return context
 }
 
-type HandshakeAgent(socketAgent) = class
+type HandshakeAgent(connectionConfiguration, socketAgent) = class
     let agent = MailboxProcessor<EventMessage>.Start (fun inbox ->
         let rec loop context = async {
             let! message = inbox.Receive()
@@ -79,6 +88,12 @@ type HandshakeAgent(socketAgent) = class
             )
             |> Observable.subscribe inbox.Post
 
-        loop { SocketAgent = socketAgent; Self = inbox; Message = ConnectionFailed (Exception()); Behaviour = awaitingConnection }
+        loop {
+            ConnectionConfiguration = connectionConfiguration
+            SocketAgent             = socketAgent
+            Self                    = inbox
+            Message                 = ConnectionFailed (Exception())
+            Behaviour               = awaitingConnection
+        }
     )
 end

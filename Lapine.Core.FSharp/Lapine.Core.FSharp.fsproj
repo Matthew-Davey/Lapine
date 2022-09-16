@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Client.fs" />
         <Compile Include="Buffer.fs" />
         <Compile Include="Amqp.fs" />
         <Compile Include="EventStream.fs" />

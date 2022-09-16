@@ -17,6 +17,7 @@ type private Protocol =
     | Transmit of ReadOnlyMemory<uint8>
     | BeginReceive
     | EndReceive of IAsyncResult
+    | Timeout
 
 type private Context = {
     Self     : MailboxProcessor<Protocol>
@@ -77,15 +78,16 @@ and private connected (socket: Socket) =
             ) |> ignore
             return context
         | EndReceive asyncResult ->
-            let received = socket.EndReceive(asyncResult)
-            if received > 0 then
-                tail <- tail + received
-                if tail > 0 then
-                    let buffer, frame = Frame.Deserialize (ReadOnlyMemory.op_Implicit frameBuffer.[..tail])
-                    //buffer.CopyTo(frameBuffer); tail <- buffer.Length
-                    tail <- 0
-                    //printfn $"consumed frame, %A{tail} bytes remaining in buffer"
+            let received = socket.EndReceive asyncResult
+            tail <- tail + received
+            if tail > 0 then
+                try
+                    let remaining, frame = Frame.Deserialize (ReadOnlyMemory.op_Implicit frameBuffer.[..tail])
                     publish (FrameReceived frame)
+                    remaining.CopyTo(frameBuffer)
+                    tail <- remaining.Length - 1
+                with // TODO: use a Result instead of an exception...
+                | :? ArgumentOutOfRangeException -> ()
             context.Self.Post BeginReceive
             return context
         | _ -> return context
@@ -123,6 +125,7 @@ type SocketAgent() = class
         this.Transmit buffer.WrittenMemory
 
     member this.Transmit (frame: Frame) =
+        printfn $"Transmitting frame %A{frame}"
         let buffer = ArrayBufferWriter()
         Frame.Serialize frame buffer |> ignore
         this.Transmit buffer.WrittenMemory

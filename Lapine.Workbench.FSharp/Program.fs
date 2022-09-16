@@ -1,12 +1,18 @@
 open System.Net
 
+open Client
 open EventStream
 open Amqp
 open SocketAgent
 open HandshakeAgent
 
+let connectionConfiguration = {
+    ConnectionConfiguration.Default with
+        AuthenticationStrategy = Plain ("guest", "guest")
+}
+
 let socketAgent = SocketAgent()
-let handshakeAgent = HandshakeAgent(socketAgent);
+let handshakeAgent = HandshakeAgent(connectionConfiguration, socketAgent);
 
 let subscription =
     EventStream
