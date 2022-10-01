@@ -2,8 +2,10 @@ module HandshakeAgent
 
 open System
 
+open AmqpTypes
 open Amqp
 open Client
+open ClientTypes
 open EventStream
 open SocketAgent
 
@@ -18,7 +20,7 @@ type private Context = {
 let rec private awaitingConnection context = async {
     match context.Message with
     | Connected ->
-        context.SocketAgent.Transmit ProtocolHeader.Default
+        context.SocketAgent.Transmit ProtocolHeader.default'
         return { context with Behaviour = awaitingConnectionStart }
     | _ -> return context
 }
@@ -27,15 +29,15 @@ and private awaitingConnectionStart context = async {
     | FrameReceived { Content = Method (ConnectionStart message) } when not (List.contains context.ConnectionConfiguration.Locale message.Locales) ->
         // TODO: fail handshake...
         return { context with Behaviour = awaitingConnection }
-    | FrameReceived { Content = Method (ConnectionStart message) } when not (List.contains context.ConnectionConfiguration.AuthenticationStrategy.Mechanism message.Mechanisms) ->
+    | FrameReceived { Content = Method (ConnectionStart message) } when not (List.contains (AuthenticationStrategy.mechanism context.ConnectionConfiguration.AuthenticationStrategy) message.Mechanisms) ->
         // TODO: fail handshake...
         return { context with Behaviour = awaitingConnection }
     | FrameReceived { Channel = channel; Content = Method (ConnectionStart message) } ->
         let response = ConnectionStartOk {|
             Locale         = context.ConnectionConfiguration.Locale
-            Mechanism      = context.ConnectionConfiguration.AuthenticationStrategy.Mechanism
-            PeerProperties = context.ConnectionConfiguration.PeerProperties.ToMap ()
-            Response       = context.ConnectionConfiguration.Authenticate 0uy String.Empty
+            Mechanism      = context.ConnectionConfiguration.AuthenticationStrategy |> AuthenticationStrategy.mechanism
+            PeerProperties = context.ConnectionConfiguration.PeerProperties |> PeerProperties.toMap
+            Response       = context.ConnectionConfiguration.AuthenticationStrategy |> AuthenticationStrategy.authenticate 0uy String.Empty
         |}
         context.SocketAgent.Transmit { Channel = channel; Content = Method response }
         return { context with Behaviour = awaitingConnectionSecureOrTune 1uy }
@@ -43,9 +45,11 @@ and private awaitingConnectionStart context = async {
 }
 and private awaitingConnectionSecureOrTune stage context = async {
     match context.Message with
+    | FrameReceived { Channel = channel; Content = Method (ConnectionClose message) } ->
+        return { context with Behaviour = awaitingConnection }
     | FrameReceived { Channel = channel; Content = Method (ConnectionSecure message) } ->
         let response = ConnectionSecureOk {|
-            Response = context.ConnectionConfiguration.Authenticate stage message.Challenge
+            Response = context.ConnectionConfiguration.AuthenticationStrategy |> AuthenticationStrategy.authenticate stage message.Challenge
         |}
         context.SocketAgent.Transmit { Channel = channel; Content = Method response }
         return { context with Behaviour = awaitingConnectionSecureOrTune (stage + 1uy) }

@@ -1,7 +1,7 @@
 module EventStream
 
 open System
-open Amqp
+open AmqpTypes
 
 type EventMessage =
     | Connected

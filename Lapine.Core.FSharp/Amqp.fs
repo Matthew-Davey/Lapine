@@ -4,25 +4,25 @@ open System
 open System.Buffers
 open System.Text
 
+open AmqpTypes
 open Buffer
 
-type ProtocolVersion = { Major: byte; Minor: byte; Revision: byte } with
-    static member Default = { Major = 0uy; Minor = 9uy; Revision = 1uy }
-    static member Deserialize = deserialize {
-        let! major    = readUInt8
-        let! minor    = readUInt8
+module ProtocolVersion =
+    let default' = { Major = 0uy; Minor = 9uy; Revision = 1uy }
+    let deserialize = deserialize {
+        let! major = readUInt8
+        let! minor = readUInt8
         let! revision = readUInt8
-
+        
         return { Major = major; Minor = minor; Revision = revision }
     }
-    static member Serialize header =
-        writeUInt8 header.Major
-        >> writeUInt8 header.Minor
-        >> writeUInt8 header.Revision
-end
+    let serialize { Major = major; Minor = minor; Revision = revision } =
+        writeUInt8 major
+        >> writeUInt8 minor
+        >> writeUInt8 revision
 
-type ProtocolHeader = { Protocol: uint32; ProtocolId: byte; Version: ProtocolVersion } with
-    static member Create protocol protocolId version =
+module ProtocolHeader =
+    let create protocol protocolId version =
         match String.length protocol with
         | 4 -> {
                    Protocol   = BitConverter.ToUInt32(Encoding.ASCII.GetBytes(protocol))
@@ -30,60 +30,25 @@ type ProtocolHeader = { Protocol: uint32; ProtocolId: byte; Version: ProtocolVer
                    Version    = version
                }
         | _ -> failwith "value must be exactly four characters long"
-    static member Default = ProtocolHeader.Create "AMQP" 0uy ProtocolVersion.Default
-    static member Serialize header =
-        writeUInt32LE header.Protocol
-        >> writeUInt8 header.ProtocolId
-        >> ProtocolVersion.Serialize header.Version
-end
+    let default' = create "AMQP" 0uy ProtocolVersion.default'
+    let serialize { Protocol = protocol; ProtocolId = protocolId; Version = version } =
+        writeUInt32LE protocol
+        >> writeUInt8 protocolId
+        >> ProtocolVersion.serialize version
 
-type MethodHeader = { ClassId: uint16; MethodId: uint16 } with
-    static member Deserialize = deserialize {
+module MethodHeader =
+    let deserialize = deserialize {
         let! classId  = readUInt16BE
         let! methodId = readUInt16BE
 
         return { ClassId = classId; MethodId = methodId }
     }
-    static member Serialize header =
-        writeUInt16BE header.ClassId
-        >> writeUInt16BE header.MethodId
-end
+    let serialize { ClassId = classId; MethodId = methodId } =
+        writeUInt16BE classId
+        >> writeUInt16BE methodId
 
-[<Flags>]
-type PropertyFlags =
-    | None            = 0b0000000000000000us
-    | ContentType     = 0b1000000000000000us
-    | ContentEncoding = 0b0100000000000000us
-    | Headers         = 0b0010000000000000us
-    | DeliveryMode    = 0b0001000000000000us
-    | Priority        = 0b0000100000000000us
-    | CorrelationId   = 0b0000010000000000us
-    | ReplyTo         = 0b0000001000000000us
-    | Expiration      = 0b0000000100000000us
-    | MessageId       = 0b0000000010000000us
-    | Timestamp       = 0b0000000001000000us
-    | Type            = 0b0000000000100000us
-    | UserId          = 0b0000000000010000us
-    | AppId           = 0b0000000000001000us
-    | ClusterId       = 0b0000000000000100us
-
-type BasicProperties = {
-    ContentType: string option
-    ContentEncoding: string option
-    Headers: Map<string, Object> option
-    DeliveryMode: byte option
-    Priority: byte option
-    CorrelationId: string option
-    ReplyTo: string option
-    Expiration: string option
-    MessageId: string option
-    Timestamp: uint64 option
-    Type: string option
-    UserId: string option
-    AppId: string option
-    ClusterId: string option
-} with
-    static member None = {
+module BasicProperties =
+    let none = {
         ContentType     = None
         ContentEncoding = None
         Headers         = None
@@ -99,7 +64,7 @@ type BasicProperties = {
         AppId           = None
         ClusterId       = None
     }
-    static member Flags properties =
+    let flags properties =
         PropertyFlags.None
         ||| (match properties.ContentType     with | Some _ -> PropertyFlags.ContentType     | None -> PropertyFlags.None)
         ||| (match properties.ContentEncoding with | Some _ -> PropertyFlags.ContentEncoding | None -> PropertyFlags.None)
@@ -115,8 +80,8 @@ type BasicProperties = {
         ||| (match properties.UserId          with | Some _ -> PropertyFlags.UserId          | None -> PropertyFlags.None)
         ||| (match properties.AppId           with | Some _ -> PropertyFlags.AppId           | None -> PropertyFlags.None)
         ||| (match properties.ClusterId       with | Some _ -> PropertyFlags.ClusterId       | None -> PropertyFlags.None)
-    static member Serialize properties =
-        writeUInt16BE (uint16 (BasicProperties.Flags properties))
+    let serialize properties =
+        writeUInt16BE (uint16 (flags properties))
         >> (match properties.ContentType with     | Some contentType   -> writeShortString contentType  | None -> id)
         >> (match properties.ContentEncoding with | Some encoding      -> writeShortString encoding     | None -> id)
         >> (match properties.Headers with         | Some headers       -> writeFieldTable headers       | None -> id)
@@ -131,11 +96,11 @@ type BasicProperties = {
         >> (match properties.UserId with          | Some userId        -> writeLongString userId        | None -> id)
         >> (match properties.AppId with           | Some appId         -> writeLongString appId         | None -> id)
         >> (match properties.ClusterId with       | Some clusterId     -> writeLongString clusterId     | None -> id)
-    static member Deserialize = deserialize {
+    let deserialize = deserialize {
         let! flags' = readUInt16BE
         let flags: PropertyFlags = LanguagePrimitives.EnumOfValue flags'
 
-        let mutable properties = BasicProperties.None
+        let mutable properties = none
 
         if flags.HasFlag PropertyFlags.ContentType then
             let! contentType = readShortString
@@ -195,33 +160,23 @@ type BasicProperties = {
 
         return properties
     }
-end
 
-type ContentHeader = { ClassId: uint16; BodySize: uint64; Properties: BasicProperties } with
-    static member Serialize header =
-        writeUInt16BE header.ClassId
-        >> writeUInt64BE header.BodySize
-        >> BasicProperties.Serialize header.Properties
-    static member Deserialize = deserialize {
+module ContentHeader =
+    let serialize { ClassId = classId; BodySize = bodySize; Properties = properties } =
+        writeUInt16BE classId
+        >> writeUInt64BE bodySize
+        >> BasicProperties.serialize properties
+    let deserialize = deserialize {
         let! classId    = readUInt16BE
         let! bodySize   = readUInt64BE
-        let! properties = BasicProperties.Deserialize
+        let! properties = BasicProperties.deserialize
 
         return { ClassId = classId; BodySize = bodySize; Properties = properties }
     }
-end
 
-type Method =
-    | ConnectionStart    of {| Version: {| Major: uint8; Minor: uint8  |}; ServerProperties: Map<string, obj>; Mechanisms: string list; Locales: string list |}
-    | ConnectionStartOk  of {| PeerProperties: Map<string, obj>; Mechanism: string; Response: string; Locale: string |}
-    | ConnectionSecure   of {| Challenge: string |}
-    | ConnectionSecureOk of {| Response: string |}
-    | ConnectionTune     of {| ChannelMax: uint16; FrameMax: uint32; Heartbeat: uint16 |}
-    | ConnectionTuneOk   of {| ChannelMax: uint16; FrameMax: uint32; Heartbeat: uint16 |}
-    | ConnectionOpen     of {| VirtualHost: string |}
-    | ConnectionOpenOk with
-    static member Deserialize = deserialize {
-        match! MethodHeader.Deserialize with
+module Method =
+    let deserialize = deserialize {
+        match! MethodHeader.deserialize with
         | { ClassId = 0x0Aus; MethodId = 0x0Aus } ->
             let! major            = readUInt8
             let! minor            = readUInt8
@@ -247,82 +202,74 @@ type Method =
             return ConnectionTune {| ChannelMax = channelMax; FrameMax = frameMax; Heartbeat = heartbeat |}
         | { ClassId = 0x0Aus; MethodId = 0x29us } ->
             return ConnectionOpenOk
-        | _ -> return failwith "method not supported"
+        | { ClassId = 0x0Aus; MethodId = 0x32us } ->
+            let! replyCode = readUInt16BE
+            let! replyText = readShortString
+            let! failingMehodHeader = MethodHeader.deserialize
+            
+            return ConnectionClose {| ReplyCode = replyCode; ReplyText = replyText; FailingMethod = failingMehodHeader |}
+         | _ -> return failwith "method not supported"
     }
-    static member Serialize = function
+    let serialize = function
         | ConnectionStartOk message ->
-            MethodHeader.Serialize { ClassId = 0x0Aus; MethodId = 0x0Bus }
+            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x0Bus }
             >> writeFieldTable message.PeerProperties
             >> writeShortString message.Mechanism
             >> writeLongString message.Response
             >> writeShortString message.Locale
         | ConnectionSecureOk message ->
-            MethodHeader.Serialize { ClassId = 0x0Aus; MethodId = 0x15us }
+            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x15us }
             >> writeLongString message.Response
         | ConnectionTuneOk message ->
-            MethodHeader.Serialize { ClassId = 0x0Aus; MethodId = 0x1Fus }
+            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x1Fus }
             >> writeUInt16BE message.ChannelMax
             >> writeUInt32BE message.FrameMax
             >> writeUInt16BE message.Heartbeat
         | ConnectionOpen message ->
-            MethodHeader.Serialize { ClassId = 0x0Aus; MethodId = 0x28us }
+            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x28us }
             >> writeShortString message.VirtualHost
             >> writeShortString String.Empty // Deprecated 'capabilities' field...
             >> writeBoolean false // Deprecated 'insist' field...
         | _ -> failwith "method not supported"
-end
 
-type FrameType =
-    | Method = 1uy
-    | Header = 2uy
-    | Body = 3uy
-    | Heartbeat = 8uy
-
-type FrameContent =
-    | Method of Method
-    | ContentHeader of ContentHeader
-    | ContentBody of ReadOnlyMemory<uint8>
-    | HeartBeat
-
-type Frame = { Channel: uint16; Content: FrameContent } with
-    static member Terminator = 0xCEuy
-    static member Deserialize = deserialize {
+module Frame =
+    let terminator = 0xCEuy
+    let deserialize = deserialize {
         let! frameType  = readUInt8
         let! channel    = readUInt16BE
         let! length     = readUInt32BE
         let! payload    = readBytes (uint16 length)
         let! terminator = readUInt8
 
-        if terminator <> Frame.Terminator then
+        if terminator <> terminator then
             return failwith "framing error"
 
         let content =
             match LanguagePrimitives.EnumOfValue frameType with
-            | FrameType.Method    -> Method(Method.Deserialize payload |> snd)
-            | FrameType.Header    -> ContentHeader(ContentHeader.Deserialize payload |> snd)
+            | FrameType.Method    -> Method(Method.deserialize payload |> snd)
+            | FrameType.Header    -> ContentHeader(ContentHeader.deserialize payload |> snd)
             | FrameType.Body      -> ContentBody(readBytes (uint16 length) payload |> snd)
             | FrameType.Heartbeat -> HeartBeat
             | _ -> failwith "unknown frame type"
 
         return { Channel = channel; Content = content }
     }
-    static member Type = function
+    let type' = function
         | { Content = (Method _) }        -> FrameType.Method
         | { Content = (ContentHeader _) } -> FrameType.Header
         | { Content = (ContentBody _) }   -> FrameType.Body
         | { Content = (HeartBeat _) }     -> FrameType.Heartbeat
-    static member Serialize frame =
+    let serialize frame =
         let contentBuffer = ArrayBufferWriter<uint8>()
         match frame.Content with
-        | Method method        -> Method.Serialize method contentBuffer
-        | ContentHeader header -> ContentHeader.Serialize header contentBuffer
+        | Method method        -> Method.serialize method contentBuffer
+        | ContentHeader header -> ContentHeader.serialize header contentBuffer
         | ContentBody body     -> writeBytes body contentBuffer
         | HeartBeat _          -> contentBuffer
         |> ignore
 
-        writeUInt8 (uint8 (Frame.Type frame))
+        writeUInt8 (uint8 (type' frame))
         >> writeUInt16BE frame.Channel
         >> writeUInt32BE (uint32 contentBuffer.WrittenMemory.Length)
         >> writeBytes contentBuffer.WrittenMemory
-        >> writeUInt8 Frame.Terminator
-end
+        >> writeUInt8 terminator

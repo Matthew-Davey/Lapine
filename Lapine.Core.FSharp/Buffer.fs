@@ -2,8 +2,11 @@ module Buffer
 
 open System
 open System.Buffers
-open System.Buffers.Binary
-open System.Text
+
+open type System.Buffers.Binary.BinaryPrimitives
+open type System.Text.Encoding
+
+type float64 = Double
 
 type ReadOnlyMemory<'a> with
     member this.GetSlice (startIdx, endIdx) =
@@ -12,7 +15,7 @@ type ReadOnlyMemory<'a> with
         this.Slice (s, e - s)
 
 type DeserializerBuilder() =
-    let run state (f: (ReadOnlyMemory<uint8> -> ReadOnlyMemory<uint8> * 'T)) =
+    let run state (f: ReadOnlyMemory<uint8> -> ReadOnlyMemory<uint8> * 'T) =
         f state
 
     let bind binder f =
@@ -21,15 +24,15 @@ type DeserializerBuilder() =
             binder result |> run state'
 
     let (>>=) f binder = bind binder f
-    member _.Return(result) = fun (state: ReadOnlyMemory<uint8>) -> (state, result)
-    member _.ReturnFrom(f) = f
-    member _.Bind(f, binder) = f >>= binder
-    member this.Zero() = this.Return ()
-    member _.Combine(a, b) =
+    member _.Return result = fun (state: ReadOnlyMemory<uint8>) -> (state, result)
+    member _.ReturnFrom f = f
+    member _.Bind (f, binder) = f >>= binder
+    member this.Zero () = this.Return ()
+    member _.Combine (a, b) =
         a >>= (fun _ -> b)
-    member _.Delay(f) = f ()
+    member _.Delay f = f ()
 
-let deserialize = DeserializerBuilder()
+let deserialize = DeserializerBuilder ()
 
 let readBits (buffer: ReadOnlyMemory<uint8>) =
     let bits = buffer.Span[0]
@@ -43,61 +46,61 @@ let readBits (buffer: ReadOnlyMemory<uint8>) =
                     bits &&& 0b10000000uy > 0uy))
 
 let readBoolean (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[1..], buffer.Span[0] > 0uy)
+    (buffer[1..], buffer.Span[0] > 0uy)
 
 let readChar (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[1..], char(buffer.Span[0]))
+    (buffer[1..], char (buffer.Span[0]))
 
 let readBytes (count: uint16) (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[int count..], buffer.[..int count])
+    (buffer[int count..], buffer[..int count])
 
 let readUInt8 (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[1..], buffer.Span[0])
+    (buffer[1..], buffer.Span[0])
 
 let readInt8 (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[1..], int8 buffer.Span[0])
+    (buffer[1..], int8 buffer.Span[0])
 
 let readUInt16BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<uint16>..], BinaryPrimitives.ReadUInt16BigEndian(buffer.Span))
+    (buffer[sizeof<uint16>..], ReadUInt16BigEndian buffer.Span)
 
 let readInt16BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<int16>..], BinaryPrimitives.ReadInt16BigEndian(buffer.Span))
+    (buffer[sizeof<int16>..], ReadInt16BigEndian buffer.Span)
 
 let readUInt32LE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<uint32>..], BinaryPrimitives.ReadUInt32LittleEndian(buffer.Span))
+    (buffer[sizeof<uint32>..], ReadUInt32LittleEndian buffer.Span)
 
 let readInt32LE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<int32>..], BinaryPrimitives.ReadInt32LittleEndian(buffer.Span))
+    (buffer[sizeof<int32>..], ReadInt32LittleEndian buffer.Span)
 
 let readUInt32BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<uint32>..], BinaryPrimitives.ReadUInt32BigEndian(buffer.Span))
+    (buffer[sizeof<uint32>..], ReadUInt32BigEndian buffer.Span)
 
 let readInt32BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<int32>..], BinaryPrimitives.ReadInt32BigEndian(buffer.Span))
+    (buffer[sizeof<int32>..], ReadInt32BigEndian buffer.Span)
 
 let readUInt64BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<uint64>..], BinaryPrimitives.ReadUInt64BigEndian(buffer.Span))
+    (buffer[sizeof<uint64>..], ReadUInt64BigEndian buffer.Span)
 
 let readInt64BE (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<int64>..], BinaryPrimitives.ReadUInt64BigEndian(buffer.Span))
+    (buffer[sizeof<int64>..], ReadUInt64BigEndian buffer.Span)
 
 let readShortString (buffer: ReadOnlyMemory<uint8>) =
-    let buffer, length = (readUInt8 buffer)
-    (buffer.[int length..], Encoding.UTF8.GetString(buffer.[..int length].Span))
+    let buffer, length = readUInt8 buffer
+    (buffer[int length..], UTF8.GetString buffer[..int length].Span)
 
 let readSingle (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<single>..], BinaryPrimitives.ReadSingleBigEndian(buffer.Span))
+    (buffer[sizeof<single>..], ReadSingleBigEndian buffer.Span)
 
 let readDouble (buffer: ReadOnlyMemory<uint8>) =
-    (buffer.[sizeof<double>..], BinaryPrimitives.ReadDoubleBigEndian(buffer.Span))
+    (buffer[sizeof<double>..], ReadDoubleBigEndian buffer.Span)
 
 let readLongString (buffer: ReadOnlyMemory<uint8>) =
-    let buffer, length = (readUInt32BE buffer)
-    (buffer.[int length..], Encoding.UTF8.GetString(buffer.[..int length].Span))
+    let buffer, length = readUInt32BE buffer
+    (buffer[int length..], UTF8.GetString buffer[..int length].Span)
 
 let readDecimal (buffer: ReadOnlyMemory<uint8>) =
     // TODO: implementation
-    (buffer.[5..], Decimal())
+    (buffer[5..], Decimal())
 
 let readByteArray = deserialize {
     let! length = readUInt32BE
@@ -163,53 +166,99 @@ and readFieldTable = deserialize {
 
 let writeBoolean (value: bool) (writer: IBufferWriter<uint8>) =
     let buffer = writer.GetSpan 1
-    buffer.[0] <- match value with | true -> 1uy | false -> 0uy
+    buffer[0] <- match value with | true -> 1uy | false -> 0uy
     writer.Advance 1
     writer
-
+    
 let writeBytes (value: ReadOnlyMemory<uint8>) (writer: IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(value.Length)
-    writer.Write(value.Span)
+    let buffer = writer.GetSpan value.Length
+    value.Span.CopyTo buffer
+    writer.Advance value.Length
     writer
 
 let writeUInt8 (value: uint8) (writer: IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(sizeof<uint8>)
+    let buffer = writer.GetSpan sizeof<uint8>
     buffer[0] <- value
-    writer.Advance(sizeof<uint8>)
+    writer.Advance sizeof<uint8>
+    writer
+    
+let writeInt8 (value: int8) (writer: IBufferWriter<uint8>) =
+    let buffer = writer.GetSpan sizeof<int8>
+    buffer[0] <- uint8 value
+    writer.Advance sizeof<int8>
+    writer
+
+let writeChar (value: char) (writer: IBufferWriter<uint8>) =
+    let buffer = writer.GetSpan 1
+    buffer[0] <- uint8 value
+    writer.Advance 1
     writer
 
 let writeUInt16BE (value: uint16) (writer: IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(sizeof<uint16>)
-    BinaryPrimitives.WriteUInt16BigEndian(buffer, value)
-    writer.Advance(sizeof<uint16>)
+    let buffer = writer.GetSpan sizeof<uint16>
+    WriteUInt16BigEndian (buffer, value)
+    writer.Advance sizeof<uint16>
+    writer
+    
+let writeInt16BE (value: int16) (writer: IBufferWriter<uint8>) =
+    let buffer = writer.GetSpan sizeof<int16>
+    WriteInt16BigEndian (buffer, value)
+    writer.Advance sizeof<int16>
     writer
 
 let writeUInt32LE (value: uint32) (writer: IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(sizeof<uint32>)
-    BinaryPrimitives.WriteUInt32LittleEndian(buffer, value)
-    writer.Advance(sizeof<uint32>)
+    let buffer = writer.GetSpan sizeof<uint32>
+    WriteUInt32LittleEndian (buffer, value)
+    writer.Advance sizeof<uint32>
     writer
 
 let writeUInt32BE (value: uint32) (writer : IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(sizeof<uint32>)
-    BinaryPrimitives.WriteUInt32BigEndian(buffer, value)
-    writer.Advance(sizeof<uint32>)
+    let buffer = writer.GetSpan sizeof<uint32>
+    WriteUInt32BigEndian (buffer, value)
+    writer.Advance sizeof<uint32>
     writer
 
 let writeUInt64BE (value: uint64) (writer: IBufferWriter<uint8>) =
-    let buffer = writer.GetSpan(sizeof<uint64>)
-    BinaryPrimitives.WriteUInt64BigEndian(buffer, value)
-    writer.Advance(sizeof<uint64>)
+    let buffer = writer.GetSpan sizeof<uint64>
+    WriteUInt64BigEndian (buffer, value)
+    writer.Advance sizeof<uint64>
     writer
 
 let writeShortString (value: string) =
-    writeUInt8 (uint8 (Encoding.UTF8.GetByteCount(value)))
-    >> writeBytes(ReadOnlyMemory<uint8>.op_Implicit (Encoding.UTF8.GetBytes(value)))
+    writeUInt8 (uint8 (UTF8.GetByteCount value))
+    >> writeBytes (ReadOnlyMemory<uint8>.op_Implicit (UTF8.GetBytes value))
 
 let writeLongString (value: string) =
-    writeUInt32BE (uint32 (Encoding.UTF8.GetByteCount(value)))
-    >> writeBytes(ReadOnlyMemory<uint8>.op_Implicit (Encoding.UTF8.GetBytes(value)))
+    writeUInt32BE (uint32 (UTF8.GetByteCount value))
+    >> writeBytes (ReadOnlyMemory<uint8>.op_Implicit (UTF8.GetBytes value))
 
-// TODO: implementation
-let writeFieldTable (value: Map<string, obj>) =
-    writeUInt32BE 0u
+let rec writeFieldValue (value: obj) =
+    match value with
+    | :? bool as value -> writeChar 't' >> writeBoolean value
+    | :? int8 as value -> writeChar 'b' >> writeInt8 value
+    | :? uint8 as value -> writeChar 'B' >> writeUInt8 value
+    | :? int16 as value -> writeChar 's' >> writeInt16BE value
+    | :? uint16 as value -> writeChar 'u' >> writeUInt16BE value
+    //| :? int32 as value -> writeChar 'I' >> writeInt32BE value
+    | :? uint32 as value -> writeChar 'i' >> writeUInt32BE value
+    //| :? int64 as value -> writeChar 'L' >> writeInt64BE value
+    | :? uint64 as value -> writeChar 'l' >> writeUInt64BE value
+    //| :? float32 as value -> writeChar 'f' >> writeFloat32 value
+    //| :? float64 as value -> writeChar 'd' >> writeFloat64 value
+    //| :? decimal as value -> writeChar 'D' >> writeDecimal value
+    | :? string as value -> writeChar 'S' >> writeLongString value
+    | :? array<uint8> as value -> writeChar 'x' >> writeBytes value
+    | :? seq<obj> as value -> writeChar 'A' >> writeFieldArray value
+    | :? DateTimeOffset as value -> writeChar 'T' >> writeUInt64BE (uint64 (value.ToUnixTimeSeconds()))
+    | :? Map<string, obj> as value -> writeChar 'F' >> writeFieldTable value
+    | :? Map<string, bool> as value -> writeChar 'F' >> writeFieldTable (Map.map (fun _ item -> item :> obj) value)
+    | null -> writeChar 'V'
+    | _ -> failwith "Unsupported field value"
+and writeFieldArray (value: obj seq) =
+    writeUInt8 0uy
+and writeFieldTable (value: Map<string, obj>) =
+    let buffer = ArrayBufferWriter<uint8>()
+    let rows = Map.fold (fun accumulator field value -> accumulator |> writeShortString field |> writeFieldValue value) buffer value
+               :?> ArrayBufferWriter<uint8>
+    writeUInt32BE (uint32 rows.WrittenMemory.Length)
+    >> writeBytes rows.WrittenMemory

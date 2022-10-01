@@ -7,6 +7,7 @@ open System.Net.Sockets
 open System.Threading.Tasks
 
 open EventStream
+open AmqpTypes
 open Amqp
 
 type private Protocol =
@@ -82,7 +83,7 @@ and private connected (socket: Socket) =
             tail <- tail + received
             if tail > 0 then
                 try
-                    let remaining, frame = Frame.Deserialize (ReadOnlyMemory.op_Implicit frameBuffer.[..tail])
+                    let remaining, frame = Frame.deserialize (ReadOnlyMemory.op_Implicit frameBuffer.[..tail])
                     publish (FrameReceived frame)
                     remaining.CopyTo(frameBuffer)
                     tail <- remaining.Length - 1
@@ -121,12 +122,12 @@ type SocketAgent() = class
 
     member this.Transmit (header: ProtocolHeader) =
         let buffer = ArrayBufferWriter()
-        ProtocolHeader.Serialize header buffer |> ignore
+        ProtocolHeader.serialize header buffer |> ignore
         this.Transmit buffer.WrittenMemory
 
     member this.Transmit (frame: Frame) =
         printfn $"Transmitting frame %A{frame}"
         let buffer = ArrayBufferWriter()
-        Frame.Serialize frame buffer |> ignore
+        Frame.serialize frame buffer |> ignore
         this.Transmit buffer.WrittenMemory
 end
