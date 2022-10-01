@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Reactive.Linq;
 using Lapine.Agents;
 using Lapine.Client;
@@ -19,10 +18,7 @@ socket2.Events
     .Subscribe(message => Console.WriteLine(message.Frame));
 
 await socket2.Connect(connectionConfiguration.Endpoints[0], connectionConfiguration.ConnectionTimeout);
-
-var buffer = new ArrayBufferWriter<Byte>();
-ProtocolHeader.Default.Serialize(buffer);
-await socket2.Transmit(buffer.WrittenMemory);
+await socket2.Transmit(ProtocolHeader.Default);
 
 await Task.Delay(5000);
 
