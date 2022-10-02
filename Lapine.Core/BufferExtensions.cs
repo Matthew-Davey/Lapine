@@ -682,4 +682,8 @@ static class BufferExtensions {
         writer.Advance(sizeof(UInt64));
         return writer;
     }
-}
+
+    static public IBufferWriter<Byte> WriteMethodHeader(this IBufferWriter<Byte> writer, in (UInt16 ClassId, UInt16 MethodId) methodHeader) =>
+        writer.WriteUInt16BE(methodHeader.ClassId)
+            .WriteUInt16BE(methodHeader.MethodId);
+    }

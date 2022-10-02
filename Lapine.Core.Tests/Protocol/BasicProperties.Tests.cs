@@ -27,7 +27,7 @@ public class BasicPropertiesTests : Faker {
     }
 
     [Fact]
-    public void DeserializationFailsWithUnsufficientData() {
+    public void DeserializationFailsWithInsufficientData() {
         var result = BasicProperties.Deserialize(Span<Byte>.Empty, out var _, out var _);
 
         Assert.False(result);

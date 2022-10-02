@@ -4,13 +4,14 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <LangVersion>preview</LangVersion>
-	<ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Lapine</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-	<Using Include="Bogus" />
-	<Using Include="Xbehave" />
-	<Using Include="Xunit" />
+    <Using Include="Bogus" />
+    <Using Include="Xbehave" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>

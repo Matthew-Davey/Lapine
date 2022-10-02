@@ -12,16 +12,12 @@ var connectionConfiguration = ConnectionConfiguration.Default with {
     }
 };
 
-var socket2 = new SocketAgent2();
+var socket2 = new SocketAgent();
 socket2.Events
-    .OfType<SocketAgent2.Protocol.FrameReceived>()
+    .OfType<SocketAgent.Protocol.FrameReceived>()
     .Subscribe(message => Console.WriteLine(message.Frame));
 
-var handshakeAgent = new HandshakeAgent(connectionConfiguration, socket2);
-handshakeAgent.Events
-    .Subscribe(message => Console.WriteLine(message));
-
-await socket2.Connect(connectionConfiguration.Endpoints[0], connectionConfiguration.ConnectionTimeout);
+socket2.Connect(connectionConfiguration.Endpoints[0], connectionConfiguration.ConnectionTimeout);
 
 await Task.Delay(5000);
 
