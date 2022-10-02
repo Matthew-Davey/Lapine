@@ -9,6 +9,7 @@ using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
+using static System.Text.Encoding;
 using static SocketAgent2.Protocol;
 
 class HandshakeAgent {
@@ -64,12 +65,11 @@ class HandshakeAgent {
                 var command = new ConnectionStartOk {
                     PeerProperties = _connectionConfiguration.PeerProperties.ToDictionary(),
                     Mechanism      = _connectionConfiguration.AuthenticationStrategy.Mechanism,
-                    Response       = System.Text.Encoding.UTF8.GetString(authenticationResponse),
+                    Response       = UTF8.GetString(authenticationResponse),
                     Locale         = _connectionConfiguration.Locale
                 };
                 var frame = new MethodFrame(channel, command.CommandId, command);
-                // TODO: Make frame ISerializable...
-                //_socketAgent.Transmit(frame);
+                _socketAgent.Transmit(frame);
                 return context with { Behaviour = AwaitingConnectionSecureOrTune() };
                 break;
             }
@@ -90,7 +90,7 @@ class SocketAgent2 {
     static public class Protocol {
         public record struct Connect(IPEndPoint EndPoint, TimeSpan ConnectTimeout, IObserver<Object> Observer);
         public record struct Connected(IAsyncResult AsyncResult);
-        public record struct Transmit(ISerializable payload, IObserver<Object> Observer);
+        public record struct Transmit(ISerializable payload);
         public record struct Poll;
         public record struct PollComplete(IAsyncResult AsyncResult);
         public record struct Timeout;
@@ -137,17 +137,8 @@ class SocketAgent2 {
         await taskCompletionSource.Task;
     }
 
-    public async ValueTask Transmit(ISerializable payload) {
-        var taskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var observer = new AnonymousObserver<Object>(
-            onNext     : _ => { },
-            onError    : taskCompletionSource.SetException,
-            onCompleted: taskCompletionSource.SetResult
-        );
-
-        _inbox.Post(new Transmit(payload, observer));
-        await taskCompletionSource.Task;
-    }
+    public void Transmit(ISerializable payload) =>
+        _inbox.Post(new Transmit(payload));
 
     Behaviour Disconnected() => context => {
         switch (context.Message) {
@@ -224,17 +215,15 @@ class SocketAgent2 {
 
                     return context;
                 }
-                case Transmit(var payload, var observer): {
+                case Transmit(var payload): {
                     try {
                         var writer = new ArrayBufferWriter<Byte>();
                         payload.Serialize(writer);
 
                         socket.Send(writer.WrittenSpan);
-                        observer.OnCompleted();
                         return context;
                     }
                     catch (SocketException fault) {
-                        observer.OnError(fault);
                         return context with { Behaviour = Faulted(fault) };
                     }
                 }

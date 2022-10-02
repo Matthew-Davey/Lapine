@@ -1,5 +1,6 @@
 namespace Lapine.Protocol;
 
+using System.Buffers;
 using Lapine.Protocol.Commands;
 
 record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Command) : Frame(FrameType.Method, Channel) {
@@ -249,5 +250,18 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
 
         result = default;
         return false;
+    }
+
+    public override IBufferWriter<Byte> Serialize(IBufferWriter<Byte> buffer) {
+        var payloadWriter = new ArrayBufferWriter<Byte>();
+        payloadWriter.WriteUInt16BE(MethodHeader.Item1)
+            .WriteUInt16BE(MethodHeader.Item2)
+            .WriteSerializable(this.Command);
+
+        return buffer.WriteUInt8((Byte)Type)
+            .WriteUInt16BE(Channel)
+            .WriteUInt32BE((UInt32) payloadWriter.WrittenCount)
+            .WriteBytes(payloadWriter.WrittenSpan)
+            .WriteUInt8(FrameTerminator);
     }
 }

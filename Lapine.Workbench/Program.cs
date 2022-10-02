@@ -17,8 +17,11 @@ socket2.Events
     .OfType<SocketAgent2.Protocol.FrameReceived>()
     .Subscribe(message => Console.WriteLine(message.Frame));
 
+var handshakeAgent = new HandshakeAgent(connectionConfiguration, socket2);
+handshakeAgent.Events
+    .Subscribe(message => Console.WriteLine(message));
+
 await socket2.Connect(connectionConfiguration.Endpoints[0], connectionConfiguration.ConnectionTimeout);
-await socket2.Transmit(ProtocolHeader.Default);
 
 await Task.Delay(5000);
 
