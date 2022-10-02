@@ -1,6 +1,6 @@
 namespace Lapine.Client;
 
-public record struct ClientCapabilities(Boolean BasicNack, Boolean PublisherConfirms) {
+public readonly record struct ClientCapabilities(Boolean BasicNack, Boolean PublisherConfirms) {
     static public ClientCapabilities None => new(
         BasicNack        : false,
         PublisherConfirms: false

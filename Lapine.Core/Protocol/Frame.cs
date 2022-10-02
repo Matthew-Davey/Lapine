@@ -20,7 +20,8 @@ abstract record Frame(FrameType Type, UInt16 Channel) : ISerializable {
                 FrameType.Method    => MethodFrame.Deserialize(channel, payload, out result),
                 FrameType.Header    => ContentHeaderFrame.Deserialize(channel, payload, out result),
                 FrameType.Body      => ContentBodyFrame.Deserialize(channel, payload, out result),
-                FrameType.Heartbeat => HeartbeatFrame.Deserialize(channel, payload, out result)
+                FrameType.Heartbeat => HeartbeatFrame.Deserialize(channel, payload, out result),
+                _                   => throw new FramingErrorException($"Unexpected frame type '{type}'")
             };
         }
         else {

@@ -8,7 +8,7 @@ using static System.Math;
 /// Represents a heap-based, memory backed output sink into which data can be written.
 /// </summary>
 /// <typeparam name="T">The type of items in this <see cref="T:Lapine.MemoryBufferWriter`1" /> instance.</typeparam>
-internal sealed class MemoryBufferWriter<T> : IBufferWriter<T>, IMemoryOwner<T>, IDisposable {
+internal sealed class MemoryBufferWriter<T> : IBufferWriter<T>, IMemoryOwner<T> {
     const Int32 DefaultInitialCapacity = 1024;
 
     readonly MemoryPool<T> _pool;
@@ -151,4 +151,8 @@ internal sealed class MemoryBufferWriter<T> : IBufferWriter<T>, IMemoryOwner<T>,
         _owner.Dispose();
         GC.SuppressFinalize(this);
     }
+
+
+    ~MemoryBufferWriter() =>
+        Dispose();
 }
