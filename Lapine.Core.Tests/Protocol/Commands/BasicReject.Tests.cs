@@ -8,11 +8,14 @@ public class BasicRejectTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        BasicReject.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenMemory;
+
+        BasicReject.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
         Assert.Equal(expected: value.ReQueue, actual: deserialized?.ReQueue);
@@ -20,7 +23,8 @@ public class BasicRejectTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = BasicReject.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = BasicReject.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -29,14 +33,16 @@ public class BasicRejectTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        BasicReject.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        BasicReject.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

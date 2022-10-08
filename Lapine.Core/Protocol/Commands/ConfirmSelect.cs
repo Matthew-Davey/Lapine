@@ -9,8 +9,8 @@ readonly record struct ConfirmSelect(Boolean NoWait) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteBoolean(NoWait);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConfirmSelect? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadBoolean(out var noWait, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConfirmSelect? result) {
+        if (BufferExtensions.ReadBoolean(ref buffer, out var noWait)) {
             result = new ConfirmSelect(noWait);
             return true;
         }
@@ -27,8 +27,7 @@ readonly record struct ConfirmSelectOk() : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConfirmSelectOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConfirmSelectOk? result) {
         result = new ConfirmSelectOk();
         return true;
     }

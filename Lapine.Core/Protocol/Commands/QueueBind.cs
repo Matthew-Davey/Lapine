@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-record struct QueueBind(String QueueName, String ExchangeName, String RoutingKey, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {
+readonly record struct QueueBind(String QueueName, String ExchangeName, String RoutingKey, Boolean NoWait, IReadOnlyDictionary<String, Object> Arguments) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x14);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -14,13 +14,13 @@ record struct QueueBind(String QueueName, String ExchangeName, String RoutingKey
             .WriteBoolean(NoWait)
             .WriteFieldTable(Arguments);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueBind? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadShortString(out var routingKey, out surplus) &&
-            surplus.ReadBoolean(out var noWait, out surplus) &&
-            surplus.ReadFieldTable(out var arguments, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out QueueBind? result) {
+        if (BufferExtensions.ReadUInt16BE(ref buffer, out var _) &&
+            BufferExtensions.ReadShortString(ref buffer, out var queueName) &&
+            BufferExtensions.ReadShortString(ref buffer, out var exchangeName) &&
+            BufferExtensions.ReadShortString(ref buffer, out var routingKey) &&
+            BufferExtensions.ReadBoolean(ref buffer, out var noWait) &&
+            BufferExtensions.ReadFieldTable(ref buffer, out var arguments))
         {
             result = new QueueBind(queueName, exchangeName, routingKey, noWait, arguments);
             return true;
@@ -32,15 +32,14 @@ record struct QueueBind(String QueueName, String ExchangeName, String RoutingKey
     }
 }
 
-record struct QueueBindOk : ICommand {
+readonly record struct QueueBindOk : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x32, 0x15);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueBindOk? result, out ReadOnlySpan<Byte> surplus) {
-        result  = new QueueBindOk();
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out QueueBindOk? result) {
+        result = new QueueBindOk();
         return true;
     }
 }

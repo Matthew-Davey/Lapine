@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-record struct ConnectionOpen(String VirtualHost) : ICommand {
+readonly record struct ConnectionOpen(String VirtualHost) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x28);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -11,10 +11,10 @@ record struct ConnectionOpen(String VirtualHost) : ICommand {
             .WriteShortString(String.Empty) // Deprecated 'capabilities' field...
             .WriteBoolean(false); // Deprecated 'insist' field...
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpen? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var vhost, out surplus) &&
-            surplus.ReadShortString(out var _, out surplus) &&
-            surplus.ReadBoolean(out var _, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConnectionOpen? result) {
+        if (BufferExtensions.ReadShortString(ref buffer, out var vhost) &&
+            BufferExtensions.ReadShortString(ref buffer, out _) &&
+            BufferExtensions.ReadBoolean(ref buffer, out _))
         {
             result = new ConnectionOpen(vhost);
             return true;
@@ -26,13 +26,12 @@ record struct ConnectionOpen(String VirtualHost) : ICommand {
     }
 }
 
-record struct ConnectionOpenOk : ICommand {
+readonly record struct ConnectionOpenOk : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x29);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpenOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConnectionOpenOk? result) {
         result  = new ConnectionOpenOk();
         return true;
     }

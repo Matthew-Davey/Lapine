@@ -7,18 +7,22 @@ public class ConfirmSelectTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ConfirmSelect.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenMemory;
+
+        ConfirmSelect.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ConfirmSelect.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = ConfirmSelect.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -27,15 +31,17 @@ public class ConfirmSelectTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConfirmSelect.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConfirmSelect.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }
 
@@ -46,14 +52,16 @@ public class ConfirmSelectOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConfirmSelectOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConfirmSelectOk.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

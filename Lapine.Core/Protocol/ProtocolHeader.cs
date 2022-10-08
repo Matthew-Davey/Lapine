@@ -25,12 +25,12 @@ readonly record struct ProtocolHeader(UInt32 Protocol, Byte ProtocolId, Protocol
             .WriteUInt8(ProtocolId)
             .WriteSerializable(Version);
 
-    public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ProtocolHeader? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadChars(4, out var protocol, out surplus) &&
-            surplus.ReadUInt8(out var protocolId, out surplus) &&
-            ProtocolVersion.Deserialize(surplus, out var version, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ProtocolHeader? result) {
+        if (BufferExtensions.ReadChars(ref buffer, 4, out var protocol) &&
+            BufferExtensions.ReadUInt8(ref buffer, out var protocolId) &&
+            ProtocolVersion.Deserialize(ref buffer, out var version))
         {
-            result = Create(protocol, protocolId, version.Value);
+            result = Create(protocol.Span, protocolId, version.Value);
             return true;
         }
         else {

@@ -5,12 +5,13 @@ using Lapine.Protocol.Commands;
 public class MethodFrameTests : Faker {
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var method = new ConnectionSecure(Random.String2(8));
         var value  = new MethodFrame(Random.UShort(), method.CommandId, method);
 
-        value.Serialize(buffer);
-        var deserializationSucceeded = Frame.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+        value.Serialize(writer);
+        var buffer = writer.WrittenMemory;
+        var deserializationSucceeded = Frame.Deserialize(ref buffer, out var deserialized);
 
         Assert.True(deserializationSucceeded);
 
@@ -28,35 +29,38 @@ public class MethodFrameTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = MethodFrame.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = MethodFrame.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
 
     [Fact]
     public void DeserializationFailsWithInvalidFrameType() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var method = new ConnectionSecure(Random.String2(8));
         var value  = new MethodFrame(Random.UShort(), method.CommandId, method);
 
-        value.Serialize(buffer);
-        var modifiedBuffer = buffer.WrittenMemory.ToArray();
+        value.Serialize(writer);
+        var modifiedBuffer = writer.WrittenMemory.ToArray();
         modifiedBuffer[0] = Random.Byte(min: 10);
+        var buffer = new ReadOnlyMemory<Byte>(modifiedBuffer);
 
-        Assert.Throws<FramingErrorException>(() => MethodFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
+        Assert.Throws<FramingErrorException>(() => MethodFrame.Deserialize(ref buffer, out _));
     }
 
     [Fact]
     public void DeserializationFailsWithInvalidFrameTerminator() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var method = new ConnectionSecure(Random.String2(8));
         var value  = new MethodFrame(Random.UShort(), method.CommandId, method);
 
-        value.Serialize(buffer);
-        var modifiedBuffer = buffer.WrittenMemory.ToArray();
+        value.Serialize(writer);
+        var modifiedBuffer = writer.WrittenMemory.ToArray();
         modifiedBuffer[^1] = 0x00;
+        var buffer = new ReadOnlyMemory<Byte>(modifiedBuffer);
 
-        Assert.Throws<FramingErrorException>(() => MethodFrame.Deserialize(modifiedBuffer.AsSpan(), out var _, out var _));
+        Assert.Throws<FramingErrorException>(() => MethodFrame.Deserialize(ref buffer, out var _));
     }
 
     [Fact]
@@ -64,14 +68,16 @@ public class MethodFrameTests : Faker {
         var method = new ConnectionSecure(Random.String2(8));
         var value  = new MethodFrame(Random.UShort(), method.CommandId, method);
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>(12);
+        var writer = new MemoryBufferWriter<Byte>(12);
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        MethodFrame.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        MethodFrame.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

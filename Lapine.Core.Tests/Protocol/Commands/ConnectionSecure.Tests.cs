@@ -5,18 +5,22 @@ public class ConnectionSecureTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ConnectionSecure.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenMemory;
+
+        ConnectionSecure.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.Challenge, actual: deserialized?.Challenge);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ConnectionSecure.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = ConnectionSecure.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -25,15 +29,17 @@ public class ConnectionSecureTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConnectionSecure.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConnectionSecure.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }
 
@@ -42,18 +48,22 @@ public class ConnectionSecureOkTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ConnectionSecureOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenMemory;
+
+        ConnectionSecureOk.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.Response, actual: deserialized?.Response);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ConnectionSecureOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = ConnectionSecureOk.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -62,14 +72,16 @@ public class ConnectionSecureOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConnectionSecureOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConnectionSecureOk.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

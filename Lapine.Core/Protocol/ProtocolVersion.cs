@@ -12,10 +12,10 @@ readonly record struct ProtocolVersion(Byte Major, Byte Minor, Byte Revision) : 
             .WriteUInt8(Minor)
             .WriteUInt8(Revision);
 
-    public static Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ProtocolVersion? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt8(out var major, out surplus) &&
-            surplus.ReadUInt8(out var minor, out surplus) &&
-            surplus.ReadUInt8(out var revision, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ProtocolVersion? result) {
+        if (BufferExtensions.ReadUInt8(ref buffer, out var major) &&
+            BufferExtensions.ReadUInt8(ref buffer, out var minor) &&
+            BufferExtensions.ReadUInt8(ref buffer, out var revision))
         {
             result = new ProtocolVersion(major, minor, revision);
             return true;

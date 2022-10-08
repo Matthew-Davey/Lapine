@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWait) : ICommand {
+readonly record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWait) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x14);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -11,10 +11,10 @@ record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWa
             .WriteShortString(ExchangeName)
             .WriteBits(IfUnused, NoWait);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDelete? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ExchangeDelete? result) {
+        if (BufferExtensions.ReadUInt16BE(ref buffer, out var _) &&
+            BufferExtensions.ReadShortString(ref buffer, out var exchangeName) &&
+            BufferExtensions.ReadBits(ref buffer, out var bits))
         {
             result = new ExchangeDelete(exchangeName, bits[0], bits[1]);
             return true;
@@ -26,14 +26,13 @@ record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWa
     }
 }
 
-record struct ExchangeDeleteOk : ICommand {
+readonly record struct ExchangeDeleteOk : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x28, 0x15);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeleteOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ExchangeDeleteOk? result) {
         result = new ExchangeDeleteOk();
         return true;
     }

@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 using static System.String;
 
-record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDictionary<String, Object> ServerProperties, IList<String> Mechanisms, IList<String> Locales) : ICommand {
+readonly record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDictionary<String, Object> ServerProperties, IList<String> Mechanisms, IList<String> Locales) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0A);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -15,12 +15,12 @@ record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDiction
             .WriteLongString(Join(' ', Mechanisms))
             .WriteLongString(Join(' ', Locales));
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStart? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt8(out var major, out surplus) &&
-            surplus.ReadUInt8(out var minor, out surplus) &&
-            surplus.ReadFieldTable(out var serverProperties, out surplus) &&
-            surplus.ReadLongString(out var mechanisms, out surplus) &&
-            surplus.ReadLongString(out var locales, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConnectionStart? result) {
+        if (BufferExtensions.ReadUInt8(ref buffer, out var major) &&
+            BufferExtensions.ReadUInt8(ref buffer, out var minor) &&
+            BufferExtensions.ReadFieldTable(ref buffer, out var serverProperties) &&
+            BufferExtensions.ReadLongString(ref buffer, out var mechanisms) &&
+            BufferExtensions.ReadLongString(ref buffer, out var locales))
         {
             result = new ConnectionStart((major, minor), serverProperties, mechanisms.Split(' '), locales.Split(' '));
             return true;
@@ -32,7 +32,7 @@ record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDiction
     }
 }
 
-record struct ConnectionStartOk(IReadOnlyDictionary<String, Object> PeerProperties, String Mechanism, String Response, String Locale) : ICommand {
+readonly record struct ConnectionStartOk(IReadOnlyDictionary<String, Object> PeerProperties, String Mechanism, String Response, String Locale) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x0A, 0x0B);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -41,11 +41,11 @@ record struct ConnectionStartOk(IReadOnlyDictionary<String, Object> PeerProperti
             .WriteLongString(Response)
             .WriteShortString(Locale);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStartOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadFieldTable(out var peerProperties, out surplus) &&
-            surplus.ReadShortString(out var mechanism, out surplus) &&
-            surplus.ReadLongString(out var response, out surplus) &&
-            surplus.ReadShortString(out var locale, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ConnectionStartOk? result) {
+        if (BufferExtensions.ReadFieldTable(ref buffer, out var peerProperties) &&
+            BufferExtensions.ReadShortString(ref buffer, out var mechanism) &&
+            BufferExtensions.ReadLongString(ref buffer, out var response) &&
+            BufferExtensions.ReadShortString(ref buffer, out var locale))
         {
             result = new ConnectionStartOk(peerProperties, mechanism, response, locale);
             return true;

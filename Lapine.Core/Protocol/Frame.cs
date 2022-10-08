@@ -6,21 +6,21 @@ using System.Diagnostics.CodeAnalysis;
 abstract record Frame(FrameType Type, UInt16 Channel) : ISerializable {
     public const Byte FrameTerminator = 0xCE;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Frame? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt8(out var type, out surplus) &&
-            surplus.ReadUInt16BE(out var channel, out surplus) &&
-            surplus.ReadUInt32BE(out var length, out surplus) &&
-            surplus.ReadBytes(length, out var payload, out surplus) &&
-            surplus.ReadUInt8(out var terminator, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out Frame? result) {
+        if (BufferExtensions.ReadUInt8(ref buffer, out var type) &&
+            BufferExtensions.ReadUInt16BE(ref buffer, out var channel) &&
+            BufferExtensions.ReadUInt32BE(ref buffer, out var length) &&
+            BufferExtensions.ReadBytes(ref buffer, length, out var payload) &&
+            BufferExtensions.ReadUInt8(ref buffer, out var terminator)) {
 
             if (terminator != FrameTerminator)
                 throw new FramingErrorException();
 
             return ((FrameType)type) switch {
-                FrameType.Method    => MethodFrame.Deserialize(channel, payload, out result),
-                FrameType.Header    => ContentHeaderFrame.Deserialize(channel, payload, out result),
-                FrameType.Body      => ContentBodyFrame.Deserialize(channel, payload, out result),
-                FrameType.Heartbeat => HeartbeatFrame.Deserialize(channel, payload, out result),
+                FrameType.Method    => MethodFrame.Deserialize(channel, ref payload, out result),
+                FrameType.Header    => ContentHeaderFrame.Deserialize(channel, ref payload, out result),
+                FrameType.Body      => ContentBodyFrame.Deserialize(channel, ref payload, out result),
+                FrameType.Heartbeat => HeartbeatFrame.Deserialize(channel, ref payload, out result),
                 _                   => throw new FramingErrorException($"Unexpected frame type '{type}'")
             };
         }

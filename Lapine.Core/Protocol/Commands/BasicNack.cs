@@ -11,10 +11,10 @@ readonly record struct BasicNack(UInt64 DeliveryTag, Boolean Multiple, Boolean R
             .WriteBoolean(Multiple)
             .WriteBoolean(ReQueue);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicNack? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt64BE(out var deliveryTag, out surplus) &&
-            surplus.ReadBoolean(out var multiple, out surplus) &&
-            surplus.ReadBoolean(out var requeue, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out BasicNack? result) {
+        if (BufferExtensions.ReadUInt64BE(ref buffer, out var deliveryTag) &&
+            BufferExtensions.ReadBoolean(ref buffer, out var multiple) &&
+            BufferExtensions.ReadBoolean(ref buffer, out var requeue))
         {
             result = new BasicNack(deliveryTag, multiple, requeue);
             return true;

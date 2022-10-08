@@ -13,11 +13,13 @@ public class BasicConsumeTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        var buffer = writer.WrittenMemory;
+
+        BasicConsume.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
         Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
@@ -30,7 +32,8 @@ public class BasicConsumeTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = BasicConsume.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = BasicConsume.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -39,15 +42,17 @@ public class BasicConsumeTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        BasicConsume.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        BasicConsume.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }
 
@@ -58,18 +63,21 @@ public class BasicConsumeOkTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        var buffer = writer.WrittenMemory;
+
+        BasicConsumeOk.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.ConsumerTag, actual: deserialized?.ConsumerTag);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = BasicConsumeOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = BasicConsumeOk.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -78,14 +86,16 @@ public class BasicConsumeOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        BasicConsumeOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        BasicConsumeOk.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

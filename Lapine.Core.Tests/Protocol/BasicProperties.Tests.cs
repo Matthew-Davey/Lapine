@@ -3,7 +3,7 @@ namespace Lapine.Protocol;
 public class BasicPropertiesTests : Faker {
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value =  BasicProperties.Empty with {
             AppId           = Random.Utf16String(),
             ClusterId       = Random.Utf16String(),
@@ -20,15 +20,17 @@ public class BasicPropertiesTests : Faker {
             UserId          = Random.Utf16String()
         };
 
-        value.Serialize(buffer);
-        BasicProperties.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+        value.Serialize(writer);
+        var buffer = writer.WrittenMemory;
+        BasicProperties.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value, actual: deserialized);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = BasicProperties.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = BasicProperties.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -51,14 +53,16 @@ public class BasicPropertiesTests : Faker {
             UserId          = Internet.UserName()
         };
         var extra = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        BasicProperties.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        BasicProperties.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

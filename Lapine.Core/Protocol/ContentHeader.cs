@@ -10,11 +10,11 @@ readonly record struct ContentHeader(UInt16 ClassId, UInt64 BodySize, BasicPrope
             .WriteUInt64BE(BodySize)
             .WriteSerializable(Properties);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ContentHeader? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var classId, out surplus) &&
-            surplus.ReadUInt16BE(out _, out surplus) &&
-            surplus.ReadUInt64BE(out var bodySize, out surplus) &&
-            BasicProperties.Deserialize(surplus, out var basicProperties, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out ContentHeader? result) {
+        if (BufferExtensions.ReadUInt16BE(ref buffer, out var classId) &&
+            BufferExtensions.ReadUInt16BE(ref buffer, out _) &&
+            BufferExtensions.ReadUInt64BE(ref buffer, out var bodySize) &&
+            BasicProperties.Deserialize(ref buffer, out var basicProperties)) {
                 result = new ContentHeader(classId, bodySize, basicProperties.Value);
                 return true;
             }

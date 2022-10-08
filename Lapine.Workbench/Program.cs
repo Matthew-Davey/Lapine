@@ -1,4 +1,4 @@
-using System.Reactive.Linq;
+using System.Threading.Tasks.Dataflow;
 using Lapine.Agents;
 using Lapine.Client;
 using Lapine.Protocol;
@@ -12,14 +12,16 @@ var connectionConfiguration = ConnectionConfiguration.Default with {
     }
 };
 
-var socket2 = new SocketAgent();
-socket2.Events
-    .OfType<SocketAgent.Protocol.FrameReceived>()
-    .Subscribe(message => Console.WriteLine(message.Frame));
+var loggerBlock = new ActionBlock<Object>(Console.WriteLine);
 
-socket2.Connect(connectionConfiguration.Endpoints[0], connectionConfiguration.ConnectionTimeout);
+var connectionAgent = new ConnectionAgent();
+connectionAgent.Outbox.LinkTo(loggerBlock);
+
+connectionAgent.Post(new ConnectionAgent.Messages.Connect(connectionConfiguration));
 
 await Task.Delay(5000);
+
+Console.WriteLine("Goodbye");
 
 //var amqpClient = new AmqpClient(connectionConfiguration);
 

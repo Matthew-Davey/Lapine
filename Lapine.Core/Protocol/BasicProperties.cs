@@ -73,14 +73,14 @@ readonly record struct BasicProperties(
         return writer;
     }
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicProperties? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var propertyFlags, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out BasicProperties? result) {
+        if (BufferExtensions.ReadUInt16BE(ref buffer, out var propertyFlags)) {
             var flags = (PropertyFlags)propertyFlags;
 
             result = Empty;
 
             if (flags.HasFlag(PropertyFlags.ContentType)) {
-                if (surplus.ReadShortString(out var contentType, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var contentType)) {
                     result = result.Value with { ContentType = contentType };
                 }
                 else {
@@ -90,7 +90,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.ContentEncoding)) {
-                if (surplus.ReadShortString(out var contentEncoding, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var contentEncoding)) {
                     result = result.Value with { ContentEncoding = contentEncoding };
                 }
                 else {
@@ -100,7 +100,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.Headers)) {
-                if (surplus.ReadFieldTable(out var headers, out surplus)) {
+                if (BufferExtensions.ReadFieldTable(ref buffer, out var headers)) {
                     result = result.Value with { Headers = headers };
                 }
                 else {
@@ -110,7 +110,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.DeliveryMode)) {
-                if (surplus.ReadUInt8(out var deliveryMode, out surplus)) {
+                if (BufferExtensions.ReadUInt8(ref buffer, out var deliveryMode)) {
                     result = result.Value with { DeliveryMode = deliveryMode };
                 }
                 else {
@@ -120,7 +120,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.Priority)) {
-                if (surplus.ReadUInt8(out var priority, out surplus)) {
+                if (BufferExtensions.ReadUInt8(ref buffer, out var priority)) {
                     result = result.Value with { Priority = priority };
                 }
                 else {
@@ -130,7 +130,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.CorrelationId)) {
-                if (surplus.ReadShortString(out var correlationId, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var correlationId)) {
                     result = result.Value with { CorrelationId = correlationId };
                 }
                 else {
@@ -140,7 +140,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.ReplyTo)) {
-                if (surplus.ReadShortString(out var replyTo, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var replyTo)) {
                     result = result.Value with { ReplyTo = replyTo };
                 }
                 else {
@@ -150,7 +150,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.Expiration)) {
-                if (surplus.ReadShortString(out var expiration, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var expiration)) {
                     result = result.Value with { Expiration = expiration };
                 }
                 else {
@@ -160,7 +160,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.MessageId)) {
-                if (surplus.ReadShortString(out var messageId, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var messageId)) {
                     result = result.Value with { MessageId = messageId };
                 }
                 else {
@@ -170,7 +170,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.Timestamp)) {
-                if (surplus.ReadUInt64BE(out var timestamp, out surplus)) {
+                if (BufferExtensions.ReadUInt64BE(ref buffer, out var timestamp)) {
                     result = result.Value with { Timestamp = timestamp };
                 }
                 else {
@@ -180,7 +180,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.Type)) {
-                if (surplus.ReadShortString(out var type, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var type)) {
                     result = result.Value with { Type = type };
                 }
                 else {
@@ -190,7 +190,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.UserId)) {
-                if (surplus.ReadShortString(out var userId, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var userId)) {
                     result = result.Value with { UserId = userId };
                 }
                 else {
@@ -200,7 +200,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.AppId)) {
-                if (surplus.ReadShortString(out var appId, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var appId)) {
                     result = result.Value with { AppId = appId };
                 }
                 else {
@@ -210,7 +210,7 @@ readonly record struct BasicProperties(
             }
 
             if (flags.HasFlag(PropertyFlags.ClusterId)) {
-                if (surplus.ReadShortString(out var clusterId, out surplus)) {
+                if (BufferExtensions.ReadShortString(ref buffer, out var clusterId)) {
                     result = result.Value with { ClusterId = clusterId };
                 }
                 else {

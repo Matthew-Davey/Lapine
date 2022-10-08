@@ -4,47 +4,47 @@ using System.Buffers;
 using Lapine.Protocol.Commands;
 
 record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Command) : Frame(FrameType.Method, Channel) {
-    static public Boolean Deserialize(UInt16 channel, in ReadOnlySpan<Byte> buffer, out Frame? result) {
-        if (buffer.ReadMethodHeader(out var header, out var surplus)) {
+    static public Boolean Deserialize(UInt16 channel, ref ReadOnlyMemory<Byte> buffer, out Frame? result) {
+        if (BufferExtensions.ReadMethodHeader(ref buffer, out var header)) {
             switch (header) {
                 // Connection class
                 case (0x0A, 0x0A): {
-                    if (ConnectionStart.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionStart.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x0A, 0x14): {
-                    if (ConnectionSecure.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionSecure.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x0A, 0x1E): {
-                    if (ConnectionTune.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionTune.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x0A, 0x29): {
-                    if (ConnectionOpenOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionOpenOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x0A, 0x32): {
-                    if (ConnectionClose.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionClose.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x0A, 0x33): {
-                    if (ConnectionCloseOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConnectionCloseOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -52,35 +52,35 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // Channel class
                 case (0x14, 0x0B): {
-                    if (ChannelOpenOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ChannelOpenOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x14, 0x14): {
-                    if (ChannelFlow.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ChannelFlow.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x14, 0x15): {
-                    if (ChannelFlowOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ChannelFlowOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x14, 0x28): {
-                    if (ChannelClose.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ChannelClose.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x14, 0x29): {
-                    if (ChannelCloseOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ChannelCloseOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -88,14 +88,14 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // Exchange class
                 case (0x28, 0x0B): {
-                    if (ExchangeDeclareOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ExchangeDeclareOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x28, 0x15): {
-                    if (ExchangeDeleteOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ExchangeDeleteOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -103,35 +103,35 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // Queue class
                 case (0x32, 0x0B): {
-                    if (QueueDeclareOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (QueueDeclareOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x32, 0x15): {
-                    if (QueueBindOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (QueueBindOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x32, 0x33): {
-                    if (QueueUnbindOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (QueueUnbindOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x32, 0x1F): {
-                    if (QueuePurgeOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (QueuePurgeOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x32, 0x29): {
-                    if (QueueDeleteOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (QueueDeleteOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -139,70 +139,70 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // Basic class
                 case (0x3C, 0x0B): {
-                    if (BasicQosOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicQosOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x15): {
-                    if (BasicConsumeOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicConsumeOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x1F): {
-                    if (BasicCancelOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicCancelOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x32): {
-                    if (BasicReturn.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicReturn.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x3C): {
-                    if (BasicDeliver.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicDeliver.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x47): {
-                    if (BasicGetOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicGetOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x48): {
-                    if (BasicGetEmpty.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicGetEmpty.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x50): {
-                    if (BasicAck.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicAck.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x6F): {
-                    if (BasicRecoverOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicRecoverOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x3C, 0x78): {
-                    if (BasicNack.Deserialize(in surplus, out var command, out surplus)) {
+                    if (BasicNack.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -210,21 +210,21 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // TX class
                 case (0x5A, 0x0B): {
-                    if (TransactionSelectOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (TransactionSelectOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x5A, 0x15): {
-                    if (TransactionCommitOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (TransactionCommitOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x5A, 0x1F): {
-                    if (TransactionRollback.Deserialize(in surplus, out var command, out surplus)) {
+                    if (TransactionRollback.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -232,14 +232,14 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
                 }
                 // Confirm class
                 case (0x55, 0x0A): {
-                    if (ConfirmSelect.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConfirmSelect.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
                     break;
                 }
                 case (0x55, 0x0B): {
-                    if (ConfirmSelectOk.Deserialize(in surplus, out var command, out surplus)) {
+                    if (ConfirmSelectOk.Deserialize(ref buffer, out var command)) {
                         result = new MethodFrame(channel, header, command);
                         return true;
                     }
@@ -256,14 +256,14 @@ record MethodFrame(UInt16 Channel, (UInt16, UInt16) MethodHeader, ICommand Comma
     }
 
     public override IBufferWriter<Byte> Serialize(IBufferWriter<Byte> buffer) {
-        var payloadWriter = new ArrayBufferWriter<Byte>();
+        var payloadWriter = new MemoryBufferWriter<Byte>();
         payloadWriter.WriteMethodHeader(MethodHeader)
             .WriteSerializable(Command);
 
         return buffer.WriteUInt8((Byte)Type)
             .WriteUInt16BE(Channel)
             .WriteUInt32BE((UInt32)payloadWriter.WrittenCount)
-            .WriteBytes(payloadWriter.WrittenSpan)
+            .WriteBytes(payloadWriter.WrittenMemory)
             .WriteUInt8(FrameTerminator);
     }
 }

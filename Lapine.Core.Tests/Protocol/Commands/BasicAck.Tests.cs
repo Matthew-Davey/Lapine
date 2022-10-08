@@ -8,11 +8,12 @@ public class BasicAckTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        BasicAck.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        var buffer = writer.WrittenMemory;
+        BasicAck.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.DeliveryTag, actual: deserialized?.DeliveryTag);
         Assert.Equal(expected: value.Multiple, actual: deserialized?.Multiple);
@@ -20,7 +21,8 @@ public class BasicAckTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = BasicAck.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlyMemory<Byte>.Empty;
+        var result = BasicAck.Deserialize(ref buffer, out _);
 
         Assert.False(result);
     }
@@ -29,14 +31,16 @@ public class BasicAckTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        BasicAck.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenMemory;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        BasicAck.Deserialize(ref buffer, out _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer.Span));
     }
 }

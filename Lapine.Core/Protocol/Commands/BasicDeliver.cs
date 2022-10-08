@@ -3,7 +3,7 @@ namespace Lapine.Protocol.Commands;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-record struct BasicDeliver(String ConsumerTag, UInt64 DeliveryTag, Boolean Redelivered, String ExchangeName) : ICommand {
+readonly record struct BasicDeliver(String ConsumerTag, UInt64 DeliveryTag, Boolean Redelivered, String ExchangeName) : ICommand {
     public (Byte ClassId, Byte MethodId) CommandId => (0x3C, 0x3C);
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
@@ -12,11 +12,11 @@ record struct BasicDeliver(String ConsumerTag, UInt64 DeliveryTag, Boolean Redel
             .WriteBoolean(Redelivered)
             .WriteShortString(ExchangeName);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicDeliver? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var consumerTag, out surplus) &&
-            surplus.ReadUInt64BE(out var deliveryTag, out surplus) &&
-            surplus.ReadBoolean(out var redelivered, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus))
+    static public Boolean Deserialize(ref ReadOnlyMemory<Byte> buffer, [NotNullWhen(true)] out BasicDeliver? result) {
+        if (BufferExtensions.ReadShortString(ref buffer, out var consumerTag) &&
+            BufferExtensions.ReadUInt64BE(ref buffer, out var deliveryTag) &&
+            BufferExtensions.ReadBoolean(ref buffer, out var redelivered) &&
+            BufferExtensions.ReadShortString(ref buffer, out var exchangeName))
         {
             result = new BasicDeliver(consumerTag, deliveryTag, redelivered, exchangeName);
             return true;
