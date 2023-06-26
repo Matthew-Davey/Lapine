@@ -9,8 +9,8 @@ record struct BasicRecover(Boolean ReQueue) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteBoolean(ReQueue);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicRecover? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadBoolean(out var requeue, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicRecover? result) {
+        if (buffer.ReadBoolean(out var requeue)) {
             result = new BasicRecover(requeue);
             return true;
         }
@@ -26,9 +26,8 @@ record struct BasicRecoverOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicRecoverOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
-        result  = new BasicRecoverOk();
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicRecoverOk? result) {
+        result = new BasicRecoverOk();
         return true;
     }
 }

@@ -9,8 +9,8 @@ record struct ConnectionSecure(String Challenge) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteLongString(Challenge);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecure? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadLongString(out var challenge, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecure? result) {
+        if (buffer.ReadLongString(out var challenge)) {
             result = new ConnectionSecure(challenge);
             return true;
         }
@@ -27,8 +27,8 @@ record struct ConnectionSecureOk(String Response) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteLongString(Response);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecureOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadLongString(out var response, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionSecureOk? result) {
+        if (buffer.ReadLongString(out var response)) {
             result = new ConnectionSecureOk(response);
             return true;
         }

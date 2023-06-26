@@ -11,10 +11,10 @@ record struct ExchangeDelete(String ExchangeName, Boolean IfUnused, Boolean NoWa
             .WriteShortString(ExchangeName)
             .WriteBits(IfUnused, NoWait);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDelete? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDelete? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var exchangeName) &&
+            buffer.ReadBits(out var bits))
         {
             result = new ExchangeDelete(exchangeName, bits[0], bits[1]);
             return true;
@@ -32,8 +32,7 @@ record struct ExchangeDeleteOk : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeleteOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeleteOk? result) {
         result = new ExchangeDeleteOk();
         return true;
     }

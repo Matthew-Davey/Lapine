@@ -3,7 +3,6 @@ namespace Lapine.Agents;
 using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
-using Proto;
 
 using static Lapine.Agents.MessageHandlerAgent.Protocol;
 using static Lapine.Agents.DispatcherAgent.Protocol;
@@ -11,55 +10,61 @@ using static Lapine.Agents.DispatcherAgent.Protocol;
 static class MessageHandlerAgent {
     static public class Protocol {
         public record HandleMessage(
-            PID Dispatcher,
+            IAgent Dispatcher,
             ConsumerConfiguration ConsumerConfiguration,
             DeliveryInfo Delivery,
             BasicProperties Properties,
-            MemoryBufferWriter<Byte> Buffer
+            MemoryBufferWriter<Byte> Buffer,
+            Action<HandlerReady> PostToParent
         );
-        public record HandlerReady(PID Handler);
+        public record HandlerReady(IAgent Handler);
     }
 
-    static public Props Create() =>
-        Props.FromProducer(() => new Actor());
+    static public IAgent Create() =>
+        Agent.StartNew(Main());
 
-    class Actor : IActor {
-        public async Task ReceiveAsync(IContext context) {
-            switch (context.Message) {
-                case HandleMessage handle: {
-                    try {
-                        await handle.ConsumerConfiguration.Handler(
-                            deliveryInfo: handle.Delivery,
-                            properties  : MessageProperties.FromBasicProperties(handle.Properties),
-                            body        : handle.Buffer.WrittenMemory
-                        );
-                        context.Send(handle.Dispatcher, Dispatch.Command(new BasicAck(
-                            DeliveryTag: handle.Delivery.DeliveryTag,
-                            Multiple   : false
-                        )));
-                        context.Send(context.Parent!, new HandlerReady(context.Self!));
-                    }
-                    catch (MessageException) {
-                        // nack without requeue...
-                        context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
-                            DeliveryTag: handle.Delivery.DeliveryTag,
-                            ReQueue    : false
-                        )));
-                    }
-                    catch (ConsumerException) {
-                        // nack with requeue...
-                        context.Send(handle.Dispatcher, Dispatch.Command(new BasicReject(
-                            DeliveryTag: handle.Delivery.DeliveryTag,
-                            ReQueue    : true
-                        )));
-                    }
-                    finally {
-                        // Release the buffer containing the message body back into the memory pool...
-                        handle.Buffer.Dispose();
-                    }
-                    break;
-                }
+    static Behaviour Main() => async context => {
+        switch (context.Message) {
+            case Started: {
+                return context;
             }
+            case HandleMessage(var dispatcher, var consumerConfiguration, var deliveryInfo, var properties, var buffer, var postToParent): {
+                try {
+                    await consumerConfiguration.Handler(
+                        deliveryInfo: deliveryInfo,
+                        properties  : MessageProperties.FromBasicProperties(properties),
+                        body        : buffer.WrittenMemory
+                    );
+                    await dispatcher.PostAsync(Dispatch.Command(new BasicAck(
+                        DeliveryTag: deliveryInfo.DeliveryTag,
+                        Multiple   : false
+                    )));
+                }
+                catch (MessageException) {
+                    // nack without requeue...
+                    await dispatcher.PostAsync(Dispatch.Command(new BasicReject(
+                        DeliveryTag: deliveryInfo.DeliveryTag,
+                        ReQueue    : false
+                    )));
+                }
+                catch (ConsumerException) {
+                    // nack with requeue...
+                    await dispatcher.PostAsync(Dispatch.Command(new BasicReject(
+                        DeliveryTag: deliveryInfo.DeliveryTag,
+                        ReQueue    : true
+                    )));
+                }
+                finally {
+                    // Release the buffer containing the message body back into the memory pool...
+                    buffer.Dispose();
+
+                    // Tell consumer agent we're ready to handle another message...
+                    postToParent(new HandlerReady(context.Self));
+                }
+
+                return context;
+            }
+            default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Main)}' behaviour.");
         }
-    }
+    };
 }

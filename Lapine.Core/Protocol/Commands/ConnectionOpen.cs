@@ -11,10 +11,10 @@ record struct ConnectionOpen(String VirtualHost) : ICommand {
             .WriteShortString(String.Empty) // Deprecated 'capabilities' field...
             .WriteBoolean(false); // Deprecated 'insist' field...
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpen? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var vhost, out surplus) &&
-            surplus.ReadShortString(out var _, out surplus) &&
-            surplus.ReadBoolean(out var _, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpen? result) {
+        if (buffer.ReadShortString(out var vhost) &&
+            buffer.ReadShortString(out var _) &&
+            buffer.ReadBoolean(out var _))
         {
             result = new ConnectionOpen(vhost);
             return true;
@@ -31,8 +31,7 @@ record struct ConnectionOpenOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpenOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionOpenOk? result) {
         result  = new ConnectionOpenOk();
         return true;
     }

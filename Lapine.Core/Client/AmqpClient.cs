@@ -1,43 +1,55 @@
 namespace Lapine.Client;
 
+using System.Runtime.ExceptionServices;
 using Lapine.Agents;
-using Proto;
 
-using static Lapine.Agents.RabbitClientAgent.Protocol;
+using static Lapine.Agents.AmqpClientAgent.Protocol;
 
 public class AmqpClient : IAsyncDisposable {
-    readonly ActorSystem _system;
     readonly ConnectionConfiguration _connectionConfiguration;
-    readonly PID _agent;
+    readonly IAgent _agent;
 
     public AmqpClient(ConnectionConfiguration connectionConfiguration) {
-        _system = new ActorSystem();
         _connectionConfiguration = connectionConfiguration;
-        _agent = _system.Root.SpawnNamed(
-            name: "amqp-client",
-            props: RabbitClientAgent.Create()
-        );
+        _agent = AmqpClientAgent.Create();
     }
 
-    public async ValueTask ConnectAsync(TimeSpan? timeout = default) {
-        var command = new EstablishConnection(
-            Configuration: _connectionConfiguration with {
-                ConnectionTimeout = timeout ?? _connectionConfiguration.ConnectionTimeout
+    public async ValueTask ConnectAsync(CancellationToken cancellationToken = default) {
+        var command = new EstablishConnection(_connectionConfiguration, cancellationToken);
+
+        switch (await _agent.PostAndReplyAsync(command)) {
+            case true: {
+                return;
             }
-        );
-        _system.Root.Send(_agent, command);
-        await command;
+            case Exception fault: {
+                ExceptionDispatchInfo
+                    .Capture(fault)
+                    .Throw();
+                return;
+            }
+        }
     }
 
-    public async ValueTask<Channel> OpenChannelAsync(TimeSpan? timeout = null) {
-        var command = new OpenChannel(timeout ?? _connectionConfiguration.CommandTimeout);
-        _system.Root.Send(_agent, command);
+    public async ValueTask<Channel> OpenChannelAsync(CancellationToken cancellationToken = default) {
+        var command = new OpenChannel(cancellationToken);
 
-        return new Channel(_system, await command, _connectionConfiguration);
+        switch (await _agent.PostAndReplyAsync(command)) {
+            case IAgent channelAgent: {
+                return new Channel(channelAgent, _connectionConfiguration);
+            }
+            case Exception fault: {
+                ExceptionDispatchInfo
+                    .Capture(fault)
+                    .Throw();
+                return null;
+            }
+            case var message: throw new Exception($"Unexpected message '{message.GetType().FullName}' in '{nameof(OpenChannelAsync)}' method.");
+        }
     }
 
     public async ValueTask DisposeAsync() {
-        await _system.Root.StopAsync(_agent);
+        await _agent.PostAndReplyAsync(new Disconnect());
+        await _agent.StopAsync();
 
         GC.SuppressFinalize(this);
     }

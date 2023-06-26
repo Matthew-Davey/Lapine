@@ -12,11 +12,11 @@ record struct BasicReturn(UInt16 ReplyCode, String ReplyText, String ExchangeNam
             .WriteShortString(ExchangeName)
             .WriteShortString(RoutingKey);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicReturn? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var replyCode, out surplus) &&
-            surplus.ReadShortString(out var replyText, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadShortString(out var routingKey, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicReturn? result) {
+        if (buffer.ReadUInt16BE(out var replyCode) &&
+            buffer.ReadShortString(out var replyText) &&
+            buffer.ReadShortString(out var exchangeName) &&
+            buffer.ReadShortString(out var routingKey))
         {
             result = new BasicReturn(replyCode, replyText, exchangeName, routingKey);
             return true;

@@ -11,10 +11,10 @@ record struct BasicGet(String QueueName, Boolean NoAck) : ICommand {
             .WriteShortString(QueueName)
             .WriteBoolean(NoAck);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGet? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadBoolean(out var noAck, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGet? result) {
+        if (buffer.ReadUInt16BE(out _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadBoolean(out var noAck))
         {
             result = new BasicGet(queueName, noAck);
             return true;
@@ -36,12 +36,12 @@ record struct BasicGetOk(UInt64 DeliveryTag, Boolean Redelivered, String Exchang
             .WriteShortString(RoutingKey)
             .WriteUInt32BE(MessageCount);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt64BE(out var deliveryTag, out surplus) &&
-            surplus.ReadBoolean(out var redelivered, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadShortString(out var routingKey, out surplus) &&
-            surplus.ReadUInt32BE(out var messageCount, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetOk? result) {
+        if (buffer.ReadUInt64BE(out var deliveryTag) &&
+            buffer.ReadBoolean(out var redelivered) &&
+            buffer.ReadShortString(out var exchangeName) &&
+            buffer.ReadShortString(out var routingKey) &&
+            buffer.ReadUInt32BE(out var messageCount))
         {
             result = new BasicGetOk(deliveryTag, redelivered, exchangeName, routingKey, messageCount);
             return true;
@@ -58,8 +58,7 @@ record struct BasicGetEmpty : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetEmpty? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicGetEmpty? result) {
         result  = new BasicGetEmpty();
         return true;
     }

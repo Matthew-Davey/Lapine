@@ -13,12 +13,12 @@ record struct QueueUnbind(String QueueName, String ExchangeName, String RoutingK
             .WriteShortString(RoutingKey)
             .WriteFieldTable(Arguments);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbind? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadShortString(out var routingKey, out surplus) &&
-            surplus.ReadFieldTable(out var arguments, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbind? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadShortString(out var exchangeName) &&
+            buffer.ReadShortString(out var routingKey) &&
+            buffer.ReadFieldTable(out var arguments))
         {
             result = new QueueUnbind(queueName, exchangeName, routingKey, arguments);
             return true;
@@ -35,9 +35,8 @@ record struct QueueUnbindOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbindOk? result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueUnbindOk? result) {
         result = new QueueUnbindOk();
-        surplus = buffer;
         return true;
     }
 }

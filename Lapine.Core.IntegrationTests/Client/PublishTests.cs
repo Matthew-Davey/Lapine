@@ -4,6 +4,8 @@ using static System.Text.Encoding;
 
 public class PublishTests : Faker {
     [Scenario]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -40,6 +42,8 @@ public class PublishTests : Faker {
     }
 
     [Scenario]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]

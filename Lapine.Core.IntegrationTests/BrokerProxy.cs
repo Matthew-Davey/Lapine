@@ -66,12 +66,12 @@ public class BrokerProxy : IAsyncDisposable {
         // Wait a few seconds for the container to boot...
         await Task.Delay(TimeSpan.FromSeconds(3));
 
-        // Wait up to 60 seconds for RabbitMQ to start up...
+        // Wait up to 120 seconds for RabbitMQ to start up...
         await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
             .WithArguments(arguments => arguments
                 .Add("exec")
                 .Add(container)
-                .Add("rabbitmqctl await_startup --timeout 60", escape: false))
+                .Add("rabbitmqctl await_startup --timeout 120", escape: false))
             .WithValidation(CommandResultValidation.ZeroExitCode)
             .ExecuteAsync()
         );
