@@ -11,10 +11,10 @@ record struct QueuePurge(String QueueName, Boolean NoWait) : ICommand {
             .WriteShortString(QueueName)
             .WriteBoolean(NoWait);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueuePurge? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadBoolean(out var noWait, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueuePurge? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadBoolean(out var noWait))
         {
             result = new QueuePurge(queueName, noWait);
             return true;
@@ -32,8 +32,8 @@ record struct QueuePurgeOk(UInt32 MessageCount) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteUInt32BE(MessageCount);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueuePurgeOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt32BE(out var messageCount, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueuePurgeOk? result) {
+        if (buffer.ReadUInt32BE(out var messageCount)) {
             result = new QueuePurgeOk(messageCount);
             return true;
         }

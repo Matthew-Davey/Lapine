@@ -5,11 +5,14 @@ public class ConnectionTuneTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ConnectionTune.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        
+        var buffer = writer.WrittenSpan;
+        
+        ConnectionTune.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.ChannelMax, actual: deserialized?.ChannelMax);
         Assert.Equal(expected: value.FrameMax, actual: deserialized?.FrameMax);
@@ -18,7 +21,8 @@ public class ConnectionTuneTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ConnectionTune.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = ConnectionTune.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -27,15 +31,17 @@ public class ConnectionTuneTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConnectionTune.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConnectionTune.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }
 
@@ -44,11 +50,14 @@ public class ConnectionTuneOkTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ConnectionTuneOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        
+        var buffer = writer.WrittenSpan;
+        
+        ConnectionTuneOk.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.ChannelMax, actual: deserialized?.ChannelMax);
         Assert.Equal(expected: value.FrameMax, actual: deserialized?.FrameMax);
@@ -57,7 +66,8 @@ public class ConnectionTuneOkTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ConnectionTuneOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = ConnectionTuneOk.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -66,14 +76,16 @@ public class ConnectionTuneOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ConnectionTuneOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ConnectionTuneOk.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }

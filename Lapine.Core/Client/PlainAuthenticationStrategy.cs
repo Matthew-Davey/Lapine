@@ -16,6 +16,6 @@ public class PlainAuthenticationStrategy : IAuthenticationStrategy {
         Password = password;
     }
 
-    public ReadOnlySpan<Byte> Respond(Byte stage, in ReadOnlySpan<Byte> challenge) =>
+    public Byte[] Respond(Byte stage, in ReadOnlySpan<Byte> challenge) =>
         UTF8.GetBytes($"\0{Username}\0{Password}");
 }

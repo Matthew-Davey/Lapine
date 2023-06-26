@@ -11,10 +11,10 @@ record struct QueueDelete(String QueueName, Boolean IfUnused, Boolean IfEmpty, B
             .WriteShortString(QueueName)
             .WriteBits(IfUnused, IfEmpty, NoWait);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDelete? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDelete? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadBits(out var bits))
         {
             result = new QueueDelete(queueName, bits[0], bits[1], bits[2]);
             return true;
@@ -32,8 +32,8 @@ record struct QueueDeleteOk(UInt32 MessageCount) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteUInt32BE(MessageCount);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeleteOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt32BE(out var messageCount, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeleteOk? result) {
+        if (buffer.ReadUInt32BE(out var messageCount)) {
             result = new QueueDeleteOk(messageCount);
             return true;
         }

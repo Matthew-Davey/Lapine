@@ -12,11 +12,11 @@ record struct ChannelClose(UInt16 ReplyCode, String ReplyText, (UInt16 ClassId, 
             .WriteUInt16BE(FailingMethod.ClassId)
             .WriteUInt16BE(FailingMethod.MethodId);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelClose? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var replyCode, out surplus) &&
-            surplus.ReadShortString(out var replyText, out surplus) &&
-            surplus.ReadUInt16BE(out var classId, out surplus) &&
-            surplus.ReadUInt16BE(out var methodId, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelClose? result) {
+        if (buffer.ReadUInt16BE(out var replyCode) &&
+            buffer.ReadShortString(out var replyText) &&
+            buffer.ReadUInt16BE(out var classId) &&
+            buffer.ReadUInt16BE(out var methodId))
         {
             result = new ChannelClose(replyCode, replyText, (classId, methodId));
             return true;
@@ -34,8 +34,7 @@ record struct ChannelCloseOk : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelCloseOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelCloseOk? result) {
         result = new ChannelCloseOk();
         return true;
     }

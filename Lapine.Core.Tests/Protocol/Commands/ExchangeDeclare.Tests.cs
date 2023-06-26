@@ -14,11 +14,14 @@ public class ExchangeDeclareTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        ExchangeDeclare.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        
+        var buffer = writer.WrittenSpan;
+        
+        ExchangeDeclare.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.Arguments.ToList(), actual: deserialized?.Arguments.ToList());
         Assert.Equal(expected: value.AutoDelete, actual: deserialized?.AutoDelete);
@@ -32,7 +35,8 @@ public class ExchangeDeclareTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ExchangeDeclare.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = ExchangeDeclare.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -41,15 +45,17 @@ public class ExchangeDeclareTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ExchangeDeclare.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ExchangeDeclare.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }
 
@@ -58,14 +64,16 @@ public class ExchangeDeclareOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = new ExchangeDeclareOk();
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ExchangeDeclareOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ExchangeDeclareOk.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }

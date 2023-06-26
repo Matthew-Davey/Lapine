@@ -15,12 +15,12 @@ record struct ConnectionStart((Byte Major, Byte Minor) Version, IReadOnlyDiction
             .WriteLongString(Join(' ', Mechanisms))
             .WriteLongString(Join(' ', Locales));
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStart? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt8(out var major, out surplus) &&
-            surplus.ReadUInt8(out var minor, out surplus) &&
-            surplus.ReadFieldTable(out var serverProperties, out surplus) &&
-            surplus.ReadLongString(out var mechanisms, out surplus) &&
-            surplus.ReadLongString(out var locales, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStart? result) {
+        if (buffer.ReadUInt8(out var major) &&
+            buffer.ReadUInt8(out var minor) &&
+            buffer.ReadFieldTable(out var serverProperties) &&
+            buffer.ReadLongString(out var mechanisms) &&
+            buffer.ReadLongString(out var locales))
         {
             result = new ConnectionStart((major, minor), serverProperties, mechanisms.Split(' '), locales.Split(' '));
             return true;
@@ -41,11 +41,11 @@ record struct ConnectionStartOk(IReadOnlyDictionary<String, Object> PeerProperti
             .WriteLongString(Response)
             .WriteShortString(Locale);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStartOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadFieldTable(out var peerProperties, out surplus) &&
-            surplus.ReadShortString(out var mechanism, out surplus) &&
-            surplus.ReadLongString(out var response, out surplus) &&
-            surplus.ReadShortString(out var locale, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ConnectionStartOk? result) {
+        if (buffer.ReadFieldTable(out var peerProperties) &&
+            buffer.ReadShortString(out var mechanism) &&
+            buffer.ReadLongString(out var response) &&
+            buffer.ReadShortString(out var locale))
         {
             result = new ConnectionStartOk(peerProperties, mechanism, response, locale);
             return true;

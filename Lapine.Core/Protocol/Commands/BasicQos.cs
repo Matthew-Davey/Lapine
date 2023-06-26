@@ -11,10 +11,10 @@ record struct BasicQos(UInt32 PrefetchSize, UInt16 PrefetchCount, Boolean Global
             .WriteUInt16BE(PrefetchCount)
             .WriteBoolean(Global);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQos? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt32BE(out var prefetchSize, out surplus) &&
-            surplus.ReadUInt16BE(out var prefetchCount, out surplus) &&
-            surplus.ReadBoolean(out var global, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQos? result) {
+        if (buffer.ReadUInt32BE(out var prefetchSize) &&
+            buffer.ReadUInt16BE(out var prefetchCount) &&
+            buffer.ReadBoolean(out var global))
         {
             result = new BasicQos(prefetchSize, prefetchCount, global);
             return true;
@@ -31,9 +31,8 @@ record struct BasicQosOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQosOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
-        result  = new BasicQosOk();
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicQosOk? result) {
+        result = new BasicQosOk();
         return true;
     }
 }

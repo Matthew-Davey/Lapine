@@ -9,8 +9,8 @@ record struct ChannelOpen : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteShortString(String.Empty); // reserved_1
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpen? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var _, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpen? result) {
+        if (buffer.ReadShortString(out var _)) {
             result = new ChannelOpen();
             return true;
         }
@@ -27,8 +27,8 @@ record struct ChannelOpenOk : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteLongString(String.Empty); // reserved_1
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpenOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadLongString(out var _, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelOpenOk? result) {
+        if (buffer.ReadLongString(out var _)) {
             result = new ChannelOpenOk();
             return true;
         }

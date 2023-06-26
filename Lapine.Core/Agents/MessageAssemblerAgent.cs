@@ -1,117 +1,89 @@
 namespace Lapine.Agents.ProcessManagers;
 
-using Lapine.Agents.Middleware;
+using System.Reactive.Linq;
 using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
-using Proto;
 
-using static System.Threading.Tasks.Task;
 using static Lapine.Agents.ConsumerAgent.Protocol;
-using static Lapine.Agents.SocketAgent.Protocol;
 
 static class MessageAssemblerAgent {
-    static public Props Create(UInt16 channelId, PID listener) =>
-        Props.FromProducer(() => new Actor(channelId, listener))
-            .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundMethodFrames())
-            .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentHeaderFrames())
-            .WithReceiverMiddleware(FramingMiddleware.UnwrapInboundContentBodyFrames());
+    static public IAgent StartNew(IObservable<RawFrame> receivedFrames, IAgent listener) =>
+        Agent.StartNew(Unstarted( receivedFrames, listener));
 
-    record State(
-        EventStreamSubscription<Object> Subscription
-    );
-
-    class Actor : IActor {
-        readonly Behavior _behaviour;
-        readonly UInt16 _channelId;
-        readonly PID _listener;
-
-        public Actor(UInt16 channelId, PID listener) {
-            _behaviour = new Behavior(Unstarted);
-            _channelId = channelId;
-            _listener  = listener;
-        }
-
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
-
-        Task Unstarted(IContext context) {
+    static Behaviour Unstarted(IObservable<RawFrame> receivedFrames, IAgent listener) =>
+        async context => {
             switch (context.Message) {
                 case Started: {
-                    var subscription = context.System.EventStream.Subscribe<FrameReceived>(
-                        predicate: message => message.Frame.Channel == _channelId,
-                        action   : message => context.Send(context.Self!, message)
-                    );
-                    _behaviour.Become(AwaitingBasicDeliver(new State(subscription)));
-                    break;
+                    var frameSubscription = receivedFrames
+                        .Select(frame => RawFrame.Unwrap(frame))
+                        .Subscribe(message => context.Self.PostAsync(message));
+
+                    return context with { Behaviour = AwaitingBasicDeliver(listener, frameSubscription) };
                 }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Unstarted)}' behaviour.");
             }
-            return CompletedTask;
-        }
+        };
 
-        Receive AwaitingBasicDeliver(State state) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case BasicDeliver deliver: {
-                        _behaviour.Become(AwaitingContentHeader(state, DeliveryInfo.FromBasicDeliver(deliver)));
-                        break;
-                    }
-                    case Stopping: {
-                        context.System.EventStream.Unsubscribe(state.Subscription);
-                        break;
-                    }
+    static Behaviour AwaitingBasicDeliver(IAgent listener, IDisposable frameSubscription) =>
+        async context => {
+            switch (context.Message) {
+                case BasicDeliver deliver: {
+                    return context with { Behaviour = AwaitingContentHeader(listener, frameSubscription, DeliveryInfo.FromBasicDeliver(deliver)) };
                 }
-                return CompletedTask;
-            };
+                case Stopped: {
+                    frameSubscription.Dispose();
+                    return context;
+                }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingBasicDeliver)}' behaviour.");
+            }
+        };
 
-        Receive AwaitingContentHeader(State state, DeliveryInfo deliveryInfo) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case ContentHeader { BodySize: 0 } header: {
-                        context.Send(_listener, new ConsumeMessage(
-                            Delivery: deliveryInfo,
+    static Behaviour AwaitingContentHeader(IAgent listener, IDisposable frameSubscription, DeliveryInfo deliveryInfo) =>
+        async context => {
+            switch (context.Message) {
+                case ContentHeader { BodySize: 0 } header: {
+                    await listener.PostAsync(new ConsumeMessage(
+                        Delivery  : deliveryInfo,
+                        Properties: header.Properties,
+                        Buffer    : new MemoryBufferWriter<Byte>()
+                    ));
+                    return context with { Behaviour = AwaitingBasicDeliver(listener, frameSubscription) };
+                }
+                case ContentHeader header: {
+                    return context with { Behaviour = AwaitingContentBody(listener, frameSubscription, deliveryInfo, header) };
+                }
+                case Stopped: {
+                    frameSubscription.Dispose();
+                    return context;
+                }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingContentHeader)}' behaviour.");
+            }
+        };
+
+    static Behaviour AwaitingContentBody(IAgent listener, IDisposable frameSubscription, DeliveryInfo deliveryInfo, ContentHeader header) {
+        var writer = new MemoryBufferWriter<Byte>((Int32)header.BodySize);
+
+        return async context => {
+            switch (context.Message) {
+                case ReadOnlyMemory<Byte> segment: {
+                    writer.WriteBytes(segment.Span);
+                    if ((UInt64)writer.WrittenCount >= header.BodySize) {
+                        await listener.PostAsync(new ConsumeMessage(
+                            Delivery  : deliveryInfo,
                             Properties: header.Properties,
-                            Buffer: new MemoryBufferWriter<Byte>()
+                            Buffer    : writer
                         ));
-                        _behaviour.Become(AwaitingBasicDeliver(state));
-                        break;
+                        return context with { Behaviour = AwaitingBasicDeliver(listener, frameSubscription) };
                     }
-                    case ContentHeader header: {
-                        _behaviour.Become(AwaitingContentBody(state, deliveryInfo, header));
-                        break;
-                    }
-                    case Stopping: {
-                        context.System.EventStream.Unsubscribe(state.Subscription);
-                        break;
-                    }
+                    return context;
                 }
-                return CompletedTask;
-            };
-
-        Receive AwaitingContentBody(State state, DeliveryInfo deliveryInfo, ContentHeader header) {
-            var buffer = new MemoryBufferWriter<Byte>((Int32)header.BodySize);
-
-            return (IContext context) => {
-                switch (context.Message) {
-                    case ReadOnlyMemory<Byte> segment: {
-                        buffer.WriteBytes(segment.Span);
-                        if ((UInt64)buffer.WrittenCount >= header.BodySize) {
-                            context.Send(_listener, new ConsumeMessage(
-                                Delivery: deliveryInfo,
-                                Properties: header.Properties,
-                                Buffer: buffer
-                            ));
-                            _behaviour.Become(AwaitingBasicDeliver(state));
-                        }
-                        break;
-                    }
-                    case Stopping: {
-                        context.System.EventStream.Unsubscribe(state.Subscription);
-                        break;
-                    }
+                case Stopped: {
+                    frameSubscription.Dispose();
+                    return context;
                 }
-                return CompletedTask;
-            };
-        }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingContentBody)}' behaviour.");
+            }
+        };
     }
 }

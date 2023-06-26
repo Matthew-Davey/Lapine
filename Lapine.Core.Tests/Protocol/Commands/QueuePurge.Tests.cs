@@ -8,11 +8,14 @@ public class QueuePurgeTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>(8);
+        var writer = new MemoryBufferWriter<Byte>(8);
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        QueuePurge.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        
+        var buffer = writer.WrittenSpan;
+        
+        QueuePurge.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.NoWait, actual: deserialized?.NoWait);
         Assert.Equal(expected: value.QueueName, actual: deserialized?.QueueName);
@@ -20,7 +23,8 @@ public class QueuePurgeTests : Faker {
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = QueuePurge.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = QueuePurge.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -29,15 +33,17 @@ public class QueuePurgeTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        QueuePurge.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        QueuePurge.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }
 
@@ -48,18 +54,22 @@ public class QueuePurgeOkTests : Faker {
 
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value  = RandomSubject;
 
-        value.Serialize(buffer);
-        QueuePurgeOk.Deserialize(buffer.WrittenMemory.Span, out var deserialized, out var _);
+        value.Serialize(writer);
+        
+        var buffer = writer.WrittenSpan;
+        
+        QueuePurgeOk.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value.MessageCount, actual: deserialized?.MessageCount);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = QueuePurgeOk.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = QueuePurgeOk.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -68,14 +78,16 @@ public class QueuePurgeOkTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = RandomSubject;
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        QueuePurgeOk.Deserialize(buffer.WrittenMemory.Span, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        QueuePurgeOk.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }

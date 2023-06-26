@@ -7,8 +7,7 @@ record struct TransactionSelect : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out TransactionSelect result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, out TransactionSelect result) {
         result = new TransactionSelect();
         return true;
     }
@@ -19,8 +18,7 @@ record struct TransactionSelectOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out TransactionSelectOk result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, out TransactionSelectOk result) {
         result = new TransactionSelectOk();
         return true;
     }

@@ -12,11 +12,11 @@ record struct QueueDeclare(String QueueName, Boolean Passive, Boolean Durable, B
             .WriteBits(Passive, Durable, Exclusive, AutoDelete, NoWait)
             .WriteFieldTable(Arguments);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeclare? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus) &&
-            surplus.ReadFieldTable(out var arguments, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeclare? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadBits(out var bits) &&
+            buffer.ReadFieldTable(out var arguments))
         {
             result = new QueueDeclare(queueName, bits[0], bits[1], bits[2], bits[3], bits[4], arguments);
             return true;
@@ -36,10 +36,10 @@ record struct QueueDeclareOk(String QueueName, UInt32 MessageCount, UInt32 Consu
             .WriteUInt32BE(MessageCount)
             .WriteUInt32BE(ConsumerCount);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeclareOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadUInt32BE(out var messageCount, out surplus) &&
-            surplus.ReadUInt32BE(out var consumerCount, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out QueueDeclareOk? result) {
+        if (buffer.ReadShortString(out var queueName) &&
+            buffer.ReadUInt32BE(out var messageCount) &&
+            buffer.ReadUInt32BE(out var consumerCount))
         {
             result = new QueueDeclareOk(queueName, messageCount, consumerCount);
             return true;

@@ -4,27 +4,31 @@ public class ProtocolVersionTests : Faker {
     [Fact]
     public void SerializedSizeIsThreeBytes() {
         var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-        var buffer = new MemoryBufferWriter<Byte>(3);
+        var writer = new MemoryBufferWriter<Byte>(3);
 
-        value.Serialize(buffer);
+        value.Serialize(writer);
 
-        Assert.Equal(expected: 3, actual: buffer.WrittenCount);
+        Assert.Equal(expected: 3, actual: writer.WrittenCount);
     }
 
     [Fact]
     public void SerializationIsSymmetric() {
         var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
-        var buffer = new MemoryBufferWriter<Byte>(3);
+        var writer = new MemoryBufferWriter<Byte>(3);
 
-        value.Serialize(buffer);
-        ProtocolVersion.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenSpan;
+
+        ProtocolVersion.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value, actual: deserialized);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ProtocolVersion.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = ProtocolVersion.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -33,14 +37,16 @@ public class ProtocolVersionTests : Faker {
     public void DeserializationReturnsSurplusData() {
         var value  = new ProtocolVersion(Random.Byte(), Random.Byte(), Random.Byte());
         var extra  = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>(7);
+        var writer = new MemoryBufferWriter<Byte>(7);
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ProtocolVersion.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ProtocolVersion.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }

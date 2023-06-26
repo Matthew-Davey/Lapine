@@ -7,8 +7,7 @@ record struct TransactionRollback : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out TransactionRollback result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, out TransactionRollback result) {
         result = new TransactionRollback();
         return true;
     }
@@ -19,8 +18,7 @@ record struct TransactionRollbackOk : ICommand {
 
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) => writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, out TransactionRollbackOk result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, out TransactionRollbackOk result) {
         result = new TransactionRollbackOk();
         return true;
     }
