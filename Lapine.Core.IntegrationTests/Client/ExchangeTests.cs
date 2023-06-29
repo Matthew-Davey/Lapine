@@ -2,6 +2,7 @@ namespace Lapine.Client;
 
 public class ExchangeTests : Faker {
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -27,6 +28,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -52,6 +54,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -77,6 +80,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -102,6 +106,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -134,6 +139,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -163,6 +169,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -195,6 +202,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -221,6 +229,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -249,6 +258,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]
@@ -274,6 +284,7 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
     [Example("3.11")]
     [Example("3.10")]
     [Example("3.9")]

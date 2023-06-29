@@ -56,7 +56,7 @@ public class BrokerProxy : IAsyncDisposable {
                 .Add("run")
                 .Add("--detach")
                 .Add("--rm")
-                .Add($"rabbitmq:{brokerVersion}"))
+                .Add($"rabbitmq:{brokerVersion}-alpine"))
             .WithValidation(CommandResultValidation.ZeroExitCode)
             .ExecuteBufferedAsync()
         );
