@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/Lapine.Workbench/bin/Debug/net5.0/Lapine.Workbench.dll",
+            "program": "${workspaceFolder}/Lapine.Workbench/bin/Debug/net7.0/Lapine.Workbench.dll",
             "args": [],
             "cwd": "${workspaceFolder}/Lapine.Workbench",
             "console": "internalConsole",
