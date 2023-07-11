@@ -48,8 +48,8 @@ static class PublishAgent {
                     else {
                         replyChannel.Reply(true);
                         frameSubscription.Dispose();
-                        context.Self.StopAsync();
-                        return context with { Behaviour = Finished() };
+                        await context.Self.StopAsync();
+                        return context;
                     }
 
                 }
@@ -64,40 +64,30 @@ static class PublishAgent {
                     await scheduledTimeout.DisposeAsync();
                     replyChannel.Reply(true);
                     frameSubscription.Dispose();
-                    context.Self.StopAsync();
-                    return context with { Behaviour = Finished() };
+                    await context.Self.StopAsync();
+                    return context;
                 }
                 case BasicNack nack when nack.DeliveryTag == deliveryTag: {
                     await scheduledTimeout.DisposeAsync();
                     replyChannel.Reply(new AmqpException("Server rejected the message")); // Why?
                     frameSubscription.Dispose();
-                    context.Self.StopAsync();
-                    return context with { Behaviour = Finished() };
+                    await context.Self.StopAsync();
+                    return context;
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
                     frameSubscription.Dispose();
-                    context.Self.StopAsync();
-                    return context with { Behaviour = Finished() };
+                    await context.Self.StopAsync();
+                    return context;
                 }
                 case ChannelClose close: {
                     await scheduledTimeout.DisposeAsync();
                     replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     frameSubscription.Dispose();
-                    context.Self.StopAsync();
-                    return context with { Behaviour = Finished() };
-                }
-                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingPublisherConfirm)}' behaviour.");
-            }
-        };
-
-    static Behaviour Finished() =>
-        async context => {
-            switch (context.Message) {
-                case Stopped: {
+                    await context.Self.StopAsync();
                     return context;
                 }
-                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Finished)}' behaviour.");
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingPublisherConfirm)}' behaviour.");
             }
         };
 }

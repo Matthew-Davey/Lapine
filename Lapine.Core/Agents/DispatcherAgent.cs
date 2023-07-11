@@ -65,9 +65,6 @@ static class DispatcherAgent {
                     await socketAgent.PostAsync(new Transmit(frame));
                     return context;
                 }
-                case Stopped: {
-                    return context;
-                }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Dispatching)}' behaviour.");
             }
         };

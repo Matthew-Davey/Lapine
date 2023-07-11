@@ -39,22 +39,23 @@ static class RequestReplyAgent {
             switch (context.Message) {
                 case TReply reply: {
                     replyChannel.Reply(reply);
-                    context.Self.StopAsync();
+                    framesSubscription.Dispose();
+                    scheduledTimeout.Dispose();
+                    await context.Self.StopAsync();
                     return context;
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    framesSubscription.Dispose();
+                    scheduledTimeout.Dispose();
+                    await context.Self.StopAsync();
                     return context;
                 }
                 case ChannelClose(var replyCode, var replyText, _): {
                     replyChannel.Reply(AmqpException.Create(replyCode, replyText));
-                    context.Self.StopAsync();
-                    return context;
-                }
-                case Stopped: {
                     framesSubscription.Dispose();
                     scheduledTimeout.Dispose();
+                    await context.Self.StopAsync();
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingReply)}' behaviour.");

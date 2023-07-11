@@ -122,9 +122,6 @@ static class AmqpClientAgent {
                     replyChannel.Reply(true);
                     return context;
                 }
-                case Stopped: {
-                    return context;
-                }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Disconnected)}' behaviour.");
             }
         };
@@ -178,9 +175,6 @@ static class AmqpClientAgent {
                         }
                     }
 
-                    return context;
-                }
-                case Stopped: {
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Connected)}' behaviour.");

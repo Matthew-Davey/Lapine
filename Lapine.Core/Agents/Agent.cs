@@ -18,8 +18,6 @@ class AsyncReplyChannel {
     public void Reply(Object response) => _reply(response);
 }
 
-public record Stopped;
-
 class Agent : IAgent {
     readonly Channel<Object> _mailbox;
     readonly Task _messageLoop;
@@ -33,8 +31,6 @@ class Agent : IAgent {
                 var message = await _mailbox.Reader.ReadAsync();
                 context = await context.Behaviour(context with { Message = message });
             }
-
-            await context.Behaviour(context with { Message = new Stopped() });
         });
     }
 

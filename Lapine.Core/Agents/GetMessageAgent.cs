@@ -21,12 +21,7 @@ static class GetMessageAgent {
             switch (context.Message) {
                 case (GetMessages(var queue, var acknowledgements), AsyncReplyChannel replyChannel): {
                     var subscription = receivedFrames.Subscribe(onNext: frame => {
-                        if (frame.Type == FrameType.Method)
-                            context.Self.PostAsync(RawFrame.UnwrapMethod(frame));
-                        if (frame.Type == FrameType.Header)
-                            context.Self.PostAsync(RawFrame.UnwrapContentHeader(frame));
-                        if (frame.Type == FrameType.Body)
-                            context.Self.PostAsync(RawFrame.UnwrapContentBody(frame));
+                        context.Self.PostAsync(RawFrame.Unwrap(frame));
                     });
 
                     await dispatcher.PostAsync(Dispatch.Command(new BasicGet(
@@ -54,7 +49,7 @@ static class GetMessageAgent {
                 case BasicGetEmpty: {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply(new NoMessages());
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
@@ -66,14 +61,14 @@ static class GetMessageAgent {
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
                 case ChannelClose close: {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
@@ -87,7 +82,7 @@ static class GetMessageAgent {
                 case ContentHeader { BodySize: 0 } header: {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply((deliveryInfo, header.Properties, Memory<Byte>.Empty));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
@@ -98,14 +93,14 @@ static class GetMessageAgent {
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
                 case ChannelClose close: {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
@@ -123,18 +118,15 @@ static class GetMessageAgent {
                     if ((UInt64)buffer.WrittenCount >= header.BodySize) {
                         await cancelTimeout.DisposeAsync();
                         replyChannel.Reply((deliveryInfo, header.Properties, buffer.WrittenMemory));
-                        context.Self.StopAsync();
+                        await context.Self.StopAsync();
                         subscription.Dispose();
                     }
                     return context;
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     subscription.Dispose();
-                    return context;
-                }
-                case Stopped: {
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingContentBody)}' behaviour.");

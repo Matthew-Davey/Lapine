@@ -7,16 +7,8 @@ using static System.Text.Encoding;
 class Program {
     static async Task Main() {
         var connectionConfiguration = ConnectionConfiguration.Default with {
-            ConnectionIntegrityStrategy = ConnectionIntegrityStrategy.None with {
-                HeartbeatFrequency = TimeSpan.FromSeconds(5),
-                KeepAliveSettings = (
-                    ProbeTime: TimeSpan.FromSeconds(5),
-                    RetryInterval: TimeSpan.FromSeconds(1),
-                    RetryCount: 5
-                )
-            },
-            ConnectionTimeout = TimeSpan.MaxValue,
-            PeerProperties    = PeerProperties.Default with {
+            ConnectionIntegrityStrategy = ConnectionIntegrityStrategy.None,
+            PeerProperties = PeerProperties.Default with {
                 Product            = "Lapine.Workbench",
                 ClientProvidedName = "Lapine.Workbench"
             }

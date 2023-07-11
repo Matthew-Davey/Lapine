@@ -29,9 +29,6 @@ static class HeartbeatAgent {
     static Behaviour Idle() =>
         async context => {
             switch (context.Message) {
-                case Stopped: {
-                    return context;
-                }
                 case (StartHeartbeat(var receivedFrames, var dispatcher, var frequency), AsyncReplyChannel replyChannel): {
                     if (frequency == TimeSpan.Zero)
                         return context;
@@ -81,10 +78,6 @@ static class HeartbeatAgent {
                             LastRemoteHeartbeat = UtcNow
                         })
                     };
-                }
-                case Stopped: {
-                    state.Subscription.Dispose();
-                    return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Beating)}' behaviour.");
             }

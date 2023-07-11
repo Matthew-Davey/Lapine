@@ -48,7 +48,7 @@ static class HandshakeAgent {
                 case ConnectionStart message when !message.Mechanisms.Contains(connectionConfiguration.AuthenticationStrategy.Mechanism): {
                     await scheduledTimeout.DisposeAsync();
                     replyChannel.Reply(new Exception($"Requested authentication mechanism '{connectionConfiguration.AuthenticationStrategy.Mechanism}' is not supported by the broker. This broker supports {String.Join(", ", message.Mechanisms)}"));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
@@ -56,14 +56,14 @@ static class HandshakeAgent {
                 case ConnectionStart(var version, var serverProperties, var mechanisms, var locales) when !locales.Contains(connectionConfiguration.Locale): {
                     await scheduledTimeout.DisposeAsync();
                     replyChannel.Reply(new Exception($"Requested locale '{connectionConfiguration.Locale}' is not supported by the broker. This broker supports {String.Join(", ", locales)}"));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
@@ -83,9 +83,6 @@ static class HandshakeAgent {
                         Behaviour = AwaitingConnectionSecureOrTune(connectionConfiguration, scheduledTimeout, frameSubscription, connectionEventsSubscription, 0, serverProperties, dispatcher, replyChannel)
                     };
                 }
-                case Stopped: {
-                    return context;
-                }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingConnectionStart)}' behaviour.");
             }
         };
@@ -95,14 +92,14 @@ static class HandshakeAgent {
             switch (context.Message) {
                 case RemoteDisconnected(var fault): {
                     replyChannel.Reply(fault);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
                 }
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
@@ -146,7 +143,7 @@ static class HandshakeAgent {
             switch (context.Message) {
                 case TimeoutException timeout: {
                     replyChannel.Reply(timeout);
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventSubscription.Dispose();
                     return context;
@@ -159,12 +156,9 @@ static class HandshakeAgent {
                         HeartbeatFrequency: TimeSpan.FromSeconds(heartbeatFrequency),
                         ServerProperties  : serverProperties
                     ));
-                    context.Self.StopAsync();
+                    await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventSubscription.Dispose();
-                    return context;
-                }
-                case Stopped: {
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingConnectionOpenOk)}' behaviour.");

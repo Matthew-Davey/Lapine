@@ -13,6 +13,7 @@ using static Lapine.Agents.MessageAssemblerAgent.Protocol;
 static class MessageAssemblerAgent {
     static public class Protocol {
         public record Begin(IObservable<RawFrame> Frames, IAgent Parent);
+        public record Stop;
     }
 
     static public IAgent StartNew() =>
@@ -38,7 +39,7 @@ static class MessageAssemblerAgent {
                 case BasicDeliver deliver: {
                     return context with { Behaviour = AwaitingContentHeader(listener, frameSubscription, DeliveryInfo.FromBasicDeliver(deliver)) };
                 }
-                case Stopped: {
+                case Protocol.Stop: {
                     frameSubscription.Dispose();
                     return context;
                 }
@@ -60,7 +61,7 @@ static class MessageAssemblerAgent {
                 case ContentHeader header: {
                     return context with { Behaviour = AwaitingContentBody(listener, frameSubscription, deliveryInfo, header) };
                 }
-                case Stopped: {
+                case Protocol.Stop: {
                     frameSubscription.Dispose();
                     return context;
                 }
@@ -85,7 +86,7 @@ static class MessageAssemblerAgent {
                     }
                     return context;
                 }
-                case Stopped: {
+                case Protocol.Stop: {
                     frameSubscription.Dispose();
                     return context;
                 }

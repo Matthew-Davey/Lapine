@@ -24,6 +24,7 @@ static class ConsumerAgent {
             BasicProperties Properties,
             MemoryBufferWriter<Byte> Buffer
         );
+        public record Stop;
     }
 
     static public IAgent Create() =>
@@ -71,6 +72,7 @@ static class ConsumerAgent {
                                 consumerTag          : start.ConsumerTag,
                                 receivedFrames       : start.ReceivedFrames,
                                 dispatcher           : start.Dispatcher,
+                                assembler            : assembler,
                                 consumerConfiguration: start.ConsumerConfiguration,
                                 availableHandlers    : handlers,
                                 busyHandlers         : ImmutableList<IAgent>.Empty,
@@ -90,7 +92,7 @@ static class ConsumerAgent {
             return context;
         };
 
-    static Behaviour Running(String consumerTag, IObservable<RawFrame> receivedFrames, IAgent dispatcher, ConsumerConfiguration consumerConfiguration, IImmutableQueue<IAgent> availableHandlers, IImmutableList<IAgent> busyHandlers, IImmutableQueue<Message> inbox) =>
+    static Behaviour Running(String consumerTag, IObservable<RawFrame> receivedFrames, IAgent dispatcher, IAgent assembler, ConsumerConfiguration consumerConfiguration, IImmutableQueue<IAgent> availableHandlers, IImmutableList<IAgent> busyHandlers, IImmutableQueue<Message> inbox) =>
         async context => {
             switch (context.Message) {
                 case ConsumeMessage(var deliveryInfo, var properties, var buffer) when availableHandlers.Any(): {
@@ -107,6 +109,7 @@ static class ConsumerAgent {
                         consumerTag          : consumerTag,
                         receivedFrames       : receivedFrames,
                         dispatcher           : dispatcher,
+                        assembler            : assembler,
                         consumerConfiguration: consumerConfiguration,
                         availableHandlers    : availableHandlers,
                         busyHandlers         : busyHandlers.Add(handler),
@@ -118,6 +121,7 @@ static class ConsumerAgent {
                         consumerTag          : consumerTag,
                         receivedFrames       : receivedFrames,
                         dispatcher           : dispatcher,
+                        assembler            : assembler,
                         consumerConfiguration: consumerConfiguration,
                         availableHandlers    : availableHandlers,
                         busyHandlers         : busyHandlers,
@@ -133,6 +137,7 @@ static class ConsumerAgent {
                         consumerTag          : consumerTag,
                         receivedFrames       : receivedFrames,
                         dispatcher           : dispatcher,
+                        assembler            : assembler,
                         consumerConfiguration: consumerConfiguration,
                         availableHandlers    : availableHandlers.Enqueue(handler),
                         busyHandlers         : busyHandlers.Remove(handler),
@@ -154,13 +159,14 @@ static class ConsumerAgent {
                         consumerTag          : consumerTag,
                         receivedFrames       : receivedFrames,
                         dispatcher           : dispatcher,
+                        assembler            : assembler,
                         consumerConfiguration: consumerConfiguration,
                         availableHandlers    : availableHandlers,
                         busyHandlers         : busyHandlers,
                         inbox                : inbox
                     ) };
                 }
-                case Stopped: {
+                case Protocol.Stop: {
                     var processManager = RequestReplyAgent.StartNew<BasicCancel, BasicCancelOk>(
                         receivedFrames   : receivedFrames,
                         dispatcher       : dispatcher,
@@ -175,6 +181,9 @@ static class ConsumerAgent {
                             foreach (var handlerAgent in busyHandlers)
                                 await handlerAgent.StopAsync();
 
+                            await assembler.PostAsync(new MessageAssemblerAgent.Protocol.Stop());
+
+                            await context.Self.StopAsync();
                             return context;
                         }
                     }

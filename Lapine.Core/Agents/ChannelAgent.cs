@@ -92,7 +92,7 @@ static class ChannelAgent {
                     switch (await processManager.PostAndReplyAsync(new ChannelClose(0, String.Empty, (0, 0)))) {
                         case ChannelCloseOk: {
                             replyChannel.Reply(true);
-                            context.Self.StopAsync();
+                            await context.Self.StopAsync();
                             break;
                         }
                         case Exception fault: {
@@ -430,9 +430,6 @@ static class ChannelAgent {
                             break;
                         }
                     }
-                    return context;
-                }
-                case Stopped: {
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Open)}' behaviour.");
