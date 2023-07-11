@@ -31,9 +31,6 @@ static class SocketAgent {
     static Behaviour Disconnected() =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (Connect(var endpoint, var cancellationToken), AsyncReplyChannel replyChannel): {
                     var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try {

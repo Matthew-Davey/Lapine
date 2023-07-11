@@ -18,7 +18,6 @@ class AsyncReplyChannel {
     public void Reply(Object response) => _reply(response);
 }
 
-public record Started;
 public record Stopped;
 
 class Agent : IAgent {
@@ -28,9 +27,7 @@ class Agent : IAgent {
     Agent(Channel<Object> mailbox, Behaviour initialBehaviour) {
         _mailbox = mailbox;
         _messageLoop = Task.Factory.StartNew(async () => {
-            var context = new MessageContext(this, initialBehaviour, new Started());
-
-            context = await context.Behaviour(context);
+            var context = new MessageContext(this, initialBehaviour, null!);
 
             while (await _mailbox.Reader.WaitToReadAsync()) {
                 var message = await _mailbox.Reader.ReadAsync();
@@ -52,7 +49,7 @@ class Agent : IAgent {
         await _mailbox.Writer.WriteAsync(message, cancellationToken);
 
     public async ValueTask<Object> PostAndReplyAsync(Object message) {
-        var promise      = AsyncValueTaskMethodBuilder<Object>.Create();
+        var promise = AsyncValueTaskMethodBuilder<Object>.Create();
         var replyChannel = new AsyncReplyChannel(reply => promise.SetResult(reply));
 
         await _mailbox.Writer.WriteAsync((message, replyChannel));

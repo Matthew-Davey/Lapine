@@ -14,21 +14,17 @@ static class MessageHandlerAgent {
             ConsumerConfiguration ConsumerConfiguration,
             DeliveryInfo Delivery,
             BasicProperties Properties,
-            MemoryBufferWriter<Byte> Buffer,
-            Action<HandlerReady> PostToParent
+            MemoryBufferWriter<Byte> Buffer
         );
         public record HandlerReady(IAgent Handler);
     }
 
-    static public IAgent Create() =>
-        Agent.StartNew(Main());
+    static public IAgent Create(IAgent parent) =>
+        Agent.StartNew(Main(parent));
 
-    static Behaviour Main() => async context => {
+    static Behaviour Main(IAgent parent) => async context => {
         switch (context.Message) {
-            case Started: {
-                return context;
-            }
-            case HandleMessage(var dispatcher, var consumerConfiguration, var deliveryInfo, var properties, var buffer, var postToParent): {
+            case HandleMessage(var dispatcher, var consumerConfiguration, var deliveryInfo, var properties, var buffer): {
                 try {
                     await consumerConfiguration.Handler(
                         deliveryInfo: deliveryInfo,
@@ -59,7 +55,7 @@ static class MessageHandlerAgent {
                     buffer.Dispose();
 
                     // Tell consumer agent we're ready to handle another message...
-                    postToParent(new HandlerReady(context.Self));
+                    await parent.PostAsync(new HandlerReady(context.Self));
                 }
 
                 return context;

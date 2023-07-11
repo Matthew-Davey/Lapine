@@ -26,9 +26,6 @@ static class AmqpClientAgent {
     static Behaviour Disconnected() =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (EstablishConnection(var connectionConfiguration, var cancellationToken), AsyncReplyChannel replyChannel): {
                     var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     cts.CancelAfter(connectionConfiguration.ConnectionTimeout);

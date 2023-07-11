@@ -29,7 +29,6 @@ static class HeartbeatAgent {
     static Behaviour Idle() =>
         async context => {
             switch (context.Message) {
-                case Started:
                 case Stopped: {
                     return context;
                 }

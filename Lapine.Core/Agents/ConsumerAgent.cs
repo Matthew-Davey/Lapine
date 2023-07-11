@@ -1,12 +1,12 @@
 namespace Lapine.Agents;
 
 using System.Collections.Immutable;
-using Lapine.Agents.ProcessManagers;
 using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
 using static Lapine.Agents.ConsumerAgent.Protocol;
+using static Lapine.Agents.MessageAssemblerAgent.Protocol;
 using static Lapine.Agents.MessageHandlerAgent.Protocol;
 
 static class ConsumerAgent {
@@ -38,14 +38,12 @@ static class ConsumerAgent {
     static Behaviour Unstarted() =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (StartConsuming start, AsyncReplyChannel replyChannel): {
                     var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
-                        .Select(_ => MessageHandlerAgent.Create())
+                        .Select(_ => MessageHandlerAgent.Create(context.Self))
                         .ToImmutableQueue();
-                    MessageAssemblerAgent.StartNew(start.ReceivedFrames, context.Self);
+                    var assembler = MessageAssemblerAgent.StartNew();
+                    await assembler.PostAsync(new Begin(start.ReceivedFrames, context.Self));
                     var processManager = RequestReplyAgent.StartNew<BasicConsume, BasicConsumeOk>(
                         receivedFrames   : start.ReceivedFrames,
                         dispatcher       : start.Dispatcher,
@@ -102,8 +100,7 @@ static class ConsumerAgent {
                         ConsumerConfiguration: consumerConfiguration,
                         Delivery             : deliveryInfo,
                         Properties           : properties,
-                        Buffer               : buffer,
-                        PostToParent         : message => context.Self.PostAsync(message)
+                        Buffer               : buffer
                     ));
 
                     return context with { Behaviour = Running(
@@ -150,8 +147,7 @@ static class ConsumerAgent {
                         ConsumerConfiguration: consumerConfiguration,
                         Delivery             : message.DeliveryInfo,
                         Properties           : message.Properties,
-                        Buffer               : message.Body,
-                        PostToParent         : message => context.Self.PostAsync(message)
+                        Buffer               : message.Body
                     ));
 
                     return context with { Behaviour = Running(

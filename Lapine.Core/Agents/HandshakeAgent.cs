@@ -22,9 +22,6 @@ static class HandshakeAgent {
     static Behaviour Unstarted(IObservable<RawFrame> receivedFrames, IObservable<Object> connectionEvents, IAgent dispatcher, CancellationToken cancellationToken) =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (StartHandshake(var connectionConfiguration), AsyncReplyChannel replyChannel): {
                     var framesSubscription = receivedFrames
                         .Where(frame => frame.Channel == 0)

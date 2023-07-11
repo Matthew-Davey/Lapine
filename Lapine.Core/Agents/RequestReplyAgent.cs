@@ -18,9 +18,6 @@ static class RequestReplyAgent {
         where TReply : ICommand =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (TRequest request, AsyncReplyChannel replyChannel): {
                     var framesSubscription = receivedFrames
                         .Subscribe(frame => context.Self.PostAsync(RawFrame.UnwrapMethod(frame)));

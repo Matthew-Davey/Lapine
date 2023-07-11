@@ -1,4 +1,6 @@
-namespace Lapine.Agents.ProcessManagers;
+using System.Reactive;
+
+namespace Lapine.Agents;
 
 using System.Reactive.Linq;
 using Lapine.Client;
@@ -6,20 +8,25 @@ using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
 using static Lapine.Agents.ConsumerAgent.Protocol;
+using static Lapine.Agents.MessageAssemblerAgent.Protocol;
 
 static class MessageAssemblerAgent {
-    static public IAgent StartNew(IObservable<RawFrame> receivedFrames, IAgent listener) =>
-        Agent.StartNew(Unstarted( receivedFrames, listener));
+    static public class Protocol {
+        public record Begin(IObservable<RawFrame> Frames, IAgent Parent);
+    }
 
-    static Behaviour Unstarted(IObservable<RawFrame> receivedFrames, IAgent listener) =>
+    static public IAgent StartNew() =>
+        Agent.StartNew(Unstarted());
+
+    static Behaviour Unstarted() =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    var frameSubscription = receivedFrames
+                case Begin(var frames, var parent): {
+                    var frameSubscription = frames
                         .Select(frame => RawFrame.Unwrap(frame))
                         .Subscribe(message => context.Self.PostAsync(message));
 
-                    return context with { Behaviour = AwaitingBasicDeliver(listener, frameSubscription) };
+                    return context with {Behaviour = AwaitingBasicDeliver(parent, frameSubscription)};
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Unstarted)}' behaviour.");
             }

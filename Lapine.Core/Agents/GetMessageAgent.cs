@@ -19,9 +19,6 @@ static class GetMessageAgent {
     static Behaviour AwaitingGetMessages(IObservable<RawFrame> receivedFrames, IAgent dispatcher, CancellationToken cancellationToken) =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (GetMessages(var queue, var acknowledgements), AsyncReplyChannel replyChannel): {
                     var subscription = receivedFrames.Subscribe(onNext: frame => {
                         if (frame.Type == FrameType.Method)

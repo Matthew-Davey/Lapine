@@ -51,9 +51,6 @@ static class ChannelAgent {
     static Behaviour Closed(UInt32 maxFrameSize) =>
         async context => {
             switch (context.Message) {
-                case Started: {
-                    return context;
-                }
                 case (Open(var channelId, var receivedFrames, var connectionEvents, var socketAgent, var cancellationToken), AsyncReplyChannel replyChannel): {
                     var dispatcher = DispatcherAgent.Create();
                     var consumers = ImmutableDictionary<String, IAgent>.Empty;

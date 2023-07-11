@@ -32,9 +32,6 @@ static class DispatcherAgent {
 
     static async ValueTask<MessageContext> Ready(MessageContext context) {
         switch (context.Message) {
-            case Started: {
-                return context;
-            }
             case DispatchTo(var socketAgent, var channelId): {
                 return context with { Behaviour = Dispatching(channelId, socketAgent) };
             }
