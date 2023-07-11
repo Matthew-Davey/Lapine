@@ -84,12 +84,12 @@ public class ConnectionTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void ConnectWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, ConnectionConfiguration connectionConfiguration, Exception connectionError) {
+    public void ConnectWithInvalidCredentials(String brokerVersion, AmqpClient subject, BrokerProxy broker, Exception? connectionError) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion);
         }).Teardown(async () => await broker.DisposeAsync());
         "And a client configured to connect to the broker as an invalid user".x(async () => {
-            connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
+            var connectionConfiguration = await broker.GetConnectionConfigurationAsync() with {
                 AuthenticationStrategy = new PlainAuthenticationStrategy(Person.UserName, Random.Utf16String(16))
             };
             subject = new AmqpClient(connectionConfiguration);

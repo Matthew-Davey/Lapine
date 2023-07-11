@@ -10,7 +10,7 @@ public class PublishTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void PublishMessage(String brokerVersion, BrokerProxy broker, ExchangeDefinition exchangeDefinition, QueueDefinition queueDefinition, AmqpClient subject, Channel channel, String payload) {
+    public void PublishMessage(String brokerVersion, BrokerProxy broker, ExchangeDefinition exchangeDefinition, QueueDefinition queueDefinition, AmqpClient subject, Channel channel) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -30,15 +30,13 @@ public class PublishTests : Faker {
                 routingKey: "#",
                 message   : (
                     Properties: MessageProperties.Empty,
-                    Payload   : UTF8.GetBytes(payload = Lorem.Sentence())
+                    Payload   : UTF8.GetBytes(Lorem.Sentence())
                 )
             );
         });
         "Then the message should be routed to the queue".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messageCount = await broker.GetMessageCount(queueDefinition.Name);
-                messageCount.Should().Be(1);
-            });
+            var messageCount = await broker.GetMessageCount(queueDefinition.Name);
+            messageCount.Should().Be(1);
         });
     }
 
@@ -49,7 +47,7 @@ public class PublishTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void PublishMessageWithConfirms(String brokerVersion, BrokerProxy broker, ExchangeDefinition exchangeDefinition, QueueDefinition queueDefinition, AmqpClient subject, Channel channel, String payload) {
+    public void PublishMessageWithConfirms(String brokerVersion, BrokerProxy broker, ExchangeDefinition exchangeDefinition, QueueDefinition queueDefinition, AmqpClient subject, Channel channel) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -72,15 +70,13 @@ public class PublishTests : Faker {
                 routingKey: "#",
                 message   : (
                     Properties: MessageProperties.Empty,
-                    Payload   : UTF8.GetBytes(payload = Lorem.Sentence())
+                    Payload   : UTF8.GetBytes(Lorem.Sentence())
                 )
             );
         });
         "Then the message should be routed to the queue".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messageCount = await broker.GetMessageCount(queueDefinition.Name);
-                messageCount.Should().Be(1);
-            });
+            var messageCount = await broker.GetMessageCount(queueDefinition.Name);
+            messageCount.Should().Be(1);
         });
     }
 }

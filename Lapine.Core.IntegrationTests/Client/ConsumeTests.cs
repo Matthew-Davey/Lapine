@@ -24,11 +24,8 @@ public class ConsumeTests : Faker {
                 payload   : payload = Lorem.Sentence()
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -43,10 +40,8 @@ public class ConsumeTests : Faker {
             UTF8.GetString(message!.Value.Body.Span).Should().Be(payload);
         });
         "And the message is no longer in the queue".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(0);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(0);
         });
     }
 
@@ -71,11 +66,8 @@ public class ConsumeTests : Faker {
                 payload   : payload = Lorem.Sentence()
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -90,10 +82,8 @@ public class ConsumeTests : Faker {
             UTF8.GetString(message!.Value.Body.Span).Should().Be(payload);
         });
         "And the message is still in the queue".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
     }
 
@@ -104,7 +94,7 @@ public class ConsumeTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void AcknowledgeMessage(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, String payload, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
+    public void AcknowledgeMessage(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -115,14 +105,11 @@ public class ConsumeTests : Faker {
             await broker.PublishMessage(
                 exchange  : "amq.default",
                 routingKey: queueDefinition.Name,
-                payload   : payload = Lorem.Sentence()
+                payload   : Lorem.Sentence()
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -136,10 +123,8 @@ public class ConsumeTests : Faker {
             await channel.AcknowledgeAsync(message!.Value.Delivery.DeliveryTag);
         });
         "Then the message is no longer in the queue".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(0);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(0);
         });
     }
 
@@ -150,7 +135,7 @@ public class ConsumeTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RejectMessageWithRequeue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, String payload, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
+    public void RejectMessageWithRequeue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -161,14 +146,11 @@ public class ConsumeTests : Faker {
             await broker.PublishMessage(
                 exchange  : "amq.default",
                 routingKey: queueDefinition.Name,
-                payload   : payload = Lorem.Sentence()
+                payload   : Lorem.Sentence()
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -182,10 +164,8 @@ public class ConsumeTests : Faker {
             await channel.RejectAsync(message!.Value.Delivery.DeliveryTag, requeue: true);
         });
         "Then the message is requeued".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
     }
 
@@ -196,7 +176,7 @@ public class ConsumeTests : Faker {
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RejectMessageWithoutRequeue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, String payload, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
+    public void RejectMessageWithoutRequeue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, (DeliveryInfo Delivery, MessageProperties Properties, ReadOnlyMemory<Byte> Body)? message) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -207,14 +187,11 @@ public class ConsumeTests : Faker {
             await broker.PublishMessage(
                 exchange  : "amq.default",
                 routingKey: queueDefinition.Name,
-                payload   : payload = Lorem.Sentence()
+                payload   : Lorem.Sentence()
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(1);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(1);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -228,10 +205,8 @@ public class ConsumeTests : Faker {
             await channel.RejectAsync(message!.Value.Delivery.DeliveryTag, requeue: false);
         });
         "Then the message is not requeued".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(0);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(0);
         });
     }
 
@@ -261,11 +236,8 @@ public class ConsumeTests : Faker {
                     )
             );
 
-            // Wait a few moments for the message to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(10);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(10);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -276,10 +248,8 @@ public class ConsumeTests : Faker {
             await channel.PurgeQueueAsync(queueDefinition.Name);
         });
         "Then the queue is empty".x(async () => {
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
-                messagesCount.Should().Be(0);
-            });
+            var messagesCount = await broker.GetMessageCount(queueDefinition.Name);
+            messagesCount.Should().Be(0);
         });
     }
 }

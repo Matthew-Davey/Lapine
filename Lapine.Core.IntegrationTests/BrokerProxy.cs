@@ -28,18 +28,8 @@ public class BrokerProxy : IAsyncDisposable {
     public record Connection(String AuthMechanism, String User, ConnectionState State, PeerProperties PeerProperties);
     public record Channel(String Name, Int32 Number, String User, String Vhost, Boolean Confirm);
 
-    static readonly IAsyncPolicy CommandRetryPolicy =
-        Handle<CommandExecutionException>()
-            .WaitAndRetryAsync(5, _ => TimeSpan.FromMilliseconds(100));
-
-    /// <summary>
-    /// The management plugin can take up to 5 seconds to refresh. This retry policy will retry a failing operation
-    /// every 200ms, for up to 5 seconds. If it is still failing after 5 seconds has elapsed the failure is
-    /// considered genuine.
-    /// </summary>
-    static public readonly IAsyncPolicy ManagementRetryPolicy =
-        Handle<Exception>()
-            .WaitAndRetryAsync(25, _ => TimeSpan.FromMilliseconds(200));
+    static readonly Command Docker = new Command("docker")
+        .WithValidation(CommandResultValidation.ZeroExitCode);
 
     readonly String _container;
 
@@ -51,48 +41,31 @@ public class BrokerProxy : IAsyncDisposable {
             brokerVersion = $"{brokerVersion}-management";
 
         // Start a RabbitMQ container...
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("run")
-                .Add("--detach")
-                .Add("--rm")
-                .Add($"rabbitmq:{brokerVersion}-alpine"))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"run --detach --rm rabbitmq:{brokerVersion}-alpine")
+            .ExecuteBufferedAsync();
 
         var container = process.StandardOutput[..12];
 
-        // Wait a few seconds for the container to boot...
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(1000);
+        await Handle<CommandExecutionException>()
+            .WaitAndRetryAsync(10, _ => TimeSpan.FromMilliseconds(500))
+            .ExecuteAsync(async () => {
+                await Docker
+                    .WithArguments($"exec {container} rabbitmq-diagnostics check_running")
+                    .ExecuteAsync();
+            });
 
-        // Wait up to 120 seconds for RabbitMQ to start up...
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(container)
-                .Add("rabbitmqctl await_startup --timeout 120", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
-
-        var broker = new BrokerProxy(container);
-
-        return broker;
+        return new BrokerProxy(container);
     }
 
     /// <summary>
     /// Gets the IP address of the running broker.
     /// </summary>
     public async ValueTask<IPAddress> GetIPAddressAsync() {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("inspect")
-                .Add(_container)
-                .Add("--format=\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"inspect {_container} " + "--format=\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"")
+            .ExecuteBufferedAsync();
 
         return IPAddress.Parse(process.StandardOutput.TrimEnd());
     }
@@ -113,16 +86,9 @@ public class BrokerProxy : IAsyncDisposable {
         };
 
     public async IAsyncEnumerable<Connection> GetConnectionsAsync() {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add("list_connections auth_mechanism user state client_properties", escape: false)
-                .Add("--formatter json", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"exec {_container} rabbitmqctl list_connections auth_mechanism user state client_properties --formatter json")
+            .ExecuteBufferedAsync();
 
         var connections = JArray.Parse(process.StandardOutput);
 
@@ -163,16 +129,9 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public async IAsyncEnumerable<Channel> GetChannelsAsync() {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add("list_channels name number user vhost confirm", escape: false)
-                .Add("--formatter json", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"exec {_container} rabbitmqctl list_channels name number user vhost confirm --formatter json")
+            .ExecuteBufferedAsync();
 
         var channels = JArray.Parse(process.StandardOutput);
 
@@ -188,16 +147,9 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public async IAsyncEnumerable<ExchangeDefinition> GetExchangesAsync() {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add("list_exchanges name type durable auto_delete arguments", escape: false)
-                .Add("--formatter json", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"exec {_container} rabbitmqctl list_exchanges name type durable auto_delete arguments --formatter json")
+            .ExecuteBufferedAsync();
 
         var exchanges = JArray.Parse(process.StandardOutput);
 
@@ -224,16 +176,9 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public async IAsyncEnumerable<QueueDefinition> GetQueuesAsync() {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add("list_queues name auto_delete exclusive durable arguments", escape: false)
-                .Add("--formatter json", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"exec {_container} rabbitmqctl list_queues name auto_delete exclusive durable arguments --formatter json")
+            .ExecuteBufferedAsync();
 
         var queues = JArray.Parse(process.StandardOutput);
 
@@ -261,94 +206,63 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public async ValueTask AddUserAsync(String username, String password) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add($"add_user {username} {password}", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqctl add_user {username} {password}")
+            .ExecuteAsync();
 
     public async ValueTask AddVirtualHostAsync(String virtualHost) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add($"add_vhost {virtualHost}", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqctl add_vhost {virtualHost}")
+            .ExecuteAsync();
 
     public async ValueTask SetPermissionsAsync(String virtualHost, String user, String configure = ".*", String write = ".*", String read = ".*") =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add($"set_permissions -p {virtualHost} {user} {configure} {write} {read}", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqctl set_permissions -p {virtualHost} {user} {configure} {write} {read}")
+            .ExecuteAsync();
 
-    public async ValueTask ExchangeDeclareAsync(ExchangeDefinition definition) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqadmin")
-                .Add($"declare exchange name={definition.Name} type={definition.Type} durable={definition.Durability switch { Durability.Durable => "true", _ => "false" } }", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+    public async ValueTask ExchangeDeclareAsync(ExchangeDefinition definition) {
+        var durable = definition.Durability switch {
+            Durability.Durable   => "true",
+            Durability.Transient => "false",
+            _                    => "false"
+        };
 
-    public async ValueTask QueueDeclareAsync(QueueDefinition definition) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqadmin")
-                .Add($"declare queue name={definition.Name} durable={definition.Durability switch { Durability.Durable => "true", _ => "false" } } auto_delete={(definition.AutoDelete ? "true" : "false")}", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqadmin declare exchange name={definition.Name} type={definition.Type} durable={durable}")
+            .ExecuteBufferedAsync();
+    }
+
+    public async ValueTask QueueDeclareAsync(QueueDefinition definition) {
+        var durable = definition.Durability switch {
+            Durability.Durable   => "true",
+            Durability.Transient => "false",
+            _                    => "false"
+        };
+
+        var autoDelete = definition.AutoDelete switch {
+            true  => "true",
+            false => "false"
+        };
+
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqadmin declare queue name={definition.Name} durable={durable} auto_delete={autoDelete}")
+            .ExecuteBufferedAsync();
+    }
 
     public async ValueTask QueueBindAsync(String exchange, String queue, String routingKey) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqadmin")
-                .Add($"declare binding source={exchange} destination={queue} routing_key={routingKey}", escape: false))
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqadmin declare binding source={exchange} destination={queue} routing_key={routingKey}")
+            .ExecuteAsync();
 
     public async ValueTask PublishMessage(String exchange, String routingKey, String payload) =>
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqadmin")
-                .Add($"publish exchange={exchange} routing_key={routingKey} payload=\"{payload}\"", escape: false)
-            )
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+        await Docker
+            .WithArguments($"exec {_container} rabbitmqadmin publish exchange={exchange} routing_key={routingKey} payload=\"{payload}\"")
+            .ExecuteAsync();
 
     public async ValueTask<Int32> GetMessageCount(String queue) {
-        var process = await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
-            .WithArguments(arguments => arguments
-                .Add("exec")
-                .Add(_container)
-                .Add("rabbitmqctl")
-                .Add($"list_queues --formatter json", escape: false)
-            )
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteBufferedAsync()
-        );
+        var process = await Docker
+            .WithArguments($"exec {_container} rabbitmqctl list_queues --formatter json")
+            .ExecuteBufferedAsync();
 
         var array = JArray.Parse(process.StandardOutput);
         return array
@@ -358,11 +272,9 @@ public class BrokerProxy : IAsyncDisposable {
     }
 
     public async ValueTask DisposeAsync() {
-        await CommandRetryPolicy.ExecuteAsync(async () => await Cli.Wrap("docker")
+        await Docker
             .WithArguments($"stop {_container}")
-            .WithValidation(CommandResultValidation.ZeroExitCode)
-            .ExecuteAsync()
-        );
+            .ExecuteAsync();
 
         GC.SuppressFinalize(this);
     }
