@@ -1,5 +1,7 @@
 namespace Lapine.Client;
 
+using System.Net;
+
 public class ConnectionTests : Faker {
     [Scenario]
     [Example("3.12")]
@@ -99,6 +101,41 @@ public class ConnectionTests : Faker {
         });
         "Then the client should have thrown a connection error".x(() => {
             connectionError.Should().NotBeNull();
+        });
+    }
+
+    [Scenario]
+    public void RemoteConnectionRefused(AmqpClient subject, Func<Task> connect) {
+        "Given a client configured to connect to an endpoint that will actively refuse a connection".x(() => {
+            subject = new AmqpClient(ConnectionConfiguration.Default with {
+                Endpoints = new [] { new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1) }
+            });
+        }).Teardown(async () => await subject.DisposeAsync());
+        "When the client attempts to connect".x(() => {
+            connect = FluentActions.Awaiting(async () => await subject.ConnectAsync());
+        });
+        "Then the client should have thrown a connection error".x(async () => {
+            await connect.Should()
+                .ThrowAsync<AggregateException>()
+                .WithMessage("Could not connect to any of the configured endpoints (Connection refused)");
+        });
+    }
+
+    [Scenario]
+    public void ConnectionTimeout(AmqpClient subject, Func<Task> connect) {
+        "Given a client configured to connect to an endpoint that will time out".x(() => {
+            subject = new AmqpClient(ConnectionConfiguration.Default with {
+                Endpoints = new [] { new IPEndPoint(IPAddress.Parse("10.0.0.0"), 5672) },
+                ConnectionTimeout = TimeSpan.FromSeconds(1)
+            });
+        }).Teardown(async () => await subject.DisposeAsync());
+        "When the client attempts to connect".x(() => {
+            connect = FluentActions.Awaiting(async () => await subject.ConnectAsync());
+        });
+        "Then the client should have thrown a connection error".x(async () => {
+            await connect.Should()
+                .ThrowAsync<AggregateException>()
+                .WithMessage("Could not connect to any of the configured endpoints (The operation has timed out.)");
         });
     }
 

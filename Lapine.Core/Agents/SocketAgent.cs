@@ -44,7 +44,12 @@ static class SocketAgent {
                         // Begin polling...
                         await context.Self.PostAsync(new Poll());
 
-                        return context with { Behaviour = Connected(socket, events, receivedFrames) };
+                        return context with {Behaviour = Connected(socket, events, receivedFrames)};
+                    }
+                    catch (OperationCanceledException) {
+                        replyChannel.Reply(new ConnectionFailed(new TimeoutException()));
+                        await context.Self.StopAsync();
+                        return context;
                     }
                     catch (Exception fault) {
                         replyChannel.Reply(new ConnectionFailed(fault));

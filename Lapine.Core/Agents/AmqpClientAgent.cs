@@ -43,7 +43,7 @@ static class AmqpClientAgent {
                         var endpoint = remainingEndpoints.Dequeue();
                         var socketAgent = SocketAgent.Create();
 
-                        switch (await socketAgent.PostAndReplyAsync(new Connect(endpoint, cancellationToken))) {
+                        switch (await socketAgent.PostAndReplyAsync(new Connect(endpoint, cts.Token))) {
                             case ConnectionFailed(var fault) when remainingEndpoints.Any(): {
                                 accumulatedFailures.Add(fault);
                                 continue;
