@@ -9,8 +9,8 @@ record struct ChannelFlow(Boolean Active) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteBoolean(Active);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlow? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadBoolean(out var active, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlow? result) {
+        if (buffer.ReadBoolean(out var active)) {
             result = new ChannelFlow(active);
             return true;
         }
@@ -27,8 +27,8 @@ record struct ChannelFlowOk(Boolean Active) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteBoolean(Active);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlowOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadBoolean(out var active, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ChannelFlowOk? result) {
+        if (buffer.ReadBoolean(out var active)) {
             result = new ChannelFlowOk(active);
             return true;
         }

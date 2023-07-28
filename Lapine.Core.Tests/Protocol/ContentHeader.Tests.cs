@@ -3,7 +3,7 @@ namespace Lapine.Protocol;
 public class ContentHeaderTests : Faker {
     [Fact]
     public void SerializationIsSymmetric() {
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
         var value = new ContentHeader(
             ClassId   : Random.UShort(),
             BodySize  : Random.ULong(),
@@ -24,15 +24,19 @@ public class ContentHeaderTests : Faker {
             }
         );
 
-        value.Serialize(buffer);
-        ContentHeader.Deserialize(buffer.WrittenSpan, out var deserialized, out var _);
+        value.Serialize(writer);
+
+        var buffer = writer.WrittenSpan;
+
+        ContentHeader.Deserialize(ref buffer, out var deserialized);
 
         Assert.Equal(expected: value, actual: deserialized);
     }
 
     [Fact]
     public void DeserializationFailsWithInsufficientData() {
-        var result = ContentHeader.Deserialize(Span<Byte>.Empty, out var _, out var _);
+        var buffer = ReadOnlySpan<Byte>.Empty;
+        var result = ContentHeader.Deserialize(ref buffer, out var _);
 
         Assert.False(result);
     }
@@ -59,14 +63,16 @@ public class ContentHeaderTests : Faker {
             }
         );
         var extra = Random.UInt();
-        var buffer = new MemoryBufferWriter<Byte>();
+        var writer = new MemoryBufferWriter<Byte>();
 
-        buffer.WriteSerializable(value)
+        writer.WriteSerializable(value)
             .WriteUInt32LE(extra);
 
-        ContentHeader.Deserialize(buffer.WrittenSpan, out var _, out var surplus);
+        var buffer = writer.WrittenSpan;
 
-        Assert.Equal(expected: sizeof(UInt32), actual: surplus.Length);
-        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(surplus));
+        ContentHeader.Deserialize(ref buffer, out var _);
+
+        Assert.Equal(expected: sizeof(UInt32), actual: buffer.Length);
+        Assert.Equal(expected: extra, actual: BitConverter.ToUInt32(buffer));
     }
 }

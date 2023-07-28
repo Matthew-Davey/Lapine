@@ -2,6 +2,9 @@ namespace Lapine.Client;
 
 public class ChannelTests : Faker {
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -23,6 +26,9 @@ public class ChannelTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -45,6 +51,9 @@ public class ChannelTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -70,6 +79,9 @@ public class ChannelTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -93,6 +105,9 @@ public class ChannelTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]

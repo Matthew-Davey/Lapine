@@ -2,12 +2,10 @@ namespace Lapine.Agents;
 
 using System.Net;
 using System.Net.Sockets;
+using System.Reactive.Subjects;
 using Lapine.Protocol;
-using Proto;
-using Proto.Timers;
 
 using static System.Math;
-using static System.Threading.Tasks.Task;
 using static System.Net.Sockets.SocketOptionLevel;
 using static System.Net.Sockets.SocketOptionName;
 using static Lapine.Agents.SocketAgent.Protocol;
@@ -15,233 +13,123 @@ using static Lapine.Client.ConnectionConfiguration;
 
 static class SocketAgent {
     static public class Protocol {
-        public record Connect(IPEndPoint Endpoint, TimeSpan ConnectTimeout, PID Listener);
-        public record Connected(PID TxD, PID RxD);
-        public record ConnectionFailed(Exception Reason);
+        public record Connect(IPEndPoint Endpoint, CancellationToken CancellationToken = default);
+        public record Connected(IObservable<Object> ConnectionEvents, IObservable<RawFrame> ReceivedFrames);
+        public record ConnectionFailed(Exception Fault);
+        public record RemoteDisconnected(Exception Fault);
         public record Tune(UInt32 MaxFrameSize);
         public record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount);
         public record Transmit(ISerializable Entity);
-        public record BeginPolling;
-        public record FrameReceived(RawFrame Frame);
+        public record Disconnect;
 
-        internal record TimeoutExpired;
-        internal record Bind(Socket Socket);
         internal record Poll;
     }
 
-    static public Props Create() =>
-        Props.FromProducer(() => new Actor());
+    static public IAgent Create() =>
+        Agent.StartNew(Disconnected());
 
-    class Actor : IActor {
-        readonly Behavior _behaviour;
-
-        public Actor() {
-            _behaviour = new Behavior(Disconnected);
-        }
-
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
-
-        Task Disconnected(IContext context) {
+    static Behaviour Disconnected() =>
+        async context => {
             switch (context.Message) {
-                case Connect connect: {
+                case (Connect(var endpoint, var cancellationToken), AsyncReplyChannel replyChannel): {
                     var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socket.BeginConnect(connect.Endpoint, (asyncResult) => {
-                        context.Send(context.Self!, asyncResult);
-                    }, state: socket);
-                    var scheduledTimeout = context.Scheduler().SendOnce(
-                        delay  : connect.ConnectTimeout,
-                        target : context.Self!,
-                        message: new TimeoutExpired()
+                    try {
+                        await socket.ConnectAsync(endpoint, cancellationToken);
+
+                        var events = new Subject<Object>();
+                        var receivedFrames = new Subject<RawFrame>();
+
+                        replyChannel.Reply(new Connected(events, receivedFrames));
+
+                        // Begin polling...
+                        await context.Self.PostAsync(new Poll());
+
+                        return context with {Behaviour = Connected(socket, events, receivedFrames)};
+                    }
+                    catch (OperationCanceledException) {
+                        replyChannel.Reply(new ConnectionFailed(new TimeoutException()));
+                        await context.Self.StopAsync();
+                        return context;
+                    }
+                    catch (Exception fault) {
+                        replyChannel.Reply(new ConnectionFailed(fault));
+                        await context.Self.StopAsync();
+                        return context;
+                    }
+                }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Disconnected)}' behaviour.");
+            }
+        };
+
+    static Behaviour Connected(Socket socket, Subject<Object> connectionEvents, Subject<RawFrame> receivedFrames) {
+        var transmitBuffer = new MemoryBufferWriter<Byte>(4096);
+        var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
+
+        return context => {
+            switch (context.Message) {
+                case Tune(var maxFrameSize): {
+                    transmitBuffer = new MemoryBufferWriter<Byte>((Int32)maxFrameSize);
+                    Array.Resize(ref frameBuffer, (Int32)maxFrameSize);
+                    return ValueTask.FromResult(context);
+                }
+                case Poll: {
+                    socket.BeginReceive(
+                        buffer     : frameBuffer,
+                        offset     : tail,
+                        size       : Min(4096, frameBuffer.Length - tail),
+                        socketFlags: SocketFlags.None,
+                        state      : socket,
+                        callback   : asyncResult => {
+                            context.Self.PostAsync(asyncResult);
+                        }
                     );
-                    _behaviour.Become(Connecting(connect.Listener, socket, scheduledTimeout));
-                    break;
+                    return ValueTask.FromResult(context);
                 }
-            }
-            return CompletedTask;
-        }
-
-        Receive Connecting(PID listener, Socket socket, CancellationTokenSource scheduledTimeout) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case TimeoutExpired timeout: {
-                        socket.Close();
-                        context.Send(listener, new ConnectionFailed(new TimeoutException()));
-                        context.Stop(context.Self!);
-                        break;
-                    }
-                    case IAsyncResult asyncResult: {
-                        scheduledTimeout.Cancel();
-                        try {
-                            socket.EndConnect(asyncResult);
-                            var txd = context.SpawnNamed(
-                                name: "txd",
-                                props: Props.FromProducer(() => new TxD())
-                            );
-                            var rxd = context.SpawnNamed(
-                                name: "rxd",
-                                props: Props.FromProducer(() => new RxD())
-                            );
-                            context.Send(txd, new Bind(socket));
-                            context.Send(rxd, new Bind(socket));
-                            context.Send(listener, new Connected(txd, rxd));
-
-                            _behaviour.Become(Connected(socket));
-                        }
-                        catch (SocketException error) {
-                            socket.Close();
-                            context.Send(listener, new ConnectionFailed(error));
-                            context.Stop(context.Self!);
-                        }
-                        break;
-                    }
-                };
-                return CompletedTask;
-            };
-
-        static Receive Connected(Socket socket) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case Tune x: {
-                        foreach (var child in context.Children) {
-                            context.Forward(child);
-                        }
-                        break;
-                    }
-                    case EnableTcpKeepAlives enable: {
-                        socket.SetSocketOption(SocketOptionLevel.Socket, KeepAlive, true);
-                        socket.SetSocketOption(Tcp, TcpKeepAliveTime, (Int32)Round(enable.ProbeTime.TotalSeconds));
-                        socket.SetSocketOption(Tcp, TcpKeepAliveInterval, (Int32)Round(enable.RetryInterval.TotalSeconds));
-                        socket.SetSocketOption(Tcp, TcpKeepAliveRetryCount, enable.RetryCount);
-                        break;
-                    }
-                    case Restarting:
-                    case Stopping _: {
-                        socket.Close();
-                        break;
-                    }
-                }
-                return CompletedTask;
-            };
-    }
-
-    class TxD : IActor {
-        readonly Behavior _behaviour;
-
-        public TxD() =>
-            _behaviour = new Behavior(Unbound);
-
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
-
-        Task Unbound(IContext context) {
-            switch (context.Message) {
-                case Bind bind: {
-                    _behaviour.Become(Ready(bind.Socket));
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
-
-        static Receive Ready(Socket socket) {
-            var buffer = new MemoryBufferWriter<Byte>((Int32)DefaultMaximumFrameSize);
-
-            return (IContext context) => {
-                switch (context.Message) {
-                    case Tune tune: {
-                        buffer = new MemoryBufferWriter<Byte>((Int32)tune.MaxFrameSize);
-                        break;
-                    }
-                    case Transmit transmit: {
-                        buffer.WriteSerializable(transmit.Entity);
-                        socket.Send(buffer.WrittenSpan);
-                        buffer.Clear();
-                        break;
-                    }
-                }
-                return CompletedTask;
-            };
-        }
-    }
-
-    class RxD : IActor {
-        static readonly TimeSpan PollingInterval = TimeSpan.FromMilliseconds(10);
-
-        readonly Behavior _behaviour;
-
-        public RxD() =>
-            _behaviour = new Behavior(Unbound);
-
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
-
-        Task Unbound(IContext context) {
-            switch (context.Message) {
-                case Bind bind: {
-                    _behaviour.Become(Ready(bind.Socket));
-                    break;
-                }
-            }
-            return CompletedTask;
-        }
-
-        Receive Ready(Socket socket) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case BeginPolling poll: {
-                        context.Scheduler().SendOnce(PollingInterval, context.Self!, new Poll());
-                        _behaviour.Become(Polling(socket));
-                        break;
-                    }
-                }
-                return CompletedTask;
-            };
-
-        static Receive Polling(Socket socket) {
-            // The socket receive buffer is considerably smaller than the max frame size, so we accumulate
-            // received bytes in the frame buffer until we can deserialize one or more AMQP frames...
-            var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
-
-            return (IContext context) => {
-                switch (context.Message) {
-                    case Poll poll: {
-                        socket.BeginReceive(
-                            buffer     : frameBuffer,
-                            offset     : tail,
-                            size       : Min(128, frameBuffer.Length - tail),
-                            socketFlags: SocketFlags.None,
-                            state      : socket,
-                            callback   : asyncResult => {
-                                context.Send(context.Self!, asyncResult);
-                            }
-                        );
-                        break;
-                    }
-                    case IAsyncResult asyncResult: {
+                case IAsyncResult asyncResult: {
+                    try {
                         tail += socket.EndReceive(asyncResult);
 
                         if (tail > 0) {
-                            while (RawFrame.Deserialize(frameBuffer.AsSpan(0, tail), out var frame, out var remaining)) {
-                                context.System.EventStream.Publish(new FrameReceived(frame.Value));
-                                remaining.CopyTo(frameBuffer); // Move any bytes that were not consumed to the front of the frame buffer...
-                                tail = remaining.Length;
+                            ReadOnlySpan<Byte> buffer = frameBuffer.AsSpan(0, tail);
+                            while (RawFrame.Deserialize(ref buffer, out var frame)) {
+                                receivedFrames.OnNext(frame.Value);
+                                buffer.CopyTo(frameBuffer); // Move any bytes that were not consumed to the front of the frame buffer...
+                                tail = buffer.Length;
+                                buffer = frameBuffer.AsSpan(0, tail);
                             }
-
-                            context.Send(context.Self!, new Poll());
                         }
-                        else {
-                            context.Scheduler().SendOnce(PollingInterval, context.Self!, new Poll());
-                        }
-                        break;
+                        context.Self.PostAsync(new Poll());
+                        return ValueTask.FromResult(context);
                     }
-                    case Tune tune: {
-                        Array.Resize(ref frameBuffer, (Int32)tune.MaxFrameSize);
-                        break;
+                    catch (SocketException fault) when (fault.ErrorCode == 104) {
+                        connectionEvents.OnNext(new RemoteDisconnected(fault));
+                        socket.Disconnect(true);
+                        connectionEvents.OnCompleted();
+                        connectionEvents.Dispose();
+                        return ValueTask.FromResult(context with { Behaviour = Disconnected() });
                     }
                 }
-                return CompletedTask;
-            };
-        }
+                case Transmit(var entity): {
+                    transmitBuffer.WriteSerializable(entity);
+                    socket.Send(transmitBuffer.WrittenSpan);
+                    transmitBuffer.Clear();
+                    return ValueTask.FromResult(context);
+                }
+                case Disconnect: {
+                    socket.Disconnect(true);
+                    connectionEvents.OnCompleted();
+                    connectionEvents.Dispose();
+                    return ValueTask.FromResult(context with { Behaviour = Disconnected() });
+                }
+                case EnableTcpKeepAlives(var probeTime, var retryInterval, var retryCount): {
+                    socket.SetSocketOption(SocketOptionLevel.Socket, KeepAlive, true);
+                    socket.SetSocketOption(Tcp, TcpKeepAliveTime, (Int32) Round(probeTime.TotalSeconds));
+                    socket.SetSocketOption(Tcp, TcpKeepAliveInterval, (Int32) Round(retryInterval.TotalSeconds));
+                    socket.SetSocketOption(Tcp, TcpKeepAliveRetryCount, retryCount);
+                    return ValueTask.FromResult(context);
+                }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Connected)}' behaviour.");
+            }
+        };
     }
 }

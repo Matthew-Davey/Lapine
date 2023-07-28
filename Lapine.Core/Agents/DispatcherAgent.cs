@@ -2,15 +2,13 @@ namespace Lapine.Agents;
 
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
-using Proto;
 
-using static System.Threading.Tasks.Task;
 using static Lapine.Agents.DispatcherAgent.Protocol;
 using static Lapine.Agents.SocketAgent.Protocol;
 
 static class DispatcherAgent {
     static public class Protocol {
-        public record DispatchTo(PID TxD, UInt16 ChannelId);
+        public record DispatchTo(IAgent SocketAgent, UInt16 ChannelId);
         public record Dispatch(Object Entity) {
             static public Dispatch ProtocolHeader(ProtocolHeader protocolHeader) =>
                 new (protocolHeader);
@@ -29,57 +27,45 @@ static class DispatcherAgent {
         }
     }
 
-    static public Props Create() =>
-        Props.FromProducer(() => new Actor());
+    static public IAgent Create() =>
+        Agent.StartNew(Ready);
 
-    class Actor : IActor {
-        readonly Behavior _behaviour;
-
-        public Actor() =>
-            _behaviour = new Behavior(Ready);
-
-        public Task ReceiveAsync(IContext context) =>
-            _behaviour.ReceiveAsync(context);
-
-        Task Ready(IContext context) {
-            switch (context.Message) {
-                case DispatchTo dispatch: {
-                    _behaviour.Become(Dispatching(dispatch.ChannelId, dispatch.TxD));
-                    break;
-                }
+    static async ValueTask<MessageContext> Ready(MessageContext context) {
+        switch (context.Message) {
+            case DispatchTo(var socketAgent, var channelId): {
+                return context with { Behaviour = Dispatching(channelId, socketAgent) };
             }
-            return CompletedTask;
+            default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Ready)}' behaviour.");
         }
-
-        static Receive Dispatching(UInt16 channelId, PID txd) =>
-            (IContext context) => {
-                switch (context.Message) {
-                    case Dispatch { Entity: ProtocolHeader header }: {
-                        context.Send(txd, new Transmit(header));
-                        break;
-                    }
-                    case Dispatch { Entity: RawFrame frame }: {
-                        context.Send(txd, new Transmit(frame));
-                        break;
-                    }
-                    case Dispatch { Entity: ICommand command }: {
-                        var frame = RawFrame.Wrap(in channelId, command);
-                        context.Send(txd, new Transmit(frame));
-                        break;
-                    }
-                    case Dispatch { Entity: ContentHeader contentHeader }: {
-                        var frame = RawFrame.Wrap(in channelId, contentHeader);
-                        context.Send(txd, new Transmit(frame));
-                        break;
-                    }
-                    case Dispatch { Entity: ReadOnlyMemory<Byte> body }: {
-                        var frame = RawFrame.Wrap(in channelId, body.Span);
-                        context.Send(txd, new Transmit(frame));
-                        break;
-                    }
-                }
-
-                return CompletedTask;
-            };
     }
+
+    static Behaviour Dispatching(UInt16 channelId, IAgent socketAgent) =>
+        async context => {
+            switch (context.Message) {
+                case Dispatch { Entity: ProtocolHeader header }: {
+                    await socketAgent.PostAsync(new Transmit(header));
+                    return context;
+                }
+                case Dispatch { Entity: RawFrame frame }: {
+                    await socketAgent.PostAsync(new Transmit(frame));
+                    return context;
+                }
+                case Dispatch { Entity: ICommand command }: {
+                    var frame = RawFrame.Wrap(in channelId, command);
+                    await socketAgent.PostAsync(new Transmit(frame));
+                    return context;
+                }
+                case Dispatch { Entity: ContentHeader contentHeader }: {
+                    var frame = RawFrame.Wrap(in channelId, contentHeader);
+                    await socketAgent.PostAsync(new Transmit(frame));
+                    return context;
+                }
+                case Dispatch { Entity: ReadOnlyMemory<Byte> body }: {
+                    var frame = RawFrame.Wrap(in channelId, body.Span);
+                    await socketAgent.PostAsync(new Transmit(frame));
+                    return context;
+                }
+                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Dispatching)}' behaviour.");
+            }
+        };
 }

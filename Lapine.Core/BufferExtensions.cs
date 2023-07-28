@@ -9,10 +9,9 @@ using static System.Text.Encoding;
 // ref: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Read.cs
 // ref: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Write.cs
 static class BufferExtensions {
-    static public Boolean ReadBits(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Boolean[]? result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadBits(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Boolean[]? result) {
         if (buffer.Length < 1) {
             result = default;
-            surplus = default;
             return false;
         }
 
@@ -26,78 +25,73 @@ static class BufferExtensions {
             mask <<= 1;
         }
 
-        surplus = buffer[1..];
+        buffer = buffer[1..];
         return true;
     }
 
-    static public Boolean ReadBoolean(in this ReadOnlySpan<Byte> buffer, out Boolean result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadBoolean(ref this ReadOnlySpan<Byte> buffer, out Boolean result) {
         if (buffer.Length < 1) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = buffer[0] > 0;
-        surplus = buffer[1..];
+        buffer = buffer[1..];
         return true;
     }
 
-    static public Boolean ReadBytes(in this ReadOnlySpan<Byte> buffer, in UInt32 number, out ReadOnlySpan<Byte> result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadBytes(ref this ReadOnlySpan<Byte> buffer, in UInt32 number, out ReadOnlySpan<Byte> result) {
         if (buffer.Length < number) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = buffer[0..(Int32)number];
-        surplus = buffer[(Int32)number..];
+        buffer = buffer[(Int32)number..];
         return true;
     }
 
-    static public Boolean ReadChar(in this ReadOnlySpan<Byte> buffer, out Char result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadChar(ref this ReadOnlySpan<Byte> buffer, out Char result) {
         if (buffer.Length < 1) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = (Char)buffer[0];
-        surplus = buffer[1..];
+        buffer = buffer[1..];
         return true;
     }
 
-    static public Boolean ReadChars(in this ReadOnlySpan<Byte> buffer, in UInt16 number, out ReadOnlySpan<Char> result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadChars(ref this ReadOnlySpan<Byte> buffer, in UInt16 number, out ReadOnlySpan<Char> result) {
         if (buffer.Length < number) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ASCII.GetString(buffer[0..number]).AsSpan();
-        surplus = buffer[number..];
+        buffer = buffer[number..];
         return true;
     }
 
-    static public Boolean ReadDouble(in this ReadOnlySpan<Byte> buffer, out Double result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadDouble(ref this ReadOnlySpan<Byte> buffer, out Double result) {
         if (buffer.Length < sizeof(Double)) {
             result = default;
-            surplus = default;
             return false;
         }
 
         result = ReadDoubleBigEndian(buffer);
-        surplus = buffer[sizeof(Double)..];
+        buffer = buffer[sizeof(Double)..];
         return true;
     }
 
-    static public Boolean ReadFieldArray(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IList<Object>? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadInt32BE(out var arrayLength, out surplus) &&
-            surplus.ReadBytes((UInt32)arrayLength, out var arrayBytes, out surplus))
+    static public Boolean ReadFieldArray(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IList<Object>? result) {
+        if (buffer.ReadInt32BE(out var arrayLength) &&
+            buffer.ReadBytes((UInt32)arrayLength, out var arrayBytes))
         {
             var fieldArray = new List<Object>();
 
             while (arrayBytes.Length > 0) {
-                if (arrayBytes.ReadFieldValue(out var fieldValue, out arrayBytes)) {
+                if (arrayBytes.ReadFieldValue(out var fieldValue)) {
                     fieldArray.Add(fieldValue);
                     continue;
                 }
@@ -116,15 +110,15 @@ static class BufferExtensions {
         }
     }
 
-    static public Boolean ReadFieldTable(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IReadOnlyDictionary<String, Object>? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt32BE(out var tableLength, out surplus) &&
-            surplus.ReadBytes(tableLength, out var tableBytes, out surplus))
+    static public Boolean ReadFieldTable(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out IReadOnlyDictionary<String, Object>? result) {
+        if (buffer.ReadUInt32BE(out var tableLength) &&
+            buffer.ReadBytes(tableLength, out var tableBytes))
         {
             var fields = new Dictionary<String, Object>();
 
             while (tableBytes.Length > 0) {
-                if (tableBytes.ReadShortString(out var fieldName, out tableBytes) &&
-                    tableBytes.ReadFieldValue(out var fieldValue, out tableBytes))
+                if (tableBytes.ReadShortString(out var fieldName) &&
+                    tableBytes.ReadFieldValue(out var fieldValue))
                 {
                     fields.Add(fieldName, fieldValue);
                     continue;
@@ -144,85 +138,85 @@ static class BufferExtensions {
         }
     }
 
-    static public Boolean ReadFieldValue(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Object? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadChar(out var fieldType, out surplus) == false) {
+    static public Boolean ReadFieldValue(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out Object? result) {
+        if (buffer.ReadChar(out var fieldType) == false) {
             result = default;
             return false;
         }
 
         switch (fieldType) {
             case 't': { // boolean
-                if (surplus.ReadBoolean(out var value, out surplus)) {
+                if (buffer.ReadBoolean(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'b': { // short-short-int
-                if (surplus.ReadInt8(out var value, out surplus)) {
+                if (buffer.ReadInt8(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'B': { // short-short-uint
-                if (surplus.ReadUInt8(out var value, out surplus)) {
+                if (buffer.ReadUInt8(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 's': { // short-int
-                if (surplus.ReadInt16BE(out var value, out surplus)) {
+                if (buffer.ReadInt16BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'u': { // short-uint
-                if (surplus.ReadUInt16BE(out var value, out surplus)) {
+                if (buffer.ReadUInt16BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'I': { // long-int
-                if (surplus.ReadInt32BE(out var value, out surplus)) {
+                if (buffer.ReadInt32BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'i': { // long-uint
-                if (surplus.ReadUInt32BE(out var value, out surplus)) {
+                if (buffer.ReadUInt32BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'L': { // long-long-int
-                if (surplus.ReadInt64BE(out var value, out surplus)) {
+                if (buffer.ReadInt64BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'l': { // long-long-uint
-                if (surplus.ReadUInt64BE(out var value, out surplus)) {
+                if (buffer.ReadUInt64BE(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'f': { // float
-                if (surplus.ReadSingle(out var value, out surplus)) {
+                if (buffer.ReadSingle(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'd': { // double
-                if (surplus.ReadDouble(out var value, out surplus)) {
+                if (buffer.ReadDouble(out var value)) {
                     result = value;
                     return true;
                 }
@@ -230,33 +224,33 @@ static class BufferExtensions {
             }
             case 'D': { // decimal-value
                 result = default(Decimal); // TODO: read and decode decimal-value (see: https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/e00b71045d3163e057f2b857cb881872413ff03b/projects/RabbitMQ.Client/client/impl/WireFormatting.Read.cs#L45)
-                surplus = surplus[5..];
+                buffer = buffer[5..];
                 return true;
             }
             case 'S': { // long-string
-                if (surplus.ReadLongString(out var value, out surplus)) {
+                if (buffer.ReadLongString(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'x': { // byte-array
-                if (surplus.ReadUInt32BE(out var length, out surplus) &&
-                    surplus.ReadBytes(length, out var value, out surplus)) {
+                if (buffer.ReadUInt32BE(out var length) &&
+                    buffer.ReadBytes(length, out var value)) {
                         result = value.ToArray();
                         return true;
                 }
                 break;
             }
             case 'A' : { // field-array
-                if (surplus.ReadFieldArray(out var value, out surplus)) {
+                if (buffer.ReadFieldArray(out var value)) {
                     result = value;
                     return true;
                 }
                 break;
             }
             case 'T': { // timestamp
-                if (surplus.ReadUInt64BE(out var value, out surplus)) {
+                if (buffer.ReadUInt64BE(out var value)) {
                     result = DateTimeOffset.FromUnixTimeSeconds((Int64)value);
                     return true;
                 }
@@ -267,7 +261,7 @@ static class BufferExtensions {
                 return true;
             }
             case 'F': { // field-table
-                if (surplus.ReadFieldTable(out var value, out surplus)) {
+                if (buffer.ReadFieldTable(out var value)) {
                     result = value;
                     return true;
                 }
@@ -279,57 +273,53 @@ static class BufferExtensions {
         return false;
     }
 
-    static public Boolean ReadInt8(in this ReadOnlySpan<Byte> buffer, out SByte result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadInt8(ref this ReadOnlySpan<Byte> buffer, out SByte result) {
         if (buffer.Length < 1) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result = (SByte)buffer[0];
-        surplus = buffer[1..];
+        buffer = buffer[1..];
         return true;
     }
 
-    static public Boolean ReadInt16BE(in this ReadOnlySpan<Byte> buffer, out Int16 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadInt16BE(ref this ReadOnlySpan<Byte> buffer, out Int16 result) {
         if (buffer.Length < sizeof(Int16)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadInt16BigEndian(buffer);
-        surplus = buffer[sizeof(Int16)..];
+        buffer = buffer[sizeof(Int16)..];
         return true;
     }
 
-    static public Boolean ReadInt32BE(in this ReadOnlySpan<Byte> buffer, out Int32 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadInt32BE(ref this ReadOnlySpan<Byte> buffer, out Int32 result) {
         if (buffer.Length < sizeof(Int32)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadInt32BigEndian(buffer);
-        surplus = buffer[sizeof(Int32)..];
+        buffer = buffer[sizeof(Int32)..];
         return true;
     }
 
-    static public Boolean ReadInt64BE(in this ReadOnlySpan<Byte> buffer, out Int64 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadInt64BE(ref this ReadOnlySpan<Byte> buffer, out Int64 result) {
         if (buffer.Length < sizeof(Int64)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadInt64BigEndian(buffer);
-        surplus = buffer[sizeof(Int64)..];
+        buffer = buffer[sizeof(Int64)..];
         return true;
     }
 
-    static public Boolean ReadLongString(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result, out ReadOnlySpan<Byte> surplus) {
-        if (ReadUInt32BE(in buffer, out var length, out surplus) &&
-            ReadBytes(in surplus, length, out var bytes, out surplus))
+    static public Boolean ReadLongString(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result) {
+        if (ReadUInt32BE(ref buffer, out var length) &&
+            ReadBytes(ref buffer, length, out var bytes))
         {
             result = UTF8.GetString(bytes);
             return true;
@@ -340,9 +330,9 @@ static class BufferExtensions {
         }
     }
 
-    static public Boolean ReadMethodHeader(in this ReadOnlySpan<Byte> buffer, out (UInt16 ClassId, UInt16 MethodId) result, out ReadOnlySpan<Byte> surplus) {
-        if (ReadUInt16BE(in buffer, out var classId, out surplus) &&
-            ReadUInt16BE(in surplus, out var methodId, out surplus))
+    static public Boolean ReadMethodHeader(ref this ReadOnlySpan<Byte> buffer, out (UInt16 ClassId, UInt16 MethodId) result) {
+        if (ReadUInt16BE(ref buffer, out var classId) &&
+            ReadUInt16BE(ref buffer, out var methodId))
         {
             result = (classId, methodId);
             return true;
@@ -353,9 +343,9 @@ static class BufferExtensions {
         }
     }
 
-    static public Boolean ReadShortString(in this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result, out ReadOnlySpan<Byte> surplus) {
-        if (ReadUInt8(in buffer, out var length, out surplus) &&
-            ReadBytes(in surplus, length, out var bytes, out surplus))
+    static public Boolean ReadShortString(ref this ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out String? result) {
+        if (ReadUInt8(ref buffer, out var length) &&
+            ReadBytes(ref buffer, length, out var bytes))
         {
             result = UTF8.GetString(bytes);
             return true;
@@ -366,63 +356,58 @@ static class BufferExtensions {
         }
     }
 
-    static public Boolean ReadSingle(in this ReadOnlySpan<Byte> buffer, out Single result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadSingle(ref this ReadOnlySpan<Byte> buffer, out Single result) {
         if (buffer.Length < sizeof(Single)) {
             result = default;
-            surplus = default;
             return false;
         }
 
         result = ReadSingleBigEndian(buffer);
-        surplus = buffer[sizeof(Single)..];
+        buffer = buffer[sizeof(Single)..];
         return true;
     }
 
-    static public Boolean ReadUInt8(in this ReadOnlySpan<Byte> buffer, out Byte result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadUInt8(ref this ReadOnlySpan<Byte> buffer, out Byte result) {
         if (buffer.Length < sizeof(Byte)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = buffer[0];
-        surplus = buffer[sizeof(Byte)..];
+        buffer = buffer[sizeof(Byte)..];
         return true;
     }
 
-    static public Boolean ReadUInt16BE(in this ReadOnlySpan<Byte> buffer, out UInt16 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadUInt16BE(ref this ReadOnlySpan<Byte> buffer, out UInt16 result) {
         if (buffer.Length < sizeof(UInt16)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadUInt16BigEndian(buffer);
-        surplus = buffer[sizeof(UInt16)..];
+        buffer = buffer[sizeof(UInt16)..];
         return true;
     }
 
-    static public Boolean ReadUInt32BE(in this ReadOnlySpan<Byte> buffer, out UInt32 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadUInt32BE(ref this ReadOnlySpan<Byte> buffer, out UInt32 result) {
         if (buffer.Length < sizeof(UInt32)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadUInt32BigEndian(buffer);
-        surplus = buffer[sizeof(UInt32)..];
+        buffer = buffer[sizeof(UInt32)..];
         return true;
     }
 
-    static public Boolean ReadUInt64BE(in this ReadOnlySpan<Byte> buffer, out UInt64 result, out ReadOnlySpan<Byte> surplus) {
+    static public Boolean ReadUInt64BE(ref this ReadOnlySpan<Byte> buffer, out UInt64 result) {
         if (buffer.Length < sizeof(UInt64)) {
             result  = default;
-            surplus = default;
             return false;
         }
 
         result  = ReadUInt64BigEndian(buffer);
-        surplus = buffer[sizeof(UInt64)..];
+        buffer = buffer[sizeof(UInt64)..];
         return true;
     }
 

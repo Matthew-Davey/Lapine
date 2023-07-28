@@ -2,6 +2,9 @@ namespace Lapine.Client;
 
 public class ExchangeTests : Faker {
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -14,7 +17,7 @@ public class ExchangeTests : Faker {
             await subject.ConnectAsync();
             channel = await subject.OpenChannelAsync();
         }).Teardown(async () => await subject.DisposeAsync());
-        "When the client declares a topic exchange".x(async () => {
+        "When the client declares a direct exchange".x(async () => {
             await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Direct(Random.String2(12)));
         });
         "Then the exchange is created on the broker".x(async () => {
@@ -25,6 +28,9 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -37,7 +43,7 @@ public class ExchangeTests : Faker {
             await subject.ConnectAsync();
             channel = await subject.OpenChannelAsync();
         }).Teardown(async () => await subject.DisposeAsync());
-        "When the client declares a topic exchange".x(async () => {
+        "When the client declares a fanout exchange".x(async () => {
             await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Fanout(Random.String2(12)));
         });
         "Then the exchange is created on the broker".x(async () => {
@@ -48,6 +54,9 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -60,7 +69,7 @@ public class ExchangeTests : Faker {
             await subject.ConnectAsync();
             channel = await subject.OpenChannelAsync();
         }).Teardown(async () => await subject.DisposeAsync());
-        "When the client declares a topic exchange".x(async () => {
+        "When the client declares a headers exchange".x(async () => {
             await channel.DeclareExchangeAsync(exchangeDefinition = ExchangeDefinition.Headers(Random.String2(12)));
         });
         "Then the exchange is created on the broker".x(async () => {
@@ -71,6 +80,9 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -94,10 +106,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void DeclareExchangeWithInsufficientPermission(String brokerVersion, BrokerProxy broker, String user, String password, AmqpClient subject, Channel channel, Exception exception) {
+    public void DeclareExchangeWithInsufficientPermission(String brokerVersion, BrokerProxy broker, String user, String password, AmqpClient subject, Channel channel, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -124,10 +139,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RedeclareExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
+    public void RedeclareExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -151,10 +169,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception exception) {
+    public void RedeclareExchangeWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, ExchangeDefinition exchangeDefinition, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -181,10 +202,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void DeclareExchangeWithReservedPrefix(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {
+    public void DeclareExchangeWithReservedPrefix(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -205,6 +229,9 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -231,10 +258,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void DeleteNonExistentExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception error) {
+    public void DeleteNonExistentExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception? error) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -254,10 +284,13 @@ public class ExchangeTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void DeleteDefaultExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception exception) {
+    public void DeleteDefaultExchange(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion);
         }).Teardown(async () => await broker.DisposeAsync());

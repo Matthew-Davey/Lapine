@@ -4,13 +4,9 @@
     <ProjectReference Include="..\Lapine.Core\Lapine.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Proto.Actor" Version="0.26.0" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <LangVersion>preview</LangVersion>
 	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

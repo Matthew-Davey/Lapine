@@ -12,11 +12,11 @@ record struct BasicDeliver(String ConsumerTag, UInt64 DeliveryTag, Boolean Redel
             .WriteBoolean(Redelivered)
             .WriteShortString(ExchangeName);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicDeliver? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var consumerTag, out surplus) &&
-            surplus.ReadUInt64BE(out var deliveryTag, out surplus) &&
-            surplus.ReadBoolean(out var redelivered, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicDeliver? result) {
+        if (buffer.ReadShortString(out var consumerTag) &&
+            buffer.ReadUInt64BE(out var deliveryTag) &&
+            buffer.ReadBoolean(out var redelivered) &&
+            buffer.ReadShortString(out var exchangeName))
         {
             result = new BasicDeliver(consumerTag, deliveryTag, redelivered, exchangeName);
             return true;

@@ -13,12 +13,12 @@ record struct BasicConsume(String QueueName, String ConsumerTag, Boolean NoLocal
             .WriteBits(NoLocal, NoAck, Exclusive, NoWait)
             .WriteFieldTable(Arguments);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsume? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var queueName, out surplus) &&
-            surplus.ReadShortString(out var consumerTag, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus) &&
-            surplus.ReadFieldTable(out var arguments, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsume? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var queueName) &&
+            buffer.ReadShortString(out var consumerTag) &&
+            buffer.ReadBits(out var bits) &&
+            buffer.ReadFieldTable(out var arguments))
         {
             result = new BasicConsume(queueName, consumerTag, bits[0], bits[1], bits[2], bits[3], arguments);
             return true;
@@ -36,8 +36,8 @@ record struct BasicConsumeOk(String ConsumerTag) : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer.WriteShortString(ConsumerTag);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsumeOk? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadShortString(out var consumerTag, out surplus)) {
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out BasicConsumeOk? result) {
+        if (buffer.ReadShortString(out var consumerTag)) {
             result = new BasicConsumeOk(consumerTag);
             return true;
         }

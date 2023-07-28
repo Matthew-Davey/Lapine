@@ -14,12 +14,12 @@ record struct ExchangeDeclare(String ExchangeName, String ExchangeType, Boolean 
             .WriteBits(Passive, Durable, AutoDelete, Internal, NoWait)
             .WriteFieldTable(Arguments);
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclare? result, out ReadOnlySpan<Byte> surplus) {
-        if (buffer.ReadUInt16BE(out var _, out surplus) &&
-            surplus.ReadShortString(out var exchangeName, out surplus) &&
-            surplus.ReadShortString(out var exchangeType, out surplus) &&
-            surplus.ReadBits(out var bits, out surplus) &&
-            surplus.ReadFieldTable(out var arguments, out surplus))
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclare? result) {
+        if (buffer.ReadUInt16BE(out var _) &&
+            buffer.ReadShortString(out var exchangeName) &&
+            buffer.ReadShortString(out var exchangeType) &&
+            buffer.ReadBits(out var bits) &&
+            buffer.ReadFieldTable(out var arguments))
         {
             result = new ExchangeDeclare(exchangeName, exchangeType, bits[0], bits[1], bits[2], bits[3], bits[4], arguments);
             return true;
@@ -37,8 +37,7 @@ record struct ExchangeDeclareOk : ICommand {
     public IBufferWriter<Byte> Serialize(IBufferWriter<Byte> writer) =>
         writer;
 
-    static public Boolean Deserialize(in ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclareOk? result, out ReadOnlySpan<Byte> surplus) {
-        surplus = buffer;
+    static public Boolean Deserialize(ref ReadOnlySpan<Byte> buffer, [NotNullWhen(true)] out ExchangeDeclareOk? result) {
         result = new ExchangeDeclareOk();
         return true;
     }

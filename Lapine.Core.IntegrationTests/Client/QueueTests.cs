@@ -2,6 +2,9 @@ namespace Lapine.Client;
 
 public class QueueTests : Faker {
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -29,10 +32,13 @@ public class QueueTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RedeclareQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
+    public void RedeclareQueue(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -58,10 +64,13 @@ public class QueueTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void RedeclareQueueWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
+    public void RedeclareQueueWithDifferentParameters(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -90,6 +99,9 @@ public class QueueTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -119,10 +131,13 @@ public class QueueTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
-    public void DeleteQueueConditionalNonEmpty(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception exception) {
+    public void DeleteQueueConditionalNonEmpty(String brokerVersion, BrokerProxy broker, AmqpClient subject, Channel channel, QueueDefinition queueDefinition, Exception? exception) {
         $"Given a running RabbitMQ v{brokerVersion} broker".x(async () => {
             broker = await BrokerProxy.StartAsync(brokerVersion, enableManagement: true);
         }).Teardown(async () => await broker.DisposeAsync());
@@ -133,7 +148,7 @@ public class QueueTests : Faker {
         "And the queue has some messages".x(async () => {
             await Enumerable.Repeat(0, 10)
                 .ToAsyncEnumerable()
-                .ForEachAsync(async _ => {
+                .ForEachAwaitAsync(async _ => {
                     await broker.PublishMessage(
                         exchange  : "amq.default",
                         routingKey: queueDefinition.Name,
@@ -141,11 +156,8 @@ public class QueueTests : Faker {
                     );
                 });
 
-            // Wait a few moments for the messages to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messages = await broker.GetMessageCount(queueDefinition.Name);
-                messages.Should().Be(10);
-            });
+            var messages = await broker.GetMessageCount(queueDefinition.Name);
+            messages.Should().Be(10);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
@@ -169,6 +181,9 @@ public class QueueTests : Faker {
     }
 
     [Scenario]
+    [Example("3.12")]
+    [Example("3.11")]
+    [Example("3.10")]
     [Example("3.9")]
     [Example("3.8")]
     [Example("3.7")]
@@ -182,7 +197,7 @@ public class QueueTests : Faker {
         "And the queue has some messages".x(async () => {
             await Enumerable.Repeat(0, 10)
                 .ToAsyncEnumerable()
-                .ForEachAsync(async _ => {
+                .ForEachAwaitAsync(async _ => {
                     await broker.PublishMessage(
                         exchange  : "amq.default",
                         routingKey: queueDefinition.Name,
@@ -190,11 +205,8 @@ public class QueueTests : Faker {
                     );
                 });
 
-            // Wait a few moments for the messages to show up in the queue...
-            await BrokerProxy.ManagementRetryPolicy.ExecuteAsync(async () => {
-                var messages = await broker.GetMessageCount(queueDefinition.Name);
-                messages.Should().Be(10);
-            });
+            var messages = await broker.GetMessageCount(queueDefinition.Name);
+            messages.Should().Be(10);
         });
         "And a client connected to the broker with an open channel".x(async () => {
             subject = new AmqpClient(await broker.GetConnectionConfigurationAsync());
