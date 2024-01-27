@@ -3,11 +3,9 @@ namespace Lapine.Client;
 using System.Runtime.ExceptionServices;
 using Lapine.Agents;
 
-using static Lapine.Agents.AmqpClientAgent.Protocol;
-
 public class AmqpClient : IAsyncDisposable {
     readonly ConnectionConfiguration _connectionConfiguration;
-    readonly IAgent _agent;
+    readonly IAmqpClientAgent _agent;
 
     public AmqpClient(ConnectionConfiguration connectionConfiguration) {
         _connectionConfiguration = connectionConfiguration;
@@ -15,9 +13,7 @@ public class AmqpClient : IAsyncDisposable {
     }
 
     public async ValueTask ConnectAsync(CancellationToken cancellationToken = default) {
-        var command = new EstablishConnection(_connectionConfiguration, cancellationToken);
-
-        switch (await _agent.PostAndReplyAsync(command)) {
+        switch (await _agent.EstablishConnection(_connectionConfiguration, cancellationToken)) {
             case true: {
                 return;
             }
@@ -31,10 +27,8 @@ public class AmqpClient : IAsyncDisposable {
     }
 
     public async ValueTask<Channel> OpenChannelAsync(CancellationToken cancellationToken = default) {
-        var command = new OpenChannel(cancellationToken);
-
-        switch (await _agent.PostAndReplyAsync(command)) {
-            case IAgent channelAgent: {
+        switch (await _agent.OpenChannel(cancellationToken)) {
+            case IChannelAgent channelAgent: {
                 return new Channel(channelAgent, _connectionConfiguration);
             }
             case Exception fault: {
@@ -48,8 +42,8 @@ public class AmqpClient : IAsyncDisposable {
     }
 
     public async ValueTask DisposeAsync() {
-        await _agent.PostAndReplyAsync(new Disconnect());
-        await _agent.StopAsync();
+        await _agent.Disconnect();
+        await _agent.Stop();
 
         GC.SuppressFinalize(this);
     }

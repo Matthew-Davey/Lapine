@@ -4,36 +4,46 @@ using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
-using static Lapine.Agents.DispatcherAgent.Protocol;
-using static Lapine.Agents.GetMessageAgent.Protocol;
+interface IGetMessageAgent {
+    Task<GetMessageAgent.GetMessageResult> GetMessages(String queue, Acknowledgements acknowledgements);
+}
 
-static class GetMessageAgent {
-    static public class Protocol {
-        public record GetMessages(String Queue, Acknowledgements Acknowledgements);
-        public record NoMessages;
-    }
+class GetMessageAgent : IGetMessageAgent {
+    readonly IAgent<Protocol> _agent;
 
-    static public IAgent Create(IObservable<RawFrame> receivedFrames, IAgent dispatcher, CancellationToken cancellationToken) =>
-        Agent.StartNew(AwaitingGetMessages(receivedFrames, dispatcher, cancellationToken));
+    GetMessageAgent(IAgent<Protocol> agent) =>
+        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
 
-    static Behaviour AwaitingGetMessages(IObservable<RawFrame> receivedFrames, IAgent dispatcher, CancellationToken cancellationToken) =>
+    public abstract record GetMessageResult;
+    public record NoMessage : GetMessageResult;
+    public record Message(DeliveryInfo DeliveryInfo, BasicProperties Properties, ReadOnlyMemory<Byte> Body) : GetMessageResult;
+
+    abstract record Protocol;
+    record GetMessage(String Queue, Acknowledgements Acknowledgements, AsyncReplyChannel ReplyChannel) : Protocol;
+    record FrameReceived(Object Frame) : Protocol;
+    record Timeout : Protocol;
+
+    static public IGetMessageAgent Create(IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, CancellationToken cancellationToken) =>
+        new GetMessageAgent(Agent<Protocol>.StartNew(AwaitingGetMessages(receivedFrames, dispatcher, cancellationToken)));
+
+    static Behaviour<Protocol> AwaitingGetMessages(IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, CancellationToken cancellationToken) =>
         async context => {
             switch (context.Message) {
-                case (GetMessages(var queue, var acknowledgements), AsyncReplyChannel replyChannel): {
+                case GetMessage(var queue, var acknowledgements, var replyChannel): {
                     var subscription = receivedFrames.Subscribe(onNext: frame => {
-                        context.Self.PostAsync(RawFrame.Unwrap(frame));
+                        context.Self.PostAsync(new FrameReceived(RawFrame.Unwrap(frame)));
                     });
 
-                    await dispatcher.PostAsync(Dispatch.Command(new BasicGet(
+                    await dispatcher.Dispatch(new BasicGet(
                         QueueName: queue,
                         NoAck: acknowledgements switch {
                             Acknowledgements.Auto   => true,
                             Acknowledgements.Manual => false,
                             _                       => false
                         }
-                    )));
+                    ));
 
-                    var cancelTimeout = cancellationToken.Register(() => context.Self.PostAsync(new TimeoutException()));
+                    var cancelTimeout = cancellationToken.Register(() => context.Self.PostAsync(new Timeout()));
 
                     return context with {
                         Behaviour = AwaitingBasicGetOkOrEmpty(subscription, cancelTimeout, replyChannel)
@@ -43,29 +53,29 @@ static class GetMessageAgent {
             }
         };
 
-    static Behaviour AwaitingBasicGetOkOrEmpty(IDisposable subscription, CancellationTokenRegistration cancelTimeout, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingBasicGetOkOrEmpty(IDisposable subscription, CancellationTokenRegistration cancelTimeout, AsyncReplyChannel replyChannel) =>
         async context => {
             switch (context.Message) {
-                case BasicGetEmpty: {
+                case FrameReceived(BasicGetEmpty): {
                     await cancelTimeout.DisposeAsync();
-                    replyChannel.Reply(new NoMessages());
+                    replyChannel.Reply(new NoMessage());
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
-                case BasicGetOk ok: {
+                case FrameReceived(BasicGetOk ok): {
                     var deliveryInfo = DeliveryInfo.FromBasicGetOk(ok);
                     return context with {
                         Behaviour = AwaitingContentHeader(subscription, cancelTimeout, deliveryInfo, replyChannel)
                     };
                 }
-                case TimeoutException timeout: {
-                    replyChannel.Reply(timeout);
+                case Timeout: {
+                    replyChannel.Reply(new TimeoutException());
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
-                case ChannelClose close: {
+                case FrameReceived(ChannelClose close): {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     await context.Self.StopAsync();
@@ -76,28 +86,28 @@ static class GetMessageAgent {
             }
         };
 
-    static Behaviour AwaitingContentHeader(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingContentHeader(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, AsyncReplyChannel replyChannel) =>
         async context => {
             switch (context.Message) {
-                case ContentHeader { BodySize: 0 } header: {
+                case FrameReceived(ContentHeader { BodySize: 0 } header): {
                     await cancelTimeout.DisposeAsync();
-                    replyChannel.Reply((deliveryInfo, header.Properties, Memory<Byte>.Empty));
+                    replyChannel.Reply(new Message(deliveryInfo, header.Properties, Memory<Byte>.Empty));
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
-                case ContentHeader { BodySize: > 0 } header: {
+                case FrameReceived(ContentHeader { BodySize: > 0 } header): {
                     return context with {
                         Behaviour = AwaitingContentBody(subscription, cancelTimeout, deliveryInfo, header, replyChannel)
                     };
                 }
-                case TimeoutException timeout: {
+                case FrameReceived(TimeoutException timeout): {
                     replyChannel.Reply(timeout);
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
-                case ChannelClose close: {
+                case FrameReceived(ChannelClose close): {
                     await cancelTimeout.DisposeAsync();
                     replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     await context.Self.StopAsync();
@@ -108,23 +118,23 @@ static class GetMessageAgent {
             }
         };
 
-    static Behaviour AwaitingContentBody(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, ContentHeader header, AsyncReplyChannel replyChannel) {
+    static Behaviour<Protocol> AwaitingContentBody(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, ContentHeader header, AsyncReplyChannel replyChannel) {
         var buffer = new MemoryBufferWriter<Byte>((Int32)header.BodySize);
 
         return async context => {
             switch (context.Message) {
-                case ReadOnlyMemory<Byte> segment: {
+                case FrameReceived(ReadOnlyMemory<Byte> segment): {
                     buffer.WriteBytes(segment.Span);
                     if ((UInt64)buffer.WrittenCount >= header.BodySize) {
                         await cancelTimeout.DisposeAsync();
-                        replyChannel.Reply((deliveryInfo, header.Properties, buffer.WrittenMemory));
+                        replyChannel.Reply(new Message(deliveryInfo, header.Properties, buffer.WrittenMemory));
                         await context.Self.StopAsync();
                         subscription.Dispose();
                     }
                     return context;
                 }
-                case TimeoutException timeout: {
-                    replyChannel.Reply(timeout);
+                case Timeout: {
+                    replyChannel.Reply(new TimeoutException());
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
@@ -132,5 +142,16 @@ static class GetMessageAgent {
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingContentBody)}' behaviour.");
             }
         };
+    }
+
+    async Task<GetMessageResult> IGetMessageAgent.GetMessages(String queue, Acknowledgements acknowledgements) {
+        switch (await _agent.PostAndReplyAsync(replyChannel => new GetMessage(queue, acknowledgements, replyChannel))) {
+            case GetMessageResult reply:
+                return reply;
+            case Exception fault:
+                throw fault;
+            default:
+                throw new Exception("Unexpected return value");
+        }
     }
 }

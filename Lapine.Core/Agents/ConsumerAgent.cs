@@ -5,30 +5,38 @@ using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
-using static Lapine.Agents.ConsumerAgent.Protocol;
-using static Lapine.Agents.MessageAssemblerAgent.Protocol;
-using static Lapine.Agents.MessageHandlerAgent.Protocol;
+interface IConsumerAgent {
+    Task<Object> StartConsuming(String consumerTag, IObservable<RawFrame> frameStream, IDispatcherAgent dispatcherAgent, String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments = null);
+    Task HandlerReady(IMessageHandlerAgent handler);
+}
 
-static class ConsumerAgent {
-    static public class Protocol {
-        public record StartConsuming(
-            String ConsumerTag,
-            IObservable<RawFrame> ReceivedFrames,
-            IAgent Dispatcher,
-            String Queue,
-            ConsumerConfiguration ConsumerConfiguration,
-            IReadOnlyDictionary<String, Object>? Arguments
-        );
-        public record ConsumeMessage(
-            DeliveryInfo Delivery,
-            BasicProperties Properties,
-            MemoryBufferWriter<Byte> Buffer
-        );
-        public record Stop;
-    }
+class ConsumerAgent : IConsumerAgent {
+    readonly IAgent<Protocol> _agent;
 
-    static public IAgent Create() =>
-        Agent.StartNew(Unstarted());
+    ConsumerAgent(IAgent<Protocol> agent) =>
+        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
+
+    abstract record Protocol;
+    record StartConsuming(
+        IConsumerAgent Self,
+        String ConsumerTag,
+        IObservable<RawFrame> ReceivedFrames,
+        IDispatcherAgent Dispatcher,
+        String Queue,
+        ConsumerConfiguration ConsumerConfiguration,
+        IReadOnlyDictionary<String, Object>? Arguments,
+        AsyncReplyChannel ReplyChannel
+    ) : Protocol;
+    record ConsumeMessage(
+        DeliveryInfo Delivery,
+        BasicProperties Properties,
+        MemoryBufferWriter<Byte> Buffer
+    ) : Protocol;
+    record HandlerReady(IMessageHandlerAgent Handler) : Protocol;
+    record Stop : Protocol;
+
+    static public IConsumerAgent Create() =>
+        new ConsumerAgent(Agent<Protocol>.StartNew(Unstarted()));
 
     readonly record struct Message(
         DeliveryInfo DeliveryInfo,
@@ -36,22 +44,13 @@ static class ConsumerAgent {
         MemoryBufferWriter<Byte> Body
     );
 
-    static Behaviour Unstarted() =>
+    static Behaviour<Protocol> Unstarted() =>
         async context => {
             switch (context.Message) {
-                case (StartConsuming start, AsyncReplyChannel replyChannel): {
-                    var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
-                        .Select(_ => MessageHandlerAgent.Create(context.Self))
-                        .ToImmutableQueue();
-                    var assembler = MessageAssemblerAgent.StartNew();
-                    await assembler.PostAsync(new Begin(start.ReceivedFrames, context.Self));
-                    var processManager = RequestReplyAgent.StartNew<BasicConsume, BasicConsumeOk>(
-                        receivedFrames   : start.ReceivedFrames,
-                        dispatcher       : start.Dispatcher,
-                        cancellationToken: CancellationToken.None
-                    );
+                case StartConsuming start: {
+                    var processManager = RequestReplyAgent<BasicConsume, BasicConsumeOk>.StartNew(start.ReceivedFrames, start.Dispatcher, CancellationToken.None);
 
-                    var command = new BasicConsume(
+                    var basicConsume = new BasicConsume(
                         QueueName  : start.Queue,
                         ConsumerTag: start.ConsumerTag,
                         NoLocal    : false,
@@ -64,27 +63,33 @@ static class ConsumerAgent {
                         Arguments: start.Arguments ?? ImmutableDictionary<String, Object>.Empty
                     );
 
-                    switch (await processManager.PostAndReplyAsync(command)) {
-                        case BasicConsumeOk: {
-                            replyChannel.Reply(true);
+                    switch (await processManager.Request(basicConsume)) {
+                        case Result<BasicConsumeOk>.Ok(var basicConsumeOk): {
+                            var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
+                                .Select(_ => MessageHandlerAgent.Create(start.Self))
+                                .ToImmutableQueue();
+                            var assembler = MessageAssemblerAgent.StartNew();
+                            var receivedMessages = await assembler.Begin(start.ReceivedFrames, start.Self);
+                            receivedMessages.Subscribe(async message => await context.Self.PostAsync(new ConsumeMessage(message.DeliveryInfo, message.Properties, message.Buffer)));
+
+                            start.ReplyChannel.Reply(true);
 
                             return context with { Behaviour = Running(
-                                consumerTag          : start.ConsumerTag,
+                                consumerTag          : basicConsumeOk.ConsumerTag,
                                 receivedFrames       : start.ReceivedFrames,
                                 dispatcher           : start.Dispatcher,
                                 assembler            : assembler,
                                 consumerConfiguration: start.ConsumerConfiguration,
                                 availableHandlers    : handlers,
-                                busyHandlers         : ImmutableList<IAgent>.Empty,
+                                busyHandlers         : ImmutableList<IMessageHandlerAgent>.Empty,
                                 inbox                : ImmutableQueue<Message>.Empty
                             ) };
                         }
-                        case Exception fault: {
-                            replyChannel.Reply(fault);
+                        case Result<BasicConsumeOk>.Fault(var exceptionDispatchInfo): {
+                            start.ReplyChannel.Reply(exceptionDispatchInfo.SourceException);
                             break;
                         }
                     }
-
                     break;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Unstarted)}' behaviour.");
@@ -92,18 +97,12 @@ static class ConsumerAgent {
             return context;
         };
 
-    static Behaviour Running(String consumerTag, IObservable<RawFrame> receivedFrames, IAgent dispatcher, IAgent assembler, ConsumerConfiguration consumerConfiguration, IImmutableQueue<IAgent> availableHandlers, IImmutableList<IAgent> busyHandlers, IImmutableQueue<Message> inbox) =>
+    static Behaviour<Protocol> Running(String consumerTag, IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, IMessageAssemblerAgent assembler, ConsumerConfiguration consumerConfiguration, IImmutableQueue<IMessageHandlerAgent> availableHandlers, IImmutableList<IMessageHandlerAgent> busyHandlers, IImmutableQueue<Message> inbox) =>
         async context => {
             switch (context.Message) {
                 case ConsumeMessage(var deliveryInfo, var properties, var buffer) when availableHandlers.Any(): {
                     availableHandlers = availableHandlers.Dequeue(out var handler);
-                    await handler.PostAsync(new HandleMessage(
-                        Dispatcher           : dispatcher,
-                        ConsumerConfiguration: consumerConfiguration,
-                        Delivery             : deliveryInfo,
-                        Properties           : properties,
-                        Buffer               : buffer
-                    ));
+                    await handler.HandleMessage(dispatcher, consumerConfiguration, deliveryInfo, properties, buffer);
 
                     return context with { Behaviour = Running(
                         consumerTag          : consumerTag,
@@ -147,13 +146,7 @@ static class ConsumerAgent {
                 case HandlerReady(var handler) when inbox.Any(): {
                     inbox = inbox.Dequeue(out var message);
 
-                    await handler.PostAsync(new HandleMessage(
-                        Dispatcher           : dispatcher,
-                        ConsumerConfiguration: consumerConfiguration,
-                        Delivery             : message.DeliveryInfo,
-                        Properties           : message.Properties,
-                        Buffer               : message.Body
-                    ));
+                    await handler.HandleMessage(dispatcher, consumerConfiguration, message.DeliveryInfo, message.Properties, message.Body);
 
                     return context with { Behaviour = Running(
                         consumerTag          : consumerTag,
@@ -166,25 +159,29 @@ static class ConsumerAgent {
                         inbox                : inbox
                     ) };
                 }
-                case Protocol.Stop: {
-                    var processManager = RequestReplyAgent.StartNew<BasicCancel, BasicCancelOk>(
+                case Stop: {
+                    var processManager = RequestReplyAgent<BasicCancel, BasicCancelOk>.StartNew(
                         receivedFrames   : receivedFrames,
                         dispatcher       : dispatcher,
                         cancellationToken: CancellationToken.None
                     );
 
-                    switch (await processManager.PostAndReplyAsync(new BasicCancel(consumerTag, false))) {
-                        case BasicCancelOk: {
+                    switch (await processManager.Request(new BasicCancel(consumerTag, false))) {
+                        case Result<BasicCancelOk>.Ok(var basicCancelOk): {
                             foreach (var handlerAgent in availableHandlers)
-                                await handlerAgent.StopAsync();
+                                await handlerAgent.Stop();
 
                             foreach (var handlerAgent in busyHandlers)
-                                await handlerAgent.StopAsync();
+                                await handlerAgent.Stop();
 
-                            await assembler.PostAsync(new MessageAssemblerAgent.Protocol.Stop());
+                            await assembler.Stop();
 
                             await context.Self.StopAsync();
                             return context;
+                        }
+                        case Result<BasicCancelOk>.Fault(var exceptionDispatchInfo): {
+                            // TODO
+                            break;
                         }
                     }
                     return context;
@@ -192,4 +189,10 @@ static class ConsumerAgent {
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Running)}' behaviour.");
             }
         };
+
+    async Task<Object> IConsumerAgent.StartConsuming(String consumerTag, IObservable<RawFrame> frameStream, IDispatcherAgent dispatcherAgent, String queue, ConsumerConfiguration consumerConfiguration, IReadOnlyDictionary<String, Object>? arguments) =>
+        await _agent.PostAndReplyAsync(replyChannel => new StartConsuming(this, consumerTag, frameStream, dispatcherAgent, queue, consumerConfiguration, arguments, replyChannel));
+
+    async Task IConsumerAgent.HandlerReady(IMessageHandlerAgent handler) =>
+        await _agent.PostAsync(new HandlerReady(handler));
 }

@@ -8,35 +8,51 @@ using Lapine.Protocol;
 using static System.Math;
 using static System.Net.Sockets.SocketOptionLevel;
 using static System.Net.Sockets.SocketOptionName;
-using static Lapine.Agents.SocketAgent.Protocol;
 using static Lapine.Client.ConnectionConfiguration;
 
-static class SocketAgent {
-    static public class Protocol {
-        public record Connect(IPEndPoint Endpoint, CancellationToken CancellationToken = default);
-        public record Connected(IObservable<Object> ConnectionEvents, IObservable<RawFrame> ReceivedFrames);
-        public record ConnectionFailed(Exception Fault);
-        public record RemoteDisconnected(Exception Fault);
-        public record Tune(UInt32 MaxFrameSize);
-        public record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount);
-        public record Transmit(ISerializable Entity);
-        public record Disconnect;
+abstract record ConnectionEvent;
+record RemoteDisconnected(Exception Fault) : ConnectionEvent;
 
-        internal record Poll;
-    }
+abstract record ConnectResult;
+record Connected(IObservable<ConnectionEvent> ConnectionEvents, IObservable<RawFrame> ReceivedFrames) : ConnectResult;
+record ConnectionFailed(Exception Fault) : ConnectResult;
 
-    static public IAgent Create() =>
-        Agent.StartNew(Disconnected());
+interface ISocketAgent {
+    Task<ConnectResult> ConnectAsync(IPEndPoint endpoint, CancellationToken cancellationToken = default);
+    Task Tune(UInt32 maxFrameSize);
+    Task EnableTcpKeepAlives(TimeSpan probeTime, TimeSpan retryInterval, Int32 retryCount);
+    Task Transmit(ISerializable entity);
+    Task Disconnect();
+    Task StopAsync();
+}
 
-    static Behaviour Disconnected() =>
+class SocketAgent : ISocketAgent {
+    readonly IAgent<Protocol> _agent;
+
+    SocketAgent(IAgent<Protocol> agent) =>
+        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
+
+    abstract record Protocol;
+    record Connect(IPEndPoint Endpoint, AsyncReplyChannel ReplyChannel, CancellationToken CancellationToken = default) : Protocol;
+    record Tune(UInt32 MaxFrameSize) : Protocol;
+    record EnableTcpKeepAlives(TimeSpan ProbeTime, TimeSpan RetryInterval, Int32 RetryCount) : Protocol;
+    record Transmit(ISerializable Entity) : Protocol;
+    record Disconnect : Protocol;
+    record Poll : Protocol;
+    record OnAsyncResult(IAsyncResult Result) : Protocol;
+
+    static public ISocketAgent Create() =>
+        new SocketAgent(Agent<Protocol>.StartNew(Disconnected()));
+
+    static Behaviour<Protocol> Disconnected() =>
         async context => {
             switch (context.Message) {
-                case (Connect(var endpoint, var cancellationToken), AsyncReplyChannel replyChannel): {
+                case Connect(var endpoint, var replyChannel, var cancellationToken): {
                     var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try {
                         await socket.ConnectAsync(endpoint, cancellationToken);
 
-                        var events = new Subject<Object>();
+                        var events = new Subject<ConnectionEvent>();
                         var receivedFrames = new Subject<RawFrame>();
 
                         replyChannel.Reply(new Connected(events, receivedFrames));
@@ -44,7 +60,7 @@ static class SocketAgent {
                         // Begin polling...
                         await context.Self.PostAsync(new Poll());
 
-                        return context with {Behaviour = Connected(socket, events, receivedFrames)};
+                        return context with { Behaviour = ConnectedBehaviour(socket, events, receivedFrames) };
                     }
                     catch (OperationCanceledException) {
                         replyChannel.Reply(new ConnectionFailed(new TimeoutException()));
@@ -61,7 +77,7 @@ static class SocketAgent {
             }
         };
 
-    static Behaviour Connected(Socket socket, Subject<Object> connectionEvents, Subject<RawFrame> receivedFrames) {
+    static Behaviour<Protocol> ConnectedBehaviour(Socket socket, Subject<ConnectionEvent> connectionEvents, Subject<RawFrame> receivedFrames) {
         var transmitBuffer = new MemoryBufferWriter<Byte>(4096);
         var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
 
@@ -80,12 +96,12 @@ static class SocketAgent {
                         socketFlags: SocketFlags.None,
                         state      : socket,
                         callback   : asyncResult => {
-                            context.Self.PostAsync(asyncResult);
+                            context.Self.PostAsync(new OnAsyncResult(asyncResult));
                         }
                     );
                     return ValueTask.FromResult(context);
                 }
-                case IAsyncResult asyncResult: {
+                case OnAsyncResult(var asyncResult): {
                     try {
                         tail += socket.EndReceive(asyncResult);
 
@@ -132,4 +148,24 @@ static class SocketAgent {
             }
         };
     }
+
+    async Task<ConnectResult> ISocketAgent.ConnectAsync(IPEndPoint endpoint, CancellationToken cancellationToken) {
+        var reply = await _agent.PostAndReplyAsync(replyChannel => new Connect(endpoint, replyChannel, cancellationToken));
+        return (ConnectResult) reply;
+    }
+
+    async Task ISocketAgent.Tune(UInt32 maxFrameSize) =>
+        await _agent.PostAsync(new Tune(maxFrameSize));
+
+    async Task ISocketAgent.EnableTcpKeepAlives(TimeSpan probeTime, TimeSpan retryInterval, Int32 retryCount) =>
+        await _agent.PostAsync(new EnableTcpKeepAlives(probeTime, retryInterval, retryCount));
+
+    async Task ISocketAgent.Transmit(ISerializable entity) =>
+        await _agent.PostAsync(new Transmit(entity));
+
+    async Task ISocketAgent.Disconnect() =>
+        await _agent.PostAsync(new Disconnect());
+
+    async Task ISocketAgent.StopAsync() =>
+        await _agent.StopAsync();
 }

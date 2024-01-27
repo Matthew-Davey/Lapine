@@ -6,27 +6,32 @@ using System.Reactive.Linq;
 using Lapine.Client;
 using Lapine.Protocol;
 
-using static Lapine.Agents.ChannelAgent.Protocol;
-using static Lapine.Agents.DispatcherAgent.Protocol;
-using static Lapine.Agents.HandshakeAgent.Protocol;
-using static Lapine.Agents.HeartbeatAgent.Protocol;
-using static Lapine.Agents.AmqpClientAgent.Protocol;
-using static Lapine.Agents.SocketAgent.Protocol;
+interface IAmqpClientAgent {
+    Task<Object> EstablishConnection(ConnectionConfiguration configuration, CancellationToken cancellationToken = default);
+    Task<Object> OpenChannel(CancellationToken cancellationToken = default);
+    Task<Object> Disconnect();
+    Task Stop();
+}
 
-static class AmqpClientAgent {
-    static public class Protocol {
-        public record EstablishConnection(ConnectionConfiguration Configuration, CancellationToken CancellationToken = default);
-        public record OpenChannel(CancellationToken CancellationToken = default);
-        public record Disconnect;
-    }
+class AmqpClientAgent : IAmqpClientAgent {
+    readonly IAgent<Protocol> _agent;
 
-    static public IAgent Create() =>
-        Agent.StartNew(Disconnected());
+    AmqpClientAgent(IAgent<Protocol> agent) =>
+        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
 
-    static Behaviour Disconnected() =>
+    abstract record Protocol;
+    record EstablishConnection(ConnectionConfiguration Configuration, AsyncReplyChannel ReplyChannel, CancellationToken CancellationToken = default) : Protocol;
+    record OpenChannel(AsyncReplyChannel ReplyChannel, CancellationToken CancellationToken = default) : Protocol;
+    record Disconnect(AsyncReplyChannel ReplyChannel) : Protocol;
+    record HeartbeatEventEventReceived(Object Message) : Protocol;
+
+    static public IAmqpClientAgent Create() =>
+        new AmqpClientAgent(Agent<Protocol>.StartNew(Disconnected()));
+
+    static Behaviour<Protocol> Disconnected() =>
         async context => {
             switch (context.Message) {
-                case (EstablishConnection(var connectionConfiguration, var cancellationToken), AsyncReplyChannel replyChannel): {
+                case EstablishConnection(var connectionConfiguration, var replyChannel, var cancellationToken): {
                     var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     cts.CancelAfter(connectionConfiguration.ConnectionTimeout);
 
@@ -43,7 +48,7 @@ static class AmqpClientAgent {
                         var endpoint = remainingEndpoints.Dequeue();
                         var socketAgent = SocketAgent.Create();
 
-                        switch (await socketAgent.PostAndReplyAsync(new Connect(endpoint, cts.Token))) {
+                        switch (await socketAgent.ConnectAsync(endpoint, cts.Token)) {
                             case ConnectionFailed(var fault) when remainingEndpoints.Any(): {
                                 accumulatedFailures.Add(fault);
                                 continue;
@@ -55,7 +60,7 @@ static class AmqpClientAgent {
                             }
                             case Connected(var connectionEvents, var receivedFrames): {
                                 var dispatcher = DispatcherAgent.Create();
-                                await dispatcher.PostAsync(new DispatchTo(socketAgent, 0));
+                                await dispatcher.DispatchTo(socketAgent, 0);
 
                                 var handshakeAgent = HandshakeAgent.Create(
                                     receivedFrames   : receivedFrames,
@@ -64,30 +69,22 @@ static class AmqpClientAgent {
                                     cancellationToken: cts.Token
                                 );
 
-                                switch (await handshakeAgent.PostAndReplyAsync(new StartHandshake(connectionConfiguration))) {
-                                    case ConnectionAgreement connectionAgreement: {
-                                        await socketAgent.PostAsync(new Tune(connectionAgreement.MaxFrameSize));
+                                switch (await handshakeAgent.StartHandshake(connectionConfiguration)) {
+                                    case HandshakeAgent.ConnectionAgreed(var connectionAgreement): {
+                                        await socketAgent.Tune(connectionAgreement.MaxFrameSize);
 
                                         var heartbeatAgent = HeartbeatAgent.Create();
 
                                         if (connectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.HasValue) {
-                                            var heartbeatEvents = (IObservable<Object>) await heartbeatAgent.PostAndReplyAsync(new StartHeartbeat(
-                                                ReceivedFrames: receivedFrames,
-                                                Dispatcher    : dispatcher,
-                                                Frequency     : connectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value
-                                            ));
-                                            heartbeatEvents.Subscribe(onNext: message => context.Self.PostAndReplyAsync(message));
+                                            var heartbeatEvents = await heartbeatAgent.Start(receivedFrames, dispatcher, connectionConfiguration.ConnectionIntegrityStrategy.HeartbeatFrequency.Value);
+                                            heartbeatEvents.Subscribe(onNext: message => context.Self.PostAsync(new HeartbeatEventEventReceived(message)));
                                         }
 
                                         // If tcp keepalives are enabled, configure the socket...
                                         if (connectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.HasValue) {
                                             var (probeTime, retryInterval, retryCount) = connectionConfiguration.ConnectionIntegrityStrategy.KeepAliveSettings.Value;
 
-                                            await socketAgent.PostAsync(new EnableTcpKeepAlives(
-                                                ProbeTime    : probeTime,
-                                                RetryInterval: retryInterval,
-                                                RetryCount   : retryCount
-                                            ), cts.Token);
+                                            await socketAgent.EnableTcpKeepAlives(probeTime, retryInterval, retryCount);
                                         }
 
                                         replyChannel.Reply(true);
@@ -106,7 +103,7 @@ static class AmqpClientAgent {
                                             )
                                         };
                                     }
-                                    case Exception fault: {
+                                    case HandshakeAgent.HandshakeFailed(var fault): {
                                         replyChannel.Reply(fault);
                                         return context;
                                     }
@@ -118,7 +115,7 @@ static class AmqpClientAgent {
                     }
                     return context;
                 }
-                case (Protocol.Disconnect, AsyncReplyChannel replyChannel): {
+                case Disconnect(var replyChannel): {
                     replyChannel.Reply(true);
                     return context;
                 }
@@ -126,43 +123,35 @@ static class AmqpClientAgent {
             }
         };
 
-    static Behaviour Connected(ConnectionConfiguration connectionConfiguration, IAgent socketAgent, IAgent heartbeatAgent, IObservable<RawFrame> receivedFrames, IObservable<Object> connectionEvents, IAgent dispatcher, IImmutableList<UInt16> availableChannelIds) =>
+    static Behaviour<Protocol> Connected(ConnectionConfiguration connectionConfiguration, ISocketAgent socketAgent, IHeartbeatAgent heartbeatAgent, IObservable<RawFrame> receivedFrames, IObservable<Object> connectionEvents, IDispatcherAgent dispatcher, IImmutableList<UInt16> availableChannelIds) =>
         async context => {
             switch (context.Message) {
-                case RemoteFlatline: {
-                    await heartbeatAgent.StopAsync();
-                    await dispatcher.StopAsync();
-                    await socketAgent.PostAsync(new SocketAgent.Protocol.Disconnect());
+                case HeartbeatEventEventReceived(RemoteFlatline): {
+                    await heartbeatAgent.Stop();
+                    await dispatcher.Stop();
+                    await socketAgent.Disconnect();
                     await socketAgent.StopAsync();
 
                     return context with { Behaviour = Disconnected() };
                 }
-                case (AmqpClientAgent.Protocol.Disconnect, AsyncReplyChannel replyChannel): {
-                    await heartbeatAgent.StopAsync();
-                    await dispatcher.StopAsync();
-                    await socketAgent.PostAsync(new SocketAgent.Protocol.Disconnect());
+                case Disconnect(var replyChannel): {
+                    await heartbeatAgent.Stop();
+                    await dispatcher.Stop();
+                    await socketAgent.Disconnect();
                     await socketAgent.StopAsync();
 
                     replyChannel.Reply(true);
 
                     return context;
                 }
-                case (OpenChannel(var cancellationToken), AsyncReplyChannel replyChannel): {
+                case OpenChannel(var replyChannel, var cancellationToken): {
                     var channelId = availableChannelIds[0];
                     var channelAgent = ChannelAgent.Create(connectionConfiguration.MaximumFrameSize);
 
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     cts.CancelAfter(connectionConfiguration.CommandTimeout);
 
-                    var command = new Open(
-                        ChannelId        : channelId,
-                        ReceivedFrames   : receivedFrames.Where(frame => frame.Channel == channelId),
-                        ConnectionEvents : connectionEvents,
-                        SocketAgent      : socketAgent,
-                        CancellationToken: cts.Token
-                    );
-
-                    switch (await channelAgent.PostAndReplyAsync(command)) {
+                    switch (await channelAgent.Open(channelId,receivedFrames.Where(frame => frame.Channel == channelId), connectionEvents, socketAgent, cts.Token)) {
                         case true: {
                             replyChannel.Reply(channelAgent);
                             return context with {
@@ -180,4 +169,16 @@ static class AmqpClientAgent {
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Connected)}' behaviour.");
             }
         };
+
+    async Task<Object> IAmqpClientAgent.EstablishConnection(ConnectionConfiguration configuration, CancellationToken cancellationToken) =>
+        await _agent.PostAndReplyAsync(replyChannel => new EstablishConnection(configuration, replyChannel, cancellationToken));
+
+    async Task<Object> IAmqpClientAgent.OpenChannel(CancellationToken cancellationToken) =>
+        await _agent.PostAndReplyAsync(replyChannel => new OpenChannel(replyChannel, cancellationToken));
+
+    async Task<Object> IAmqpClientAgent.Disconnect() =>
+        await _agent.PostAndReplyAsync(replyChannel => new Disconnect(replyChannel));
+
+    async Task IAmqpClientAgent.Stop() =>
+        await _agent.StopAsync();
 }

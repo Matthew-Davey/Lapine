@@ -4,15 +4,13 @@ using System.ComponentModel;
 using Lapine.Agents;
 using Lapine.Protocol;
 
-using static Lapine.Agents.ChannelAgent.Protocol;
-
 public class Channel {
-    readonly IAgent _agent;
+    readonly IChannelAgent _agent;
     readonly ConnectionConfiguration _connectionConfiguration;
 
     Boolean _closed = false;
 
-    internal Channel(IAgent agent, in ConnectionConfiguration connectionConfiguration) {
+    internal Channel(IChannelAgent agent, in ConnectionConfiguration connectionConfiguration) {
         _agent                   = agent ?? throw new ArgumentNullException(nameof(agent));
         _connectionConfiguration = connectionConfiguration;
     }
@@ -24,7 +22,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new Close(cts.Token))) {
+        switch (await _agent.Close(cts.Token)) {
             case true: {
                 _closed = true;
                 break;
@@ -43,7 +41,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new DeclareExchange(definition, cts.Token))) {
+        switch (await _agent.DeclareExchange(definition, cts.Token)) {
             case true: {
                 return;
             }
@@ -61,7 +59,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new DeleteExchange(exchange, condition, cts.Token))) {
+        switch (await _agent.DeleteExchange(exchange, condition, cts.Token)) {
             case true: {
                 return;
             }
@@ -79,7 +77,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new DeclareQueue(definition, cts.Token))) {
+        switch (await _agent.DeclareQueue(definition, cts.Token)) {
             case true: {
                 return;
             }
@@ -97,7 +95,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new DeleteQueue(queue, condition, cts.Token))) {
+        switch (await _agent.DeleteQueue(queue, condition, cts.Token)) {
             case true: {
                 return;
             }
@@ -115,7 +113,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new BindQueue(binding, cts.Token))) {
+        switch (await _agent.BindQueue(binding, cts.Token)) {
             case true: {
                 return;
             }
@@ -133,7 +131,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new UnbindQueue(binding, cts.Token))) {
+        switch (await _agent.UnbindQueue(binding, cts.Token)) {
             case true: {
                 return;
             }
@@ -144,16 +142,16 @@ public class Channel {
         }
     }
 
-    public async ValueTask PurgeQueueAsync(String queue, CancellationToken cancellationToken = default) {
+    public async ValueTask<UInt32> PurgeQueueAsync(String queue, CancellationToken cancellationToken = default) {
         if (_closed)
             throw new InvalidOperationException("Channel is closed.");
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new PurgeQueue(queue, cts.Token))) {
-            case true: {
-                return;
+        switch (await _agent.PurgeQueue(queue, cts.Token)) {
+            case UInt32 messageCount: {
+                return messageCount;
             }
             case Exception fault: {
                 throw fault;
@@ -169,9 +167,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        var command = new Publish(exchange, routingKey, routingFlags, (message.Properties.ToBasicProperties(), message.Payload), cts.Token);
-
-        switch (await _agent.PostAndReplyAsync(command)) {
+        switch (await _agent.Publish(exchange, routingKey, routingFlags, (message.Properties.ToBasicProperties(), message.Payload), cts.Token)) {
             case true: {
                 return;
             }
@@ -189,7 +185,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new GetMessage(queue, acknowledgements, cts.Token))) {
+        switch (await _agent.GetMessage(queue, acknowledgements, cts.Token)) {
             case (DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body): {
                 return (delivery, MessageProperties.FromBasicProperties(properties), body);
             }
@@ -204,7 +200,7 @@ public class Channel {
         if (_closed)
             throw new InvalidOperationException("Channel is closed.");
 
-        switch (await _agent.PostAndReplyAsync(new Acknowledge(deliveryTag, multiple))) {
+        switch (await _agent.Acknowledge(deliveryTag, multiple)) {
             case true: {
                 return;
             }
@@ -219,7 +215,7 @@ public class Channel {
         if (_closed)
             throw new InvalidOperationException("Channel is closed.");
 
-        switch (await _agent.PostAndReplyAsync(new Reject(deliveryTag, requeue))) {
+        switch (await _agent.Reject(deliveryTag, requeue)) {
             case true: {
                 return;
             }
@@ -237,13 +233,11 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        var command = new SetPrefetchLimit(limit, scope switch {
-            PrefetchLimitScope.Consumer => false,
-            PrefetchLimitScope.Channel  => true,
-            _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
-        }, cts.Token);
-
-        switch (await _agent.PostAndReplyAsync(command)) {
+        switch (await _agent.SetPrefetchLimit(limit, scope switch {
+                    PrefetchLimitScope.Consumer => false,
+                    PrefetchLimitScope.Channel  => true,
+                    _                           => throw new InvalidEnumArgumentException(nameof(scope), (Int32)scope, typeof(PrefetchLimitScope))
+                }, cts.Token)) {
             case true: {
                 return;
             }
@@ -261,7 +255,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new Consume(queue, consumerConfiguration, arguments, cts.Token))) {
+        switch (await _agent.Consume(queue, consumerConfiguration, arguments, cts.Token)) {
             case String consumerTag: {
                 return consumerTag;
             }
@@ -279,7 +273,7 @@ public class Channel {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_connectionConfiguration.CommandTimeout);
 
-        switch (await _agent.PostAndReplyAsync(new EnablePublisherConfirms(cts.Token))) {
+        switch (await _agent.EnablePublisherConfirms(cts.Token)) {
             case true: {
                 return;
             }
