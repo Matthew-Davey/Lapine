@@ -15,7 +15,7 @@ public readonly record struct PeerProperties(
         Product           : "Lapine",
         Version           : "0.1.0",
         Platform          : OSDescription,
-        Copyright         : "© Lapine Contributors 2019-2021",
+        Copyright         : "© Lapine Contributors 2019-2024",
         Information       : "Licensed under the MIT License https://opensource.org/licenses/MIT",
         ClientProvidedName: "Lapine 0.1.0",
         Capabilities      : ClientCapabilities.Default

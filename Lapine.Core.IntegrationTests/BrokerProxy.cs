@@ -33,7 +33,7 @@ public class BrokerProxy : IAsyncDisposable {
 
     readonly String _container;
 
-    private BrokerProxy(String containerId) =>
+    BrokerProxy(String containerId) =>
         _container = containerId;
 
     static public async ValueTask<BrokerProxy> StartAsync(String brokerVersion, Boolean enableManagement = false) {

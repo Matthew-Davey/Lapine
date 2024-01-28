@@ -3,7 +3,7 @@ namespace Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
 class ProtocolErrorException : ApplicationException {
-    public ProtocolErrorException() : base() {
+    public ProtocolErrorException() {
     }
 
     public ProtocolErrorException(String message, Exception? inner = null) : base(message, inner) {

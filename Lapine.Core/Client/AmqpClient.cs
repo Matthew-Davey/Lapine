@@ -3,17 +3,11 @@ namespace Lapine.Client;
 using System.Runtime.ExceptionServices;
 using Lapine.Agents;
 
-public class AmqpClient : IAsyncDisposable {
-    readonly ConnectionConfiguration _connectionConfiguration;
-    readonly IAmqpClientAgent _agent;
-
-    public AmqpClient(ConnectionConfiguration connectionConfiguration) {
-        _connectionConfiguration = connectionConfiguration;
-        _agent = AmqpClientAgent.Create();
-    }
+public class AmqpClient(ConnectionConfiguration connectionConfiguration) : IAsyncDisposable {
+    readonly IAmqpClientAgent _agent = AmqpClientAgent.Create();
 
     public async ValueTask ConnectAsync(CancellationToken cancellationToken = default) {
-        switch (await _agent.EstablishConnection(_connectionConfiguration, cancellationToken)) {
+        switch (await _agent.EstablishConnection(connectionConfiguration, cancellationToken)) {
             case true: {
                 return;
             }
@@ -29,7 +23,7 @@ public class AmqpClient : IAsyncDisposable {
     public async ValueTask<Channel> OpenChannelAsync(CancellationToken cancellationToken = default) {
         switch (await _agent.OpenChannel(cancellationToken)) {
             case IChannelAgent channelAgent: {
-                return new Channel(channelAgent, _connectionConfiguration);
+                return new Channel(channelAgent, connectionConfiguration);
             }
             case Exception fault: {
                 ExceptionDispatchInfo
