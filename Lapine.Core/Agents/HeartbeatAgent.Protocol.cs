@@ -9,7 +9,7 @@ static partial class HeartbeatAgent {
         IObservable<RawFrame> ReceivedFrames,
         IDispatcherAgent Dispatcher,
         TimeSpan Frequency,
-        AsyncReplyChannel ReplyChannel
+        AsyncReplyChannel<IObservable<HeartbeatEvent>> ReplyChannel
     ) : Protocol;
 
     record Beat : Protocol;

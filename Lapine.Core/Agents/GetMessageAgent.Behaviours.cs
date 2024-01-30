@@ -32,7 +32,7 @@ static partial class GetMessageAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingBasicGetOkOrEmpty(IDisposable subscription, CancellationTokenRegistration cancelTimeout, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingBasicGetOkOrEmpty(IDisposable subscription, CancellationTokenRegistration cancelTimeout, AsyncReplyChannel<GetMessageResult> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case FrameReceived(BasicGetEmpty): {
@@ -49,14 +49,14 @@ static partial class GetMessageAgent {
                     };
                 }
                 case Timeout: {
-                    replyChannel.Reply(new TimeoutException());
+                    replyChannel.Fault(new TimeoutException());
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
                 case FrameReceived(ChannelClose close): {
                     await cancelTimeout.DisposeAsync();
-                    replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                    replyChannel.Fault(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
@@ -65,7 +65,7 @@ static partial class GetMessageAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingContentHeader(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingContentHeader(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, AsyncReplyChannel<GetMessageResult> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case FrameReceived(ContentHeader { BodySize: 0 } header): {
@@ -81,14 +81,14 @@ static partial class GetMessageAgent {
                     };
                 }
                 case FrameReceived(TimeoutException timeout): {
-                    replyChannel.Reply(timeout);
+                    replyChannel.Fault(timeout);
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
                 }
                 case FrameReceived(ChannelClose close): {
                     await cancelTimeout.DisposeAsync();
-                    replyChannel.Reply(AmqpException.Create(close.ReplyCode, close.ReplyText));
+                    replyChannel.Fault(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;
@@ -97,7 +97,7 @@ static partial class GetMessageAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingContentBody(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, ContentHeader header, AsyncReplyChannel replyChannel) {
+    static Behaviour<Protocol> AwaitingContentBody(IDisposable subscription, CancellationTokenRegistration cancelTimeout, DeliveryInfo deliveryInfo, ContentHeader header, AsyncReplyChannel<GetMessageResult> replyChannel) {
         var buffer = new MemoryBufferWriter<Byte>((Int32)header.BodySize);
 
         return async context => {
@@ -113,7 +113,7 @@ static partial class GetMessageAgent {
                     return context;
                 }
                 case Timeout: {
-                    replyChannel.Reply(new TimeoutException());
+                    replyChannel.Fault(new TimeoutException());
                     await context.Self.StopAsync();
                     subscription.Dispose();
                     return context;

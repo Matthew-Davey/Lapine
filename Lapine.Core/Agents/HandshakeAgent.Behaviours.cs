@@ -32,12 +32,12 @@ static partial class HandshakeAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingConnectionStart(ConnectionConfiguration connectionConfiguration, CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventsSubscription, IDispatcherAgent dispatcher, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingConnectionStart(ConnectionConfiguration connectionConfiguration, CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventsSubscription, IDispatcherAgent dispatcher, AsyncReplyChannel<ConnectionAgreement> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case FrameReceived(ConnectionStart message) when !message.Mechanisms.Contains(connectionConfiguration.AuthenticationStrategy.Mechanism): {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new HandshakeFailed(new Exception($"Requested authentication mechanism '{connectionConfiguration.AuthenticationStrategy.Mechanism}' is not supported by the broker. This broker supports {String.Join(", ", message.Mechanisms)}")));
+                    replyChannel.Fault(new Exception($"Requested authentication mechanism '{connectionConfiguration.AuthenticationStrategy.Mechanism}' is not supported by the broker. This broker supports {String.Join(", ", message.Mechanisms)}"));
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
@@ -45,14 +45,14 @@ static partial class HandshakeAgent {
                 }
                 case FrameReceived(ConnectionStart(var version, var serverProperties, var mechanisms, var locales)) when !locales.Contains(connectionConfiguration.Locale): {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new HandshakeFailed(new Exception($"Requested locale '{connectionConfiguration.Locale}' is not supported by the broker. This broker supports {String.Join(", ", locales)}")));
+                    replyChannel.Fault(new Exception($"Requested locale '{connectionConfiguration.Locale}' is not supported by the broker. This broker supports {String.Join(", ", locales)}"));
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
                 }
                 case Timeout(var exception): {
-                    replyChannel.Reply(new HandshakeFailed(exception));
+                    replyChannel.Fault(exception);
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
@@ -77,18 +77,18 @@ static partial class HandshakeAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingConnectionSecureOrTune(ConnectionConfiguration connectionConfiguration, CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventsSubscription, Byte authenticationStage, IReadOnlyDictionary<String, Object> serverProperties, IDispatcherAgent dispatcher, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingConnectionSecureOrTune(ConnectionConfiguration connectionConfiguration, CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventsSubscription, Byte authenticationStage, IReadOnlyDictionary<String, Object> serverProperties, IDispatcherAgent dispatcher, AsyncReplyChannel<ConnectionAgreement> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case ConnectionEventReceived(RemoteDisconnected(var fault)): {
-                    replyChannel.Reply(new HandshakeFailed(fault));
+                    replyChannel.Fault(fault);
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
                     return context;
                 }
                 case Timeout(var exception): {
-                    replyChannel.Reply(new HandshakeFailed(exception));
+                    replyChannel.Fault(exception);
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventsSubscription.Dispose();
@@ -128,11 +128,11 @@ static partial class HandshakeAgent {
             }
         };
 
-    static Behaviour<Protocol> AwaitingConnectionOpenOk(CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventSubscription, UInt16 maxChannelCount, UInt32 maxFrameSize, UInt16 heartbeatFrequency, IReadOnlyDictionary<String, Object> serverProperties, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingConnectionOpenOk(CancellationTokenRegistration scheduledTimeout, IDisposable frameSubscription, IDisposable connectionEventSubscription, UInt16 maxChannelCount, UInt32 maxFrameSize, UInt16 heartbeatFrequency, IReadOnlyDictionary<String, Object> serverProperties, AsyncReplyChannel<ConnectionAgreement> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case Timeout(var exception): {
-                    replyChannel.Reply(new HandshakeFailed(exception));
+                    replyChannel.Fault(exception);
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventSubscription.Dispose();
@@ -140,12 +140,12 @@ static partial class HandshakeAgent {
                 }
                 case FrameReceived(ConnectionOpenOk): {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new ConnectionAgreed(new ConnectionAgreement(
+                    replyChannel.Reply(new ConnectionAgreement(
                         MaxChannelCount   : maxChannelCount,
                         MaxFrameSize      : maxFrameSize,
                         HeartbeatFrequency: TimeSpan.FromSeconds(heartbeatFrequency),
                         ServerProperties  : serverProperties
-                    )));
+                    ));
                     await context.Self.StopAsync();
                     frameSubscription.Dispose();
                     connectionEventSubscription.Dispose();

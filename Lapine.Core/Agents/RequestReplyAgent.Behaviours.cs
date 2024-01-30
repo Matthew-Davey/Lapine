@@ -1,6 +1,5 @@
 namespace Lapine.Agents;
 
-using System.Runtime.ExceptionServices;
 using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
@@ -24,25 +23,25 @@ static partial class RequestReplyAgent<TRequest, TReply> where TRequest : IComma
             }
         };
 
-    static Behaviour<Protocol> AwaitingReply(IDisposable framesSubscription, IDisposable scheduledTimeout, AsyncReplyChannel replyChannel) =>
+    static Behaviour<Protocol> AwaitingReply(IDisposable framesSubscription, IDisposable scheduledTimeout, AsyncReplyChannel<TReply> replyChannel) =>
         async context => {
             switch (context.Message) {
                 case OnFrameReceived(TReply reply): {
-                    replyChannel.Reply(new Result<TReply>.Ok(reply));
+                    replyChannel.Reply(reply);
                     framesSubscription.Dispose();
                     scheduledTimeout.Dispose();
                     await context.Self.StopAsync();
                     return context;
                 }
                 case OnTimeout: {
-                    replyChannel.Reply(new Result<TReply>.Fault(ExceptionDispatchInfo.Capture(new TimeoutException())));
+                    replyChannel.Fault(new TimeoutException());
                     framesSubscription.Dispose();
                     scheduledTimeout.Dispose();
                     await context.Self.StopAsync();
                     return context;
                 }
                 case OnFrameReceived(ChannelClose(var replyCode, var replyText, _)): {
-                    replyChannel.Reply(new Result<TReply>.Fault(ExceptionDispatchInfo.Capture(AmqpException.Create(replyCode, replyText))));
+                    replyChannel.Fault(AmqpException.Create(replyCode, replyText));
                     framesSubscription.Dispose();
                     scheduledTimeout.Dispose();
                     await context.Self.StopAsync();

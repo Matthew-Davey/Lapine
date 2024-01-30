@@ -1,7 +1,6 @@
 namespace Lapine.Agents;
 
 using System.Reactive.Linq;
-using System.Runtime.ExceptionServices;
 using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
@@ -37,7 +36,7 @@ static partial class PublishAgent {
                         };
                     }
                     else {
-                        replyChannel.Reply(new Result<Boolean>.Ok(true));
+                        replyChannel.Complete();
                         await context.Self.StopAsync();
                         return context;
                     }
@@ -52,27 +51,27 @@ static partial class PublishAgent {
             switch (context.Message) {
                 case FrameReceived(BasicAck ack) when ack.DeliveryTag == deliveryTag: {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new Result<Boolean>.Ok(true));
+                    replyChannel.Complete();
                     frameSubscription.Dispose();
                     await context.Self.StopAsync();
                     return context;
                 }
                 case FrameReceived(BasicNack nack) when nack.DeliveryTag == deliveryTag: {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new Result<Boolean>.Fault(ExceptionDispatchInfo.Capture(new AmqpException("Server rejected the message")))); // Why?
+                    replyChannel.Fault(new AmqpException("Server rejected the message")); // Why?
                     frameSubscription.Dispose();
                     await context.Self.StopAsync();
                     return context;
                 }
                 case Timeout: {
-                    replyChannel.Reply(new Result<Boolean>.Fault(ExceptionDispatchInfo.Capture(new TimeoutException())));
+                    replyChannel.Fault(new TimeoutException());
                     frameSubscription.Dispose();
                     await context.Self.StopAsync();
                     return context;
                 }
                 case FrameReceived(ChannelClose close): {
                     await scheduledTimeout.DisposeAsync();
-                    replyChannel.Reply(new Result<Boolean>.Fault(ExceptionDispatchInfo.Capture(AmqpException.Create(close.ReplyCode, close.ReplyText))));
+                    replyChannel.Fault(AmqpException.Create(close.ReplyCode, close.ReplyText));
                     frameSubscription.Dispose();
                     await context.Self.StopAsync();
                     return context;

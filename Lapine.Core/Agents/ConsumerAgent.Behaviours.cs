@@ -12,11 +12,22 @@ static partial class ConsumerAgent {
         MemoryBufferWriter<Byte> Body
     );
 
+    record State(
+        String ConsumerTag,
+        IObservable<RawFrame> ReceivedFrames,
+        IDispatcherAgent Dispatcher,
+        IMessageAssemblerAgent Assembler,
+        ConsumerConfiguration ConsumerConfiguration,
+        IImmutableQueue<IMessageHandlerAgent> AvailableHandlers,
+        IImmutableList<IMessageHandlerAgent> BusyHandlers,
+        IImmutableQueue<Message> Inbox
+    );
+
     static Behaviour<Protocol> Unstarted() =>
         async context => {
             switch (context.Message) {
                 case StartConsuming start: {
-                    var processManager = RequestReplyAgent<BasicConsume, BasicConsumeOk>.StartNew(start.ReceivedFrames, start.Dispatcher, CancellationToken.None);
+                    var processManager = RequestReplyAgent<BasicConsume, BasicConsumeOk>.StartNew(start.ReceivedFrames, start.Dispatcher);
 
                     var basicConsume = new BasicConsume(
                         QueueName  : start.Queue,
@@ -31,127 +42,104 @@ static partial class ConsumerAgent {
                         Arguments: start.Arguments ?? ImmutableDictionary<String, Object>.Empty
                     );
 
-                    switch (await processManager.Request(basicConsume)) {
-                        case Result<BasicConsumeOk>.Ok(var basicConsumeOk): {
-                            var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
-                                .Select(_ => MessageHandlerAgent.Create(start.Self))
-                                .ToImmutableQueue();
-                            var assembler = MessageAssemblerAgent.StartNew();
-                            var receivedMessages = await assembler.Begin(start.ReceivedFrames, start.Self);
-                            receivedMessages.Subscribe(async message => await context.Self.PostAsync(new ConsumeMessage(message.DeliveryInfo, message.Properties, message.Buffer)));
+                    return await processManager.Request(basicConsume)
+                        .ContinueWith(
+                            onCompleted: async basicConsumeOk => {
+                                var handlers = Enumerable.Range(0, start.ConsumerConfiguration.MaxDegreeOfParallelism)
+                                    .Select(_ => MessageHandlerAgent.Create(start.Self))
+                                    .ToImmutableQueue();
+                                var assembler = MessageAssemblerAgent.StartNew();
+                                var receivedMessages = await assembler.Begin(start.ReceivedFrames, start.Self);
+                                receivedMessages.Subscribe(async message => await context.Self.PostAsync(new ConsumeMessage(message.DeliveryInfo, message.Properties, message.Buffer)));
 
-                            start.ReplyChannel.Reply(true);
+                                start.ReplyChannel.Complete();
 
-                            return context with { Behaviour = Running(
-                                consumerTag          : basicConsumeOk.ConsumerTag,
-                                receivedFrames       : start.ReceivedFrames,
-                                dispatcher           : start.Dispatcher,
-                                assembler            : assembler,
-                                consumerConfiguration: start.ConsumerConfiguration,
-                                availableHandlers    : handlers,
-                                busyHandlers         : ImmutableList<IMessageHandlerAgent>.Empty,
-                                inbox                : ImmutableQueue<Message>.Empty
-                            ) };
-                        }
-                        case Result<BasicConsumeOk>.Fault(var exceptionDispatchInfo): {
-                            start.ReplyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
-                    break;
+                                var state = new State(
+                                    ConsumerTag          : basicConsumeOk.ConsumerTag,
+                                    ReceivedFrames       : start.ReceivedFrames,
+                                    Dispatcher           : start.Dispatcher,
+                                    Assembler            : assembler,
+                                    ConsumerConfiguration: start.ConsumerConfiguration,
+                                    AvailableHandlers    : handlers,
+                                    BusyHandlers         : ImmutableList<IMessageHandlerAgent>.Empty,
+                                    Inbox                : ImmutableQueue<Message>.Empty
+                                );
+
+                                return context with { Behaviour = Running(state) };
+                            },
+                            onFaulted: fault => {
+                                start.ReplyChannel.Fault(fault);
+                                return context;
+                            }
+                        );
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Unstarted)}' behaviour.");
             }
-            return context;
         };
 
-    static Behaviour<Protocol> Running(String consumerTag, IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, IMessageAssemblerAgent assembler, ConsumerConfiguration consumerConfiguration, IImmutableQueue<IMessageHandlerAgent> availableHandlers, IImmutableList<IMessageHandlerAgent> busyHandlers, IImmutableQueue<Message> inbox) =>
+    static Behaviour<Protocol> Running(State state) =>
         async context => {
             switch (context.Message) {
-                case ConsumeMessage(var deliveryInfo, var properties, var buffer) when availableHandlers.Any(): {
-                    availableHandlers = availableHandlers.Dequeue(out var handler);
-                    await handler.HandleMessage(dispatcher, consumerConfiguration, deliveryInfo, properties, buffer);
+                case ConsumeMessage(var deliveryInfo, var properties, var buffer) when state.AvailableHandlers.Any(): {
+                    var availableHandlers = state.AvailableHandlers.Dequeue(out var handler);
+                    await handler.HandleMessage(state.Dispatcher, state.ConsumerConfiguration, deliveryInfo, properties, buffer);
 
-                    return context with { Behaviour = Running(
-                        consumerTag          : consumerTag,
-                        receivedFrames       : receivedFrames,
-                        dispatcher           : dispatcher,
-                        assembler            : assembler,
-                        consumerConfiguration: consumerConfiguration,
-                        availableHandlers    : availableHandlers,
-                        busyHandlers         : busyHandlers.Add(handler),
-                        inbox                : inbox
-                    ) };
+                    return context with {
+                        Behaviour = Running(state with {
+                            AvailableHandlers = availableHandlers,
+                            BusyHandlers      = state.BusyHandlers.Add(handler)
+                        })
+                    };
                 }
-                case ConsumeMessage(var deliveryInfo, var properties, var buffer) when availableHandlers.IsEmpty: {
-                    return context with { Behaviour = Running(
-                        consumerTag          : consumerTag,
-                        receivedFrames       : receivedFrames,
-                        dispatcher           : dispatcher,
-                        assembler            : assembler,
-                        consumerConfiguration: consumerConfiguration,
-                        availableHandlers    : availableHandlers,
-                        busyHandlers         : busyHandlers,
-                        inbox                : inbox.Enqueue(new Message(
-                            DeliveryInfo: deliveryInfo,
-                            Properties  : properties,
-                            Body        : buffer
-                        ))
-                    ) };
+                case ConsumeMessage(var deliveryInfo, var properties, var buffer) when state.AvailableHandlers.IsEmpty: {
+                    return context with {
+                        Behaviour = Running(state with {
+                            Inbox = state.Inbox.Enqueue(new Message(deliveryInfo, properties, buffer))
+                        })
+                    };
                 }
-                case HandlerReady(var handler) when inbox.IsEmpty: {
-                    return context with { Behaviour = Running(
-                        consumerTag          : consumerTag,
-                        receivedFrames       : receivedFrames,
-                        dispatcher           : dispatcher,
-                        assembler            : assembler,
-                        consumerConfiguration: consumerConfiguration,
-                        availableHandlers    : availableHandlers.Enqueue(handler),
-                        busyHandlers         : busyHandlers.Remove(handler),
-                        inbox                : inbox
-                    ) };
+                case HandlerReady(var handler) when state.Inbox.IsEmpty: {
+                    return context with {
+                        Behaviour = Running(state with {
+                            AvailableHandlers = state.AvailableHandlers.Enqueue(handler),
+                            BusyHandlers      = state.BusyHandlers.Remove(handler)
+                        })
+                    };
                 }
-                case HandlerReady(var handler) when inbox.Any(): {
-                    inbox = inbox.Dequeue(out var message);
+                case HandlerReady(var handler) when state.Inbox.Any(): {
+                    var inbox = state.Inbox.Dequeue(out var message);
 
-                    await handler.HandleMessage(dispatcher, consumerConfiguration, message.DeliveryInfo, message.Properties, message.Body);
+                    await handler.HandleMessage(state.Dispatcher, state.ConsumerConfiguration, message.DeliveryInfo, message.Properties, message.Body);
 
-                    return context with { Behaviour = Running(
-                        consumerTag          : consumerTag,
-                        receivedFrames       : receivedFrames,
-                        dispatcher           : dispatcher,
-                        assembler            : assembler,
-                        consumerConfiguration: consumerConfiguration,
-                        availableHandlers    : availableHandlers,
-                        busyHandlers         : busyHandlers,
-                        inbox                : inbox
-                    ) };
+                    return context with {
+                        Behaviour = Running(state with { Inbox = inbox })
+                    };
                 }
                 case Stop: {
                     var processManager = RequestReplyAgent<BasicCancel, BasicCancelOk>.StartNew(
-                        receivedFrames   : receivedFrames,
-                        dispatcher       : dispatcher,
+                        receivedFrames   : state.ReceivedFrames,
+                        dispatcher       : state.Dispatcher,
                         cancellationToken: CancellationToken.None
                     );
 
-                    switch (await processManager.Request(new BasicCancel(consumerTag, false))) {
-                        case Result<BasicCancelOk>.Ok(var basicCancelOk): {
-                            foreach (var handlerAgent in availableHandlers)
-                                await handlerAgent.Stop();
+                    await processManager.Request(new BasicCancel(state.ConsumerTag, NoWait: false))
+                        .ContinueWith(
+                            onCompleted: async _ => {
+                                foreach (var handlerAgent in state.AvailableHandlers)
+                                    await handlerAgent.Stop();
 
-                            foreach (var handlerAgent in busyHandlers)
-                                await handlerAgent.Stop();
+                                foreach (var handlerAgent in state.BusyHandlers)
+                                    await handlerAgent.Stop();
 
-                            await assembler.Stop();
+                                await state.Assembler.Stop();
 
-                            await context.Self.StopAsync();
-                            return context;
-                        }
-                        case Result<BasicCancelOk>.Fault(var exceptionDispatchInfo): {
-                            // TODO
-                            break;
-                        }
-                    }
+                                await context.Self.StopAsync();
+                            },
+                            onFaulted: fault => {
+                                // TODO
+                            }
+                        );
+
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Running)}' behaviour.");

@@ -9,7 +9,7 @@ static partial class ChannelAgent {
     record Open(
         UInt16 ChannelId,
         IObservable<RawFrame> ReceivedFrames,
-        IObservable<Object> ConnectionEvents,
+        IObservable<ConnectionEvent> ConnectionEvents,
         ISocketAgent SocketAgent,
         AsyncReplyChannel ReplyChannel,
         CancellationToken CancellationToken = default
@@ -60,7 +60,7 @@ static partial class ChannelAgent {
 
     record PurgeQueue(
         String Queue,
-        AsyncReplyChannel ReplyChannel,
+        AsyncReplyChannel<UInt32> ReplyChannel,
         CancellationToken CancellationToken = default
     ) : Protocol;
 
@@ -76,7 +76,7 @@ static partial class ChannelAgent {
     record GetMessage(
         String Queue,
         Acknowledgements Acknowledgements,
-        AsyncReplyChannel ReplyChannel,
+        AsyncReplyChannel<(DeliveryInfo delivery, BasicProperties properties, ReadOnlyMemory<Byte> body)?> ReplyChannel,
         CancellationToken CancellationToken = default
     ) : Protocol;
 
@@ -103,7 +103,7 @@ static partial class ChannelAgent {
         String Queue,
         ConsumerConfiguration ConsumerConfiguration,
         IReadOnlyDictionary<String, Object>? Arguments,
-        AsyncReplyChannel ReplyChannel,
+        AsyncReplyChannel<String> ReplyChannel,
         CancellationToken CancellationToken = default
     ) : Protocol;
 

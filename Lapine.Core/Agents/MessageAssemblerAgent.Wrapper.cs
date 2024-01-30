@@ -6,8 +6,7 @@ using Lapine.Protocol;
 static partial class MessageAssemblerAgent {
     class Wrapper(IAgent<Protocol> agent) : IMessageAssemblerAgent {
         async Task<IObservable<(DeliveryInfo DeliveryInfo, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer)>> IMessageAssemblerAgent.Begin(IObservable<RawFrame> frameStream, IConsumerAgent parent) {
-            var reply = await agent.PostAndReplyAsync(replyChannel => new Begin(frameStream, replyChannel));
-            return (IObservable<(DeliveryInfo DeliveryInfo, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer)>) reply;
+            return await agent.PostAndReplyAsync<IObservable<(DeliveryInfo DeliveryInfo, BasicProperties Properties, MemoryBufferWriter<Byte> Buffer)>>(replyChannel => new Begin(frameStream, replyChannel));
         }
 
         async Task IMessageAssemblerAgent.Stop() =>

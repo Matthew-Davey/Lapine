@@ -3,9 +3,9 @@ namespace Lapine.Agents;
 using Lapine.Client;
 
 interface IAmqpClientAgent {
-    Task<Object> EstablishConnection(ConnectionConfiguration configuration, CancellationToken cancellationToken = default);
-    Task<Object> OpenChannel(CancellationToken cancellationToken = default);
-    Task<Object> Disconnect();
+    Task EstablishConnection(ConnectionConfiguration configuration, CancellationToken cancellationToken = default);
+    Task<IChannelAgent> OpenChannel(CancellationToken cancellationToken = default);
+    Task Disconnect();
     Task Stop();
 }
 

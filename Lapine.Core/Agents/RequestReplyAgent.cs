@@ -6,7 +6,7 @@ using Lapine.Protocol.Commands;
 interface IRequestReplyAgent<in TRequest, TReply>
 where TRequest : ICommand
 where TReply : ICommand {
-    Task<Result<TReply>> Request(TRequest request);
+    Task<TReply> Request(TRequest request);
 }
 
 static partial class RequestReplyAgent<TRequest, TReply> where TRequest : ICommand where TReply : ICommand {

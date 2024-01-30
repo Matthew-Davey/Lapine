@@ -12,25 +12,25 @@ static partial class ChannelAgent {
                 case Open(var channelId, var receivedFrames, var connectionEvents, var socketAgent, var replyChannel, var cancellationToken): {
                     var dispatcher = DispatcherAgent.Create();
                     var consumers = ImmutableDictionary<String, IConsumerAgent>.Empty;
+
                     await dispatcher.DispatchTo(socketAgent, channelId);
 
                     var processManager = RequestReplyAgent<ChannelOpen, ChannelOpenOk>.StartNew(receivedFrames, dispatcher, cancellationToken);
 
-                    switch (await processManager.Request(new ChannelOpen())) {
-                        case Result<ChannelOpenOk>.Ok: {
-                            replyChannel.Reply(true);
-                            return context with { Behaviour = OpenBehaviour(maxFrameSize, receivedFrames, dispatcher, consumers) };
-                        }
-                        case Result<ChannelOpenOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            return context;
-                        }
-                    }
-                    break;
+                    return await processManager.Request(new ChannelOpen())
+                        .ContinueWith(
+                            onCompleted: _ => {
+                                replyChannel.Complete();
+                                return context with { Behaviour = OpenBehaviour(maxFrameSize, receivedFrames, dispatcher, consumers) };
+                            },
+                            onFaulted: fault => {
+                                replyChannel.Fault(fault);
+                                return context;
+                            }
+                        );
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Closed)}' behaviour.");
             }
-            return context;
         };
 
     static Behaviour<Protocol> OpenBehaviour(UInt32 maxFrameSize, IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, IImmutableDictionary<String, IConsumerAgent> consumers, UInt64 deliveryTag = 1, Boolean enablePublisherConfirms = false) =>
@@ -39,17 +39,15 @@ static partial class ChannelAgent {
                 case Close(var replyChannel, var cancellationToken): {
                     var processManager = RequestReplyAgent<ChannelClose, ChannelCloseOk>.StartNew(receivedFrames, dispatcher, cancellationToken);
 
-                    switch (await processManager.Request(new ChannelClose(0, String.Empty, (0, 0)))) {
-                        case Result<ChannelCloseOk>.Ok: {
-                            replyChannel.Reply(true);
-                            await context.Self.StopAsync();
-                            break;
-                        }
-                        case Result<ChannelCloseOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(new ChannelClose(0, String.Empty, (0, 0)))
+                        .ContinueWith(
+                            onCompleted: async () => {
+                                replyChannel.Complete();
+                                await context.Self.StopAsync();
+                            },
+                            onFaulted: replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case DeclareExchange(var exchange, var replyChannel, var cancellationToken): {
@@ -66,16 +64,12 @@ static partial class ChannelAgent {
                         Arguments   : exchange.Arguments
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<ExchangeDeclareOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<ExchangeDeclareOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case DeleteExchange(var name, var condition, var replyChannel, var cancellationToken): {
@@ -87,16 +81,12 @@ static partial class ChannelAgent {
                         NoWait      : false
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<ExchangeDeleteOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<ExchangeDeleteOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case DeclareQueue(var queue, var replyChannel, var cancellationToken): {
@@ -112,16 +102,12 @@ static partial class ChannelAgent {
                         Arguments : queue.Arguments
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<QueueDeclareOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<QueueDeclareOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case DeleteQueue(var name, var condition, var replyChannel, var cancellationToken): {
@@ -134,16 +120,12 @@ static partial class ChannelAgent {
                         NoWait   : false
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<QueueDeleteOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<QueueDeleteOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case BindQueue(var binding, var replyChannel, var cancellationToken): {
@@ -157,16 +139,12 @@ static partial class ChannelAgent {
                         Arguments   : binding.Arguments
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<QueueBindOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<QueueBindOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case UnbindQueue(var binding, var replyChannel, var cancellationToken): {
@@ -179,31 +157,23 @@ static partial class ChannelAgent {
                         Arguments   : binding.Arguments
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<QueueUnbindOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<QueueUnbindOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case PurgeQueue(var name, var replyChannel, var cancellationToken): {
                     var processManager = RequestReplyAgent<QueuePurge, QueuePurgeOk>.StartNew(receivedFrames, dispatcher, cancellationToken);
 
-                    switch (await processManager.Request(new QueuePurge(name, NoWait: false))) {
-                        case Result<QueuePurgeOk>.Ok(var queuePurgeOk): {
-                            replyChannel.Reply(queuePurgeOk.MessageCount);
-                            break;
-                        }
-                        case Result<QueuePurgeOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(new QueuePurge(name, NoWait: false))
+                        .ContinueWith(
+                            onCompleted: queuePurgeOk => replyChannel.Reply(queuePurgeOk.MessageCount),
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case Publish(var exchange, var routingKey, var routingFlags, var message, var replyChannel, var cancellationToken): {
@@ -216,20 +186,17 @@ static partial class ChannelAgent {
                         cancellationToken       : cancellationToken
                     );
 
-                    switch (await publishAgent.Publish(exchange, routingKey, routingFlags, message)) {
-                        case Result<Boolean>.Ok: {
-                            replyChannel.Reply(true);
-                            if (enablePublisherConfirms) {
-                                deliveryTag += 1;
-                            }
+                    await publishAgent.Publish(exchange, routingKey, routingFlags, message)
+                        .ContinueWith(
+                            onCompleted: () => {
+                                replyChannel.Complete();
 
-                            break;
-                        }
-                        case Result<Boolean>.Fault(var fault): {
-                            replyChannel.Reply(fault);
-                            break;
-                        }
-                    }
+                                if (enablePublisherConfirms)
+                                    deliveryTag += 1;
+                            },
+                            onFaulted: replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case GetMessage(var queue, var acknowledgements, var replyChannel, var cancellationToken): {
@@ -239,21 +206,23 @@ static partial class ChannelAgent {
                         cancellationToken: cancellationToken
                     );
 
-                    try {
-                        switch (await processManager.GetMessages(queue, acknowledgements)) {
-                            case NoMessage: {
-                                replyChannel.Reply(null);
-                                break;
-                            }
-                            case Message(var deliveryInfo, var properties, var body): {
-                                replyChannel.Reply((deliveryInfo, properties, body));
-                                break;
-                            }
-                        }
-                    }
-                    catch (Exception fault) {
-                        replyChannel.Reply(fault);
-                    }
+                    await processManager.GetMessages(queue, acknowledgements)
+                        .ContinueWith(
+                            onCompleted: result => {
+                                switch (result) {
+                                    case NoMessage: {
+                                        replyChannel.Reply(null);
+                                        break;
+                                    }
+                                    case Message(var deliveryInfo, var properties, var body): {
+                                        replyChannel.Reply((deliveryInfo, properties, body));
+                                        break;
+                                    }
+                                }
+                            },
+                            onFaulted: replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case Acknowledge(var deliveryTag, var multiple, var replyChannel): {
@@ -262,7 +231,7 @@ static partial class ChannelAgent {
                         Multiple   : multiple
                     ));
 
-                    replyChannel.Reply(true);
+                    replyChannel.Complete();
                     return context;
                 }
                 case Reject(var deliveryTag, var requeue, var replyChannel): {
@@ -271,7 +240,7 @@ static partial class ChannelAgent {
                         ReQueue    : requeue
                     ));
 
-                    replyChannel.Reply(true);
+                    replyChannel.Complete();
                     return context;
                 }
                 case SetPrefetchLimit(var limit, var global, var replyChannel, var cancellationToken): {
@@ -283,50 +252,45 @@ static partial class ChannelAgent {
                         Global       : global
                     );
 
-                    switch (await processManager.Request(command)) {
-                        case Result<BasicQosOk>.Ok: {
-                            replyChannel.Reply(true);
-                            break;
-                        }
-                        case Result<BasicQosOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(command)
+                        .ContinueWith(
+                            onCompleted: replyChannel.Complete,
+                            onFaulted  : replyChannel.Fault
+                        );
+
                     return context;
                 }
                 case Consume(var queue, var configuration, var arguments, var replyChannel, var cancellationToken): {
                     var consumerTag = $"{Guid.NewGuid()}";
                     var consumer = ConsumerAgent.Create();
 
-                    switch (await consumer.StartConsuming(consumerTag, receivedFrames, dispatcher, queue, configuration, arguments)) {
-                        case true: {
-                            replyChannel.Reply(consumerTag);
-                            return context with {
-                                Behaviour = OpenBehaviour(maxFrameSize, receivedFrames, dispatcher, consumers.Add(consumerTag, consumer))
-                            };
-                        }
-                        case Exception fault: {
-                            replyChannel.Reply(fault);
-                            break;
-                        }
-                    }
-                    return context;
+                    return await consumer.StartConsuming(consumerTag, receivedFrames, dispatcher, queue, configuration, arguments)
+                        .ContinueWith(
+                            onCompleted: () => {
+                                replyChannel.Reply(consumerTag);
+
+                                return context with {
+                                    Behaviour = OpenBehaviour(maxFrameSize, receivedFrames, dispatcher, consumers.Add(consumerTag, consumer))
+                                };
+                            },
+                            onFaulted: fault => {
+                                replyChannel.Fault(fault);
+                                return context;
+                            }
+                        );
                 }
                 case EnablePublisherConfirms(var replyChannel, var cancellationToken): {
                     var processManager = RequestReplyAgent<ConfirmSelect, ConfirmSelectOk>.StartNew(receivedFrames, dispatcher, cancellationToken);
 
-                    switch (await processManager.Request(new ConfirmSelect(NoWait: false))) {
-                        case Result<ConfirmSelectOk>.Ok: {
-                            replyChannel.Reply(true);
-                            enablePublisherConfirms = true;
-                            break;
-                        }
-                        case Result<ConfirmSelectOk>.Fault(var exceptionDispatchInfo): {
-                            replyChannel.Reply(exceptionDispatchInfo.SourceException);
-                            break;
-                        }
-                    }
+                    await processManager.Request(new ConfirmSelect(NoWait: false))
+                        .ContinueWith(
+                            onCompleted: _ => {
+                                replyChannel.Complete();
+                                enablePublisherConfirms = true;
+                            },
+                            onFaulted: replyChannel.Fault
+                        );
+
                     return context;
                 }
                 default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(Open)}' behaviour.");

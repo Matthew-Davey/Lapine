@@ -3,12 +3,8 @@ namespace Lapine.Agents;
 using Lapine.Client;
 using Lapine.Protocol;
 
-abstract record HandshakeResult;
-record ConnectionAgreed(ConnectionAgreement Agreement) : HandshakeResult;
-record HandshakeFailed(Exception Fault) : HandshakeResult;
-
 interface IHandshakeAgent {
-    Task<HandshakeResult> StartHandshake(ConnectionConfiguration connectionConfiguration);
+    Task<ConnectionAgreement> StartHandshake(ConnectionConfiguration connectionConfiguration);
 }
 
 static partial class HandshakeAgent {

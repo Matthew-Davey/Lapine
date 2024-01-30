@@ -1,12 +1,12 @@
 namespace Lapine.Agents;
 
 using System.Net;
+using Lapine.Protocol;
 
 static partial class SocketAgent {
     class Wrapper(IAgent<Protocol> agent) : ISocketAgent {
-        async Task<ConnectResult> ISocketAgent.ConnectAsync(IPEndPoint endpoint, CancellationToken cancellationToken) {
-            var reply = await agent.PostAndReplyAsync(replyChannel => new Connect(endpoint, replyChannel, cancellationToken));
-            return (ConnectResult) reply;
+        async Task<(IObservable<ConnectionEvent> ConnectionEvents, IObservable<RawFrame> ReceivedFrames)> ISocketAgent.ConnectAsync(IPEndPoint endpoint, CancellationToken cancellationToken) {
+            return await agent.PostAndReplyAsync<(IObservable<ConnectionEvent> ConnectionEvents, IObservable<RawFrame> ReceivedFrames)>(replyChannel => new Connect(endpoint, replyChannel, cancellationToken));
         }
 
         async Task ISocketAgent.Tune(UInt32 maxFrameSize) =>

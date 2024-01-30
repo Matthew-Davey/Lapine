@@ -12,7 +12,7 @@ static partial class AmqpClientAgent {
     ) : Protocol;
 
     record OpenChannel(
-        AsyncReplyChannel ReplyChannel,
+        AsyncReplyChannel<IChannelAgent> ReplyChannel,
         CancellationToken CancellationToken = default
     ) : Protocol;
 

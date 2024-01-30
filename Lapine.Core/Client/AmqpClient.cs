@@ -1,38 +1,20 @@
 namespace Lapine.Client;
 
-using System.Runtime.ExceptionServices;
 using Lapine.Agents;
 
 public class AmqpClient(ConnectionConfiguration connectionConfiguration) : IAsyncDisposable {
     readonly IAmqpClientAgent _agent = AmqpClientAgent.Create();
 
-    public async ValueTask ConnectAsync(CancellationToken cancellationToken = default) {
-        switch (await _agent.EstablishConnection(connectionConfiguration, cancellationToken)) {
-            case true: {
-                return;
-            }
-            case Exception fault: {
-                ExceptionDispatchInfo
-                    .Capture(fault)
-                    .Throw();
-                return;
-            }
-        }
-    }
+    public async ValueTask ConnectAsync(CancellationToken cancellationToken = default)  =>
+        await _agent.EstablishConnection(connectionConfiguration, cancellationToken);
 
     public async ValueTask<Channel> OpenChannelAsync(CancellationToken cancellationToken = default) {
-        switch (await _agent.OpenChannel(cancellationToken)) {
-            case IChannelAgent channelAgent: {
-                return new Channel(channelAgent, connectionConfiguration);
-            }
-            case Exception fault: {
-                ExceptionDispatchInfo
-                    .Capture(fault)
-                    .Throw();
-                return null;
-            }
-            case var message: throw new Exception($"Unexpected message '{message.GetType().FullName}' in '{nameof(OpenChannelAsync)}' method.");
-        }
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(connectionConfiguration.CommandTimeout);
+
+        var channelAgent = await _agent.OpenChannel(cts.Token);
+
+        return new Channel(channelAgent, connectionConfiguration);
     }
 
     public async ValueTask DisposeAsync() {

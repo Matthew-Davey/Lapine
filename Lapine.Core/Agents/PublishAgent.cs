@@ -4,7 +4,7 @@ using Lapine.Client;
 using Lapine.Protocol;
 
 interface IPublishAgent {
-    Task<Result<Boolean>> Publish(String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message);
+    Task Publish(String exchange, String routingKey, RoutingFlags routingFlags, (BasicProperties Properties, ReadOnlyMemory<Byte> Body) message);
 }
 
 static partial class PublishAgent {

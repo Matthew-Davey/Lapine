@@ -1,12 +1,12 @@
 namespace Lapine.Agents;
 
 using Lapine.Client;
+using Lapine.Protocol;
 
 static partial class HandshakeAgent {
     class Wrapper(IAgent<Protocol> agent) : IHandshakeAgent {
-        async Task<HandshakeResult> IHandshakeAgent.StartHandshake(ConnectionConfiguration connectionConfiguration) {
-            var reply = await agent.PostAndReplyAsync(replyChannel => new StartHandshake(connectionConfiguration, replyChannel));
-            return (HandshakeResult) reply;
+        async Task<ConnectionAgreement> IHandshakeAgent.StartHandshake(ConnectionConfiguration connectionConfiguration) {
+            return await agent.PostAndReplyAsync<ConnectionAgreement>(replyChannel => new StartHandshake(connectionConfiguration, replyChannel));
         }
     }
 }

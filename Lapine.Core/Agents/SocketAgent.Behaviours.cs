@@ -15,26 +15,27 @@ static partial class SocketAgent {
             switch (context.Message) {
                 case Connect(var endpoint, var replyChannel, var cancellationToken): {
                     var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
                     try {
                         await socket.ConnectAsync(endpoint, cancellationToken);
 
                         var events = new Subject<ConnectionEvent>();
                         var receivedFrames = new Subject<RawFrame>();
 
-                        replyChannel.Reply(new Connected(events, receivedFrames));
+                        replyChannel.Reply((events, receivedFrames));
 
                         // Begin polling...
                         await context.Self.PostAsync(new Poll());
 
-                        return context with { Behaviour = ConnectedBehaviour(socket, events, receivedFrames) };
+                        return context with { Behaviour = Connected(socket, events, receivedFrames) };
                     }
-                    catch (OperationCanceledException) {
-                        replyChannel.Reply(new ConnectionFailed(new TimeoutException()));
+                    catch (OperationCanceledException cancelled) when (cancelled.CancellationToken == cancellationToken) {
+                        replyChannel.Fault(new TimeoutException());
                         await context.Self.StopAsync();
                         return context;
                     }
                     catch (Exception fault) {
-                        replyChannel.Reply(new ConnectionFailed(fault));
+                        replyChannel.Fault(fault);
                         await context.Self.StopAsync();
                         return context;
                     }
@@ -43,7 +44,7 @@ static partial class SocketAgent {
             }
         };
 
-    static Behaviour<Protocol> ConnectedBehaviour(Socket socket, Subject<ConnectionEvent> connectionEvents, Subject<RawFrame> receivedFrames) {
+    static Behaviour<Protocol> Connected(Socket socket, Subject<ConnectionEvent> connectionEvents, Subject<RawFrame> receivedFrames) {
         var transmitBuffer = new MemoryBufferWriter<Byte>(4096);
         var (frameBuffer, tail) = (new Byte[DefaultMaximumFrameSize], 0);
 
