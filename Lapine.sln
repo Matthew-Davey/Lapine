@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
@@ -15,6 +15,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Lapine.Core.FSharp", "Lapin
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Lapine.Workbench.FSharp", "Lapine.Workbench.FSharp\Lapine.Workbench.FSharp.fsproj", "{89F2381F-C122-4CD6-9CB5-0B426D5CF4F8}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Lapine.Core.FSharp.IntegrationTests", "Lapine.Core.FSharp.IntegrationTests\Lapine.Core.FSharp.IntegrationTests.fsproj", "{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,9 +25,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{72415020-4DC1-493D-A0D3-B02F3286DE64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -100,5 +99,20 @@ Global
 		{89F2381F-C122-4CD6-9CB5-0B426D5CF4F8}.Release|x64.Build.0 = Release|Any CPU
 		{89F2381F-C122-4CD6-9CB5-0B426D5CF4F8}.Release|x86.ActiveCfg = Release|Any CPU
 		{89F2381F-C122-4CD6-9CB5-0B426D5CF4F8}.Release|x86.Build.0 = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|x64.Build.0 = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Debug|x86.Build.0 = Debug|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|x64.ActiveCfg = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|x64.Build.0 = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|x86.ActiveCfg = Release|Any CPU
+		{37321B3A-913D-4EE8-B1FC-B53C00D18FB2}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,4 @@
+{
+    "dotnet.defaultSolution": "Lapine.sln",
+    "editor.inlayHints.enabled": "offUnlessPressed"
+}

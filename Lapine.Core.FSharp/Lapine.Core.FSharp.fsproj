@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <LangVersion>preview</LangVersion>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <Compile Include="ClientTypes.fs" />
-        <Compile Include="Client.fs" />
-        <Compile Include="AmqpTypes.fs" />
-        <Compile Include="Buffer.fs" />
-        <Compile Include="Amqp.fs" />
-        <Compile Include="EventStream.fs" />
-        <Compile Include="SocketAgent.fs" />
-        <Compile Include="HandshakeAgent.fs" />
-    </ItemGroup>
-
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Buffer.fs" />
+    <Compile Include="AmqpTypes.fs" />
+    <Compile Include="Amqp.fs" />
+    <Compile Include="Agent.fs" />
+    <Compile Include="AgentMessages.fs" />
+    <Compile Include="TcpConnectionAgent.fs" />
+    <Compile Include="AmqpConnectionAgent.fs" />
+    <Compile Include="HandshakeAgent.fs" />
+    <Compile Include="HeartbeatAgent.fs" />
+    <Compile Include="ConnectionSupervisor.fs" />
+    <Compile Include="ChannelAgent.fs" />
+    <Compile Include="AmqpClient.fs" />
+  </ItemGroup>
 </Project>
