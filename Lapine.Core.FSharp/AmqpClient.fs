@@ -62,15 +62,20 @@ module private Behaviour =
                         Become(connected connectionSupervisor connectionEvents frameStream)
             | _ -> Unhandled
 
-    and connected amqpConnectionAgent connectionEvents frameStream =
+    and connected connectionSupervisor connectionEvents frameStream =
         fun context ->
             match context.Message with
+            | Disconnect ->
+                connectionSupervisor.Disconnect()
+                Become disconnected
             | _ -> Unhandled
 
 type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
     let agent = Agent.startNew Behaviour.disconnected
 
-    member _.Connect(cancellationToken: CancellationToken) =
+    member _.Connect(?cancellationToken0: CancellationToken) =
+        let cancellationToken = defaultArg cancellationToken0 CancellationToken.None
+
         task {
             let result =
                 agent.PostAndReply(fun replyChannel ->
@@ -78,3 +83,5 @@ type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
 
             return result
         }
+
+    member _.Disconnect() = agent.Post Disconnect

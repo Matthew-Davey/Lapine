@@ -19,9 +19,14 @@ module private Behaviour =
         fun context ->
             match context.Message with
             | Connect(endpoint, cancellationToken, replyChanel) ->
+                // Create a linked cancellation token that will cancel when either the client provided token is
+                // cancelled, *or* when the configured connection timeout elapses...
+                let cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                cts.CancelAfter connectionConfiguration.ConnectTimeout
+
                 let amqpConnectionAgent = AmqpConnectionAgent.AmqpConnectionAgent()
 
-                match amqpConnectionAgent.Connect endpoint cancellationToken with
+                match amqpConnectionAgent.Connect endpoint cts.Token with
                 | ConnectionFailed _ as result ->
                     replyChanel.Reply result
                     Terminate
@@ -44,9 +49,9 @@ module private Behaviour =
 
                         // In the event of a remote flatline, disconnect from the server...
                         remoteFlatlineEvents.Add(fun _ -> amqpConnectionAgent.Disconnect())
-                        
-                        replyChanel.Reply (ConnectResult.Connected(connectionEvents, frameStream))
-                        
+
+                        replyChanel.Reply(ConnectResult.Connected(connectionEvents, frameStream))
+
                         Become(connected amqpConnectionAgent connection)
             | Disconnect -> Ok // Already disconnected, nothing to do here...
 
@@ -65,3 +70,5 @@ type ConnectionSupervisor(connectionConfiguration: ConnectionConfiguration) =
 
     member _.Connect (endPoint: IPEndPoint) (cancellationToken: CancellationToken) =
         agent.PostAndReply(fun replyChannel -> Connect(endPoint, cancellationToken, replyChannel))
+
+    member _.Disconnect() = agent.Post Disconnect

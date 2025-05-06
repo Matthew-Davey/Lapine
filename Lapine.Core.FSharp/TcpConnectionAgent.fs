@@ -17,7 +17,6 @@ type private Command =
         Endpoint: IPEndPoint *
         CancellationToken: CancellationToken *
         ReplyChannel: AsyncReplyChannel<ConnectResult>
-    | Timeout
     | Tune of MaxFrameSize: uint32
     | Poll
     | PollCompleted of IAsyncResult
@@ -28,9 +27,6 @@ module private Behaviour =
     let rec disconnected context =
         match context.Message with
         | Connect(endpoint, cancellationToken, replyChannel) ->
-            cancellationToken.Register(fun () -> context.Self.Post Command.Timeout)
-            |> ignore
-
             let socket =
                 new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 
@@ -48,7 +44,7 @@ module private Behaviour =
 
                 Become(connected socket connectionEvents frameEvents)
             with
-            | :? TaskCanceledException ->
+            | :? OperationCanceledException ->
                 replyChannel.Reply(ConnectionFailed ConnectionFailureReason.Timeout)
                 Terminate
             | fault ->
