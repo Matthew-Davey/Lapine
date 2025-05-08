@@ -11,7 +11,7 @@ type private Command =
     | Close of AsyncReplyChannel<CloseResponse>
 
 module private Behaviour =
-    let rec closed channelId (amqpConnectionAgent: AmqpConnectionAgent.AmqpConnectionAgent) frameEvents =
+    let rec closed channelId (connectionSupervisor: ConnectionSupervisor.ConnectionSupervisor) frameEvents =
         fun context ->
             match context.Message with
             | Open replyChannel ->
@@ -19,11 +19,11 @@ module private Behaviour =
                 |> Event.filter (fun { Channel = channel } -> channel = channelId)
                 |> Event.add (fun { Content = content } -> context.Self.Post(HandleFrame content))
 
-                amqpConnectionAgent.Transmit
+                connectionSupervisor.Transmit
                     { Channel = channelId
                       Content = Method ChannelOpen }
 
-                Become(awaitingChannelOpenOK channelId amqpConnectionAgent replyChannel)
+                Become(awaitingChannelOpenOK channelId connectionSupervisor replyChannel)
             | _ -> Unhandled
 
     and awaitingChannelOpenOK channelId amqpConnectionAgent replyChannel context =
@@ -62,11 +62,11 @@ module private Behaviour =
 open Behaviour
 
 type ChannelAgent
-    (channelId: uint16, amqpConnectionAgent: AmqpConnectionAgent.AmqpConnectionAgent, frameEvents: IEvent<Frame>) =
-    let agent = Agent.startNew (closed channelId amqpConnectionAgent frameEvents)
+    (channelId: uint16, connectionSupervisor: ConnectionSupervisor.ConnectionSupervisor, frameEvents: IEvent<Frame>) =
+    let agent = Agent.startNew (closed channelId connectionSupervisor frameEvents)
 
     member _.Open() = agent.PostAndReply Open
 
     member _.Transmit content = agent.Post(Transmit(Method content))
 
-    member _.Close = agent.PostAndReply Close
+    member _.Close() = agent.PostAndReply Close

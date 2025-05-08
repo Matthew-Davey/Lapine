@@ -374,11 +374,12 @@ module Method =
             | { ClassId = 0x0Aus; MethodId = 0x32us } ->
                 let! replyCode = readUInt16BE
                 let! replyText = readShortString
-                let! failingMehodHeader = MethodHeader.deserialize
+                let! failingMethodHeader = MethodHeader.deserialize
 
-                return ConnectionClose(ReplyCode = replyCode, ReplyText = replyText, FailingMethod = failingMehodHeader)
+                return
+                    ConnectionClose(ReplyCode = replyCode, ReplyText = replyText, FailingMethod = failingMethodHeader)
             // ChannelOpenOk
-            | { ClassId = 0x14us; MethodId = 0x0Aus } ->
+            | { ClassId = 0x14us; MethodId = 0x0Bus } ->
                 let! reserved1 = readLongString
                 return ChannelOpenOk
 

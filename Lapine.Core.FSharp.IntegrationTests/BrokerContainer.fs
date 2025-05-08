@@ -25,6 +25,13 @@ type Connection =
       Username: string
       State: ConnectionState }
 
+type Channel =
+    { Name: string
+      Number: int
+      User: string
+      VirtualHost: string
+      PublisherConfirms: bool }
+
 let start version =
     let broker =
         RabbitMqBuilder()
@@ -114,4 +121,32 @@ let addVirtualHost name (container: RabbitMqContainer) =
     task {
         let! _ = container.ExecAsync([| "rabbitmqctl"; "add_vhost"; name |])
         return ()
+    }
+
+let getChannels (container: RabbitMqContainer) =
+    task {
+        let! result =
+            container.ExecAsync
+                [| "rabbitmqctl"
+                   "list_channels"
+                   "name"
+                   "number"
+                   "user"
+                   "vhost"
+                   "confirm"
+                   "--formatter"
+                   "json" |]
+
+        let channels = JsonNode.Parse(result.Stdout).AsArray()
+
+        return
+            seq {
+                for channel in channels do
+                    yield
+                        { Name = channel["name"].GetValue<string>()
+                          Number = channel["number"].GetValue<int32>()
+                          User = channel["user"].GetValue<string>()
+                          VirtualHost = channel["vhost"].GetValue<string>()
+                          PublisherConfirms = channel["confirm"].GetValue<bool>() }
+            }
     }

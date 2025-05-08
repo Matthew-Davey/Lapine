@@ -16,7 +16,7 @@ type private Command =
         ConnectionConfiguration: ConnectionConfiguration *
         CancellationToken: CancellationToken *
         ReplyChannel: AsyncReplyChannel<ConnectionResult>
-    | OpenChannel of CancellationToken: CancellationToken
+    | OpenChannel of CancellationToken: CancellationToken * ReplyChannel: AsyncReplyChannel<ChannelAgent.ChannelAgent>
     | Disconnect
 
 module private Behaviour =
@@ -59,15 +59,23 @@ module private Behaviour =
                         Terminate
                     | Result.Ok(connectionSupervisor, connectionEvents, frameStream) ->
                         replyChannel.Reply Connected
-                        Become(connected connectionSupervisor connectionEvents frameStream)
+                        Become(connected connectionSupervisor connectionEvents frameStream [])
             | _ -> Unhandled
 
-    and connected connectionSupervisor connectionEvents frameStream =
+    and connected connectionSupervisor connectionEvents frameStream channels =
         fun context ->
             match context.Message with
             | Disconnect ->
                 connectionSupervisor.Disconnect()
                 Become disconnected
+            | OpenChannel(cancellationToken, replyChannel) ->
+                // TODO: choose a channel number...
+                let channelAgent = ChannelAgent.ChannelAgent(1us, connectionSupervisor, frameStream)
+
+                match channelAgent.Open() with
+                | Opened ->
+                    replyChannel.Reply channelAgent
+                    Ok
             | _ -> Unhandled
 
 type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
@@ -85,3 +93,16 @@ type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
         }
 
     member _.Disconnect() = agent.Post Disconnect
+
+    member _.OpenChannel(?cancellationToken0) =
+        let cancellationToken = defaultArg cancellationToken0 CancellationToken.None
+
+        task {
+            let channelAgent =
+                agent.PostAndReply(fun replyChannel -> OpenChannel(cancellationToken, replyChannel))
+
+            return ChannelClient(channelAgent)
+        }
+
+and ChannelClient(agent: ChannelAgent.ChannelAgent) =
+    member _.Close() = agent.Close()

@@ -15,3 +15,4 @@ dotnet fantomas ./Lapine.Core.FSharp/AmqpClient.fs
 
 dotnet fantomas ./Lapine.Core.FSharp.IntegrationTests/BrokerContainer.fs
 dotnet fantomas ./Lapine.Core.FSharp.IntegrationTests/ConnectionTests.fs
+dotnet fantomas ./Lapine.Core.FSharp.IntegrationTests/ChannelTests.fs

@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="BrokerContainer.fs" />
     <Compile Include="ConnectionTests.fs" />
+    <Compile Include="ChannelTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

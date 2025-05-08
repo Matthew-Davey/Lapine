@@ -6,6 +6,7 @@ open AmqpTypes
 type DisconnectReason =
     | RemoteDisconnected
     | ClientTerminated
+    | Fault of Exception
 
 type NegotiationFailureReason =
     | AuthenticationMechanismNotSupported

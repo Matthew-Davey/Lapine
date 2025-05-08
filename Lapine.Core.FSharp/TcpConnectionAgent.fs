@@ -61,17 +61,22 @@ module private Behaviour =
                 Array.Resize(ref frameBuffer, int32 maxFrameSize)
                 Ok
             | Poll ->
-                socket.BeginReceive(
-                    buffer = frameBuffer,
-                    offset = tail,
-                    size = Math.Min(4096, frameBuffer.Length - tail),
-                    socketFlags = SocketFlags.None,
-                    state = socket,
-                    callback = fun asyncResult -> context.Self.Post(PollCompleted asyncResult)
-                )
-                |> ignore
+                try
+                    socket.BeginReceive(
+                        buffer = frameBuffer,
+                        offset = tail,
+                        size = Math.Min(4096, frameBuffer.Length - tail),
+                        socketFlags = SocketFlags.None,
+                        state = socket,
+                        callback = fun asyncResult -> context.Self.Post(PollCompleted asyncResult)
+                    )
+                    |> ignore
 
-                Ok
+                    Ok
+                with :? SocketException as fault ->
+                    socket.Dispose()
+                    connectionEvents.Trigger(Disconnected(DisconnectReason.Fault fault))
+                    Terminate
             | PollCompleted asyncResult ->
                 try
                     tail <- tail + socket.EndReceive(asyncResult)

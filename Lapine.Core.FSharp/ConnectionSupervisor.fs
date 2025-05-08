@@ -11,6 +11,7 @@ type private Command =
         CancellationToken: CancellationToken *
         ReplyChannel: AsyncReplyChannel<ConnectResult>
     | Disconnect
+    | Transmit of Frame
 
 module private Behaviour =
     open Agent
@@ -61,6 +62,9 @@ module private Behaviour =
             | Disconnect ->
                 amqpConnectionAgent.Disconnect()
                 Terminate
+            | Transmit frame ->
+                amqpConnectionAgent.Transmit frame
+                Ok
             | _ -> Unhandled
 
 open Behaviour
@@ -72,3 +76,5 @@ type ConnectionSupervisor(connectionConfiguration: ConnectionConfiguration) =
         agent.PostAndReply(fun replyChannel -> Connect(endPoint, cancellationToken, replyChannel))
 
     member _.Disconnect() = agent.Post Disconnect
+
+    member _.Transmit(frame: Frame) = agent.Post(Transmit frame)
