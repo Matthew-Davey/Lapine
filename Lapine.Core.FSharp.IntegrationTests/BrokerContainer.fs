@@ -1,12 +1,11 @@
 module BrokerContainer
 
 open System
-open System.Diagnostics
 open System.Net
+open System.Runtime.InteropServices
 open System.Text.Json.Nodes
 open System.Threading
 open Amqp
-open AmqpTypes
 open Testcontainers.RabbitMq
 
 type ConnectionState =
@@ -46,17 +45,11 @@ let start version =
         return broker
     }
 
-let getConnectionConfiguration (container: RabbitMqContainer) =
-    { ConnectionConfiguration.default' with
-        AuthenticationStrategy = AuthenticationStrategy.PlainText("guest", "guest")
-        EndPoints = [ IPEndPoint(IPAddress.Parse(container.IpAddress), ConnectionConfiguration.DefaultPort) ]
-        ConnectionIntegrityStrategy =
-            // Disable connection integrity checks when debugging, we don't want the connection to be terminated
-            // while we're stepping through the code...
-            if Debugger.IsAttached then
-                ConnectionIntegrityStrategy.None
-            else
-                ConnectionConfiguration.DefaultConnectionIntegrityStrategy }
+let endPoint (container: RabbitMqContainer) =
+        if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
+            IPEndPoint(IPAddress.Loopback, int (container.GetMappedPublicPort 5672))
+        else
+            IPEndPoint(IPAddress.Parse container.IpAddress, ConnectionConfiguration.DefaultPort)
 
 let addUser username password (container: RabbitMqContainer) =
     task {

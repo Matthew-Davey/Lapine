@@ -29,13 +29,22 @@ let allSupportedVersions () =
 let ``Connect as guest`` brokerVersion =
     task {
         use! broker = BrokerContainer.start brokerVersion
-        let connectionConfiguration = BrokerContainer.getConnectionConfiguration broker
+        let connectionConfiguration =
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker] }
 
         let client = AmqpClient(connectionConfiguration)
 
         let! connectResult = client.Connect()
-
+        
         connectResult |> should be (ofCase <@ Connected @>)
+        
+        let! serverConnections = BrokerContainer.getConnections broker
+        
+        serverConnections |> should contain
+            { AuthMechanism = "PLAIN"
+              Username = "guest"
+              State = ConnectionState.Running }
     }
 
 [<Theory>]
@@ -51,7 +60,8 @@ let ``Connect as user`` brokerVersion =
         do! BrokerContainer.setPermissions "/" username ".*" ".*" ".*" broker
 
         let connectionConfiguration =
-            { BrokerContainer.getConnectionConfiguration broker with
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker]
                 AuthenticationStrategy = PlainText(username, password) }
 
         let client = AmqpClient(connectionConfiguration)
@@ -59,9 +69,16 @@ let ``Connect as user`` brokerVersion =
         let! connectResult = client.Connect()
 
         connectResult |> should be (ofCase <@ Connected @>)
+        
+        let! serverConnections = BrokerContainer.getConnections broker
+        
+        serverConnections |> should contain
+            { AuthMechanism = "PLAIN"
+              Username = username
+              State = ConnectionState.Running }
     }
 
-[<Theory>]
+[<Theory(Timeout = 30_000)>]
 [<MemberData(nameof allSupportedVersions)>]
 let ``Connect with invalid credentials`` brokerVersion =
     task {
@@ -71,7 +88,8 @@ let ``Connect with invalid credentials`` brokerVersion =
         use! broker = BrokerContainer.start brokerVersion
 
         let connectionConfiguration =
-            { BrokerContainer.getConnectionConfiguration broker with
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker]
                 AuthenticationStrategy = PlainText(username, password) }
 
         let client = AmqpClient(connectionConfiguration)
@@ -79,7 +97,7 @@ let ``Connect with invalid credentials`` brokerVersion =
         let! connectResult = client.Connect()
 
         connectResult |> should be (ofCase <@ ConnectionFailed @>)
-    }
+    } :> System.Threading.Tasks.Task
 
 [<Fact>]
 let ``Remote connection refused`` () =
@@ -118,22 +136,24 @@ let ``Connection timeout`` () =
 let ``Disconnect`` brokerVersion =
     task {
         use! broker = BrokerContainer.start brokerVersion
-        let connectionConfiguration = BrokerContainer.getConnectionConfiguration broker
+        
+        let connectionConfiguration =
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker] }
 
         let client = AmqpClient(connectionConfiguration)
         let! connectResult = client.Connect()
 
         // Assert that the connection was established, otherwise we're not actually testing anything...
         connectResult |> should be (ofCase <@ ConnectionResult.Connected @>)
-        let! connections = BrokerContainer.getConnections broker
+        
+        let! serverConnections = BrokerContainer.getConnections broker
 
-        connections
-        |> should
-            contain
+        serverConnections |> should contain
             { AuthMechanism = "PLAIN"
               Username = "guest"
               State = ConnectionState.Running }
-
+            
         client.Disconnect()
 
         // Assert that there are no active connections on the broker...
@@ -146,18 +166,19 @@ let ``Disconnect`` brokerVersion =
 let ``Disconnect and reconnect`` brokerVersion =
     task {
         use! broker = BrokerContainer.start brokerVersion
-        let connectionConfiguration = BrokerContainer.getConnectionConfiguration broker
+
+        let connectionConfiguration =
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker] }
 
         let client = AmqpClient(connectionConfiguration)
         let! connectResult = client.Connect()
 
         // Assert that the connection was established...
         connectResult |> should be (ofCase <@ ConnectionResult.Connected @>)
-        let! connections = BrokerContainer.getConnections broker
+        let! serverConnections = BrokerContainer.getConnections broker
 
-        connections
-        |> should
-            contain
+        serverConnections |> should contain
             { AuthMechanism = "PLAIN"
               Username = "guest"
               State = ConnectionState.Running }
@@ -165,17 +186,15 @@ let ``Disconnect and reconnect`` brokerVersion =
         client.Disconnect()
 
         // Assert that there are no active connections on the broker...
-        let! connections = BrokerContainer.getConnections broker
-        connections |> should be Empty
+        let! serverConnections = BrokerContainer.getConnections broker
+        serverConnections |> should be Empty
 
         // Try to reconnect...
         let! connectResult = client.Connect()
         connectResult |> should be (ofCase <@ ConnectionResult.Connected @>)
-        let! connections = BrokerContainer.getConnections broker
+        let! serverConnections = BrokerContainer.getConnections broker
 
-        connections
-        |> should
-            contain
+        serverConnections |> should contain
             { AuthMechanism = "PLAIN"
               Username = "guest"
               State = ConnectionState.Running }
@@ -186,7 +205,10 @@ let ``Disconnect and reconnect`` brokerVersion =
 let ``Two clients connected to the same broker`` brokerVersion =
     task {
         use! broker = BrokerContainer.start brokerVersion
-        let connectionConfiguration = BrokerContainer.getConnectionConfiguration broker
+
+        let connectionConfiguration =
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker] }
 
         let client1 = AmqpClient(connectionConfiguration)
         let client2 = AmqpClient(connectionConfiguration)
@@ -194,8 +216,8 @@ let ``Two clients connected to the same broker`` brokerVersion =
         let! _ = client1.Connect()
         let! _ = client2.Connect()
 
-        let! connections = BrokerContainer.getConnections broker
-        connections |> List.ofSeq |> should haveLength 2
+        let! serverConnections = BrokerContainer.getConnections broker
+        serverConnections |> List.ofSeq |> should haveLength 2
     }
 
 [<Theory>]
@@ -207,7 +229,8 @@ let ``Connect to virtual host`` brokerVersion =
         do! BrokerContainer.setPermissions "my-host" "guest" ".*" ".*" ".*" broker
 
         let connectionConfiguration =
-            { BrokerContainer.getConnectionConfiguration broker with
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker]
                 VirtualHost = "my-host" }
 
         let client = AmqpClient(connectionConfiguration)
@@ -215,11 +238,9 @@ let ``Connect to virtual host`` brokerVersion =
 
         // Assert that the connection was established...
         connectResult |> should be (ofCase <@ ConnectionResult.Connected @>)
-        let! connections = BrokerContainer.getConnections broker
+        let! serverConnections = BrokerContainer.getConnections broker
 
-        connections
-        |> should
-            contain
+        serverConnections |> should contain
             { AuthMechanism = "PLAIN"
               Username = "guest"
               State = ConnectionState.Running }

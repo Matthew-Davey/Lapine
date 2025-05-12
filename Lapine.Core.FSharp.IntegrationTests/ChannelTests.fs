@@ -2,6 +2,7 @@ module ``Channel Tests``
 
 open FsUnit
 open Xunit
+open Amqp
 open AmqpClient
 
 let allSupportedVersions () =
@@ -22,7 +23,10 @@ let allSupportedVersions () =
 let ``Open a channel`` brokerVersion =
     task {
         use! broker = BrokerContainer.start brokerVersion
-        let connectionConfiguration = BrokerContainer.getConnectionConfiguration broker
+
+        let connectionConfiguration =
+            { ConnectionConfiguration.default' with
+                EndPoints = [BrokerContainer.endPoint broker] }
 
         let client = AmqpClient(connectionConfiguration)
 
