@@ -61,55 +61,64 @@ module private Behaviour =
                 Array.Resize(ref frameBuffer, int32 maxFrameSize)
                 Ok
             | Poll ->
-                try
-                    socket.BeginReceive(
-                        buffer = frameBuffer,
-                        offset = tail,
-                        size = Math.Min(4096, frameBuffer.Length - tail),
-                        socketFlags = SocketFlags.None,
-                        state = socket,
-                        callback = fun asyncResult -> context.Self.Post(PollCompleted asyncResult)
-                    )
-                    |> ignore
-
-                    Ok
-                with :? SocketException as fault ->
+                let mutable socketError = SocketError.Success
+                socket.BeginReceive(
+                    buffer = frameBuffer,
+                    offset = tail,
+                    size = Math.Min(4096, frameBuffer.Length - tail),
+                    socketFlags = SocketFlags.None,
+                    errorCode = &socketError,
+                    state = socket,
+                    callback = fun asyncResult -> context.Self.Post(PollCompleted asyncResult)
+                )
+                |> ignore
+                
+                match socketError with
+                | SocketError.Success -> Ok
+                | _ ->
                     socket.Dispose()
-                    connectionEvents.Trigger(Disconnected(DisconnectReason.Fault fault))
+                    connectionEvents.Trigger(Disconnected(DisconnectReason.Fault (Exception())))
                     Terminate
             | PollCompleted asyncResult ->
-                try
-                    tail <- tail + socket.EndReceive(asyncResult)
+                    let mutable socketError = SocketError.Success
+                    tail <- tail + socket.EndReceive(asyncResult, &socketError)
+                    
+                    match socketError with
+                    | SocketError.Success ->
+                        if tail > 0 then
+                            try
+                                // TODO: Consider moving frameBuffer up to AmqpConnectionAgent...
+                                let remaining, frame =
+                                    Frame.deserialize (ReadOnlyMemory.op_Implicit frameBuffer[..tail])
 
-                    if tail > 0 then
-                        try
-                            // TODO: Consider moving frameBuffer up to AmqpConnectionAgent...
-                            let remaining, frame =
-                                Frame.deserialize (ReadOnlyMemory.op_Implicit frameBuffer[..tail])
+                                frameEvents.Trigger frame
+                                remaining.CopyTo(frameBuffer)
+                                tail <- remaining.Length - 1
+                            with :? ArgumentOutOfRangeException ->
+                                ()
 
-                            frameEvents.Trigger frame
-                            remaining.CopyTo(frameBuffer)
-                            tail <- remaining.Length - 1
-                        with :? ArgumentOutOfRangeException ->
-                            ()
-
-                    context.Self.Post Poll
-                    Ok
-                with :? SocketException as fault when fault.ErrorCode = 104 ->
-                    socket.Disconnect(true)
-                    socket.Dispose()
-                    connectionEvents.Trigger(Disconnected RemoteDisconnected)
-                    Terminate
+                        context.Self.Post Poll
+                        Ok
+                    | _ ->
+                        socket.Disconnect(false)
+                        socket.Dispose()
+                        connectionEvents.Trigger(Disconnected(DisconnectReason.Fault (Exception())))
+                        Terminate
             | Transmit serialize ->
                 let writer = ArrayBufferWriter<uint8>()
                 serialize writer |> ignore
                 let payload = writer.WrittenMemory
+                let mutable socketError = SocketError.Success
 
-                try
-                    socket.Send(payload.Span) |> ignore
-                    Ok
-                with :? SocketException ->
-                    socket.Disconnect(true)
+                socket.Send(payload.Span, SocketFlags.None, &socketError) |> ignore
+
+                match socketError with
+                | SocketError.Success -> Ok
+                | SocketError.TimedOut ->
+                    socket.Dispose()
+                    connectionEvents.Trigger(Disconnected TimedOut)
+                    Terminate
+                | _ ->
                     socket.Dispose()
                     connectionEvents.Trigger(Disconnected RemoteDisconnected)
                     Terminate

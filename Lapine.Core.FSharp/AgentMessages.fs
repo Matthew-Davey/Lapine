@@ -5,6 +5,7 @@ open AmqpTypes
 
 type DisconnectReason =
     | RemoteDisconnected
+    | TimedOut
     | ClientTerminated
     | Fault of Exception
 
