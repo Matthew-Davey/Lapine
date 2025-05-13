@@ -107,10 +107,13 @@ let ``Remote connection refused`` () =
                 EndPoints = [ IPEndPoint(IPAddress.Parse("127.0.0.1"), 1) ] }
 
         let client = AmqpClient(connectionConfiguration)
+        
+        let! result = client.Connect()
+        
+        let expectedFailures =
+            Map.ofList [ ("127.0.0.1:1", ConnectResult.ConnectionFailed ConnectionFailureReason.ConnectionRefused) ]
 
-        let! connectResult = client.Connect()
-
-        connectResult |> should be (ofCase <@ ConnectionFailed @>)
+        result |> should equal (ConnectionFailed expectedFailures)
     }
 
 [<Fact>]

@@ -20,6 +20,7 @@ type ConnectionEvent = Disconnected of DisconnectReason
 type ConnectionFailureReason =
     | NoEndpointSpecified
     | Timeout
+    | ConnectionRefused
     | NegotiationFailed of NegotiationFailureReason
     | Fault of Exception
 

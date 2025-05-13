@@ -47,6 +47,19 @@ module private Behaviour =
             | :? OperationCanceledException ->
                 replyChannel.Reply(ConnectionFailed ConnectionFailureReason.Timeout)
                 Terminate
+            | :? AggregateException as fault ->
+                fault
+                    .Flatten()
+                    .Handle(
+                        function
+                        | :? SocketException as fault when (fault.SocketErrorCode = SocketError.ConnectionRefused) ->
+                            replyChannel.Reply (ConnectionFailed ConnectionFailureReason.ConnectionRefused)
+                            true
+                        | fault ->
+                            replyChannel.Reply(ConnectionFailed(ConnectionFailureReason.Fault fault))
+                            true
+                    )
+                Terminate
             | fault ->
                 replyChannel.Reply(ConnectionFailed(ConnectionFailureReason.Fault fault))
                 Terminate
