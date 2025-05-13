@@ -1,3 +1,3 @@
 namespace Lapine.Agents;
 
-readonly record struct MessageContext(IAgent Self, Behaviour Behaviour, Object Message);
+readonly record struct MessageContext<TProtocol>(IAgent<TProtocol> Self, Behaviour<TProtocol> Behaviour, TProtocol Message);

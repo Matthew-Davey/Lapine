@@ -1,3 +1,3 @@
 namespace Lapine.Agents;
 
-delegate ValueTask<MessageContext> Behaviour(MessageContext context);
+delegate ValueTask<MessageContext<TProtocol>> Behaviour<TProtocol>(MessageContext<TProtocol> context);

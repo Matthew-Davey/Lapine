@@ -1,10 +1,6 @@
 namespace Lapine.Client;
 
-public class AmqpException : ApplicationException {
-    public AmqpException(String message) : base(message) {
-        // Intentionally empty...
-    }
-
+public class AmqpException(String message) : ApplicationException(message) {
     static internal AmqpException Create(UInt16 replyCode, String message) =>
         replyCode switch {
             // 311 content-too-large
@@ -29,20 +25,8 @@ public class AmqpException : ApplicationException {
         };
 }
 
-sealed class UnroutableException : AmqpException {
-    public UnroutableException(String message)
-        : base(message.Replace("NO_ROUTE", String.Empty)) {
-    }
-}
+sealed class UnroutableException(String message) : AmqpException(message.Replace("NO_ROUTE", String.Empty));
 
-sealed class AccessRefusedException : AmqpException {
-    public AccessRefusedException(String message)
-        : base(message.Replace("ACCESS_REFUSED -", String.Empty)) {
-    }
-}
+sealed class AccessRefusedException(String message) : AmqpException(message.Replace("ACCESS_REFUSED -", String.Empty));
 
-sealed class PreconditionFailedException : AmqpException {
-    public PreconditionFailedException(String message)
-        : base(message.Replace("PRECONDITION_FAILED - ", String.Empty)) {
-    }
-}
+sealed class PreconditionFailedException(String message) : AmqpException(message.Replace("PRECONDITION_FAILED - ", String.Empty));

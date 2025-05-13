@@ -1,64 +1,15 @@
 namespace Lapine.Agents;
 
-using Lapine.Client;
 using Lapine.Protocol;
 using Lapine.Protocol.Commands;
 
-using static Lapine.Agents.DispatcherAgent.Protocol;
+interface IRequestReplyAgent<in TRequest, TReply>
+where TRequest : ICommand
+where TReply : ICommand {
+    Task<TReply> Request(TRequest request);
+}
 
-static class RequestReplyAgent {
-    static public IAgent StartNew<TRequest, TReply>(IObservable<RawFrame> receivedFrames, IAgent dispatcher, CancellationToken cancellationToken = default)
-        where TRequest : ICommand
-        where TReply : ICommand {
-        return Agent.StartNew(AwaitingRequest<TRequest, TReply>(receivedFrames, dispatcher, cancellationToken));
-    }
-
-    static Behaviour AwaitingRequest<TRequest, TReply>(IObservable<RawFrame> receivedFrames, IAgent dispatcher, CancellationToken cancellationToken)
-        where TRequest : ICommand
-        where TReply : ICommand =>
-        async context => {
-            switch (context.Message) {
-                case (TRequest request, AsyncReplyChannel replyChannel): {
-                    var framesSubscription = receivedFrames
-                        .Subscribe(frame => context.Self.PostAsync(RawFrame.UnwrapMethod(frame)));
-
-                    var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    cts.Token.Register(() => context.Self.PostAsync(new TimeoutException()));
-
-                    await dispatcher.PostAsync(Dispatch.Command(request));
-
-                    return context with { Behaviour = AwaitingReply<TReply>(framesSubscription, cts, replyChannel) };
-                }
-                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingRequest)}' behaviour.");
-            }
-        };
-
-    static Behaviour AwaitingReply<TReply>(IDisposable framesSubscription, IDisposable scheduledTimeout, AsyncReplyChannel replyChannel)
-        where TReply : ICommand =>
-        async context => {
-            switch (context.Message) {
-                case TReply reply: {
-                    replyChannel.Reply(reply);
-                    framesSubscription.Dispose();
-                    scheduledTimeout.Dispose();
-                    await context.Self.StopAsync();
-                    return context;
-                }
-                case TimeoutException timeout: {
-                    replyChannel.Reply(timeout);
-                    framesSubscription.Dispose();
-                    scheduledTimeout.Dispose();
-                    await context.Self.StopAsync();
-                    return context;
-                }
-                case ChannelClose(var replyCode, var replyText, _): {
-                    replyChannel.Reply(AmqpException.Create(replyCode, replyText));
-                    framesSubscription.Dispose();
-                    scheduledTimeout.Dispose();
-                    await context.Self.StopAsync();
-                    return context;
-                }
-                default: throw new Exception($"Unexpected message '{context.Message.GetType().FullName}' in '{nameof(AwaitingReply)}' behaviour.");
-            }
-        };
+static partial class RequestReplyAgent<TRequest, TReply> where TRequest : ICommand where TReply : ICommand {
+    static public IRequestReplyAgent<TRequest, TReply> StartNew(IObservable<RawFrame> receivedFrames, IDispatcherAgent dispatcher, CancellationToken cancellationToken = default) =>
+        new Wrapper(Agent<Protocol>.StartNew(AwaitingRequest(receivedFrames, dispatcher, cancellationToken)));
 }

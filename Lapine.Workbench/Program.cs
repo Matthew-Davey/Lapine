@@ -25,7 +25,7 @@ class Program {
         await channel.PublishAsync(
             exchange    : "test.exchange",
             routingKey  : "#",
-            message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 1")),
+            message     : (MessageProperties.Empty, "Test Message 1"u8.ToArray()),
             routingFlags: RoutingFlags.None
         );
 
@@ -34,14 +34,14 @@ class Program {
         await channel.PublishAsync(
             exchange    : "test.exchange",
             routingKey  : "#",
-            message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 2")),
+            message     : (MessageProperties.Empty, "Test Message 2"u8.ToArray()),
             routingFlags: RoutingFlags.None
         );
 
         await channel.PublishAsync(
             exchange    : "test.exchange",
             routingKey  : "#",
-            message     : (MessageProperties.Empty, UTF8.GetBytes("Test Message 3")),
+            message     : (MessageProperties.Empty, "Test Message 3"u8.ToArray()),
             routingFlags: RoutingFlags.None
         );
 
