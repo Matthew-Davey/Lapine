@@ -5,7 +5,6 @@ open System.Buffers
 open System.Net
 open System.Net.Sockets
 open System.Threading
-open System.Threading.Tasks
 
 open AmqpTypes
 open Amqp
@@ -53,12 +52,13 @@ module private Behaviour =
                     .Handle(
                         function
                         | :? SocketException as fault when (fault.SocketErrorCode = SocketError.ConnectionRefused) ->
-                            replyChannel.Reply (ConnectionFailed ConnectionFailureReason.ConnectionRefused)
+                            replyChannel.Reply(ConnectionFailed ConnectionFailureReason.ConnectionRefused)
                             true
                         | fault ->
                             replyChannel.Reply(ConnectionFailed(ConnectionFailureReason.Fault fault))
                             true
                     )
+
                 Terminate
             | fault ->
                 replyChannel.Reply(ConnectionFailed(ConnectionFailureReason.Fault fault))
@@ -66,64 +66,75 @@ module private Behaviour =
         | _ -> Unhandled
 
     and connected socket connectionEvents frameEvents =
-        let mutable frameBuffer, tail = (Array.zeroCreate 131072, 0)
+        let mutable rxBuffer, tail =
+            (Array.zeroCreate (int ConnectionConfiguration.DefaultMaximumFrameSize), 0)
+
+        let mutable txBuffer =
+            ArrayBufferWriter<uint8>(initialCapacity = int ConnectionConfiguration.DefaultMaximumFrameSize)
 
         fun context ->
             match context.Message with
             | Tune maxFrameSize ->
-                Array.Resize(ref frameBuffer, int32 maxFrameSize)
+                Array.Resize(&rxBuffer, int32 maxFrameSize)
+                txBuffer <- ArrayBufferWriter<uint8>(initialCapacity = int maxFrameSize)
                 Ok
             | Poll ->
                 let mutable socketError = SocketError.Success
+
                 socket.BeginReceive(
-                    buffer = frameBuffer,
+                    buffer = rxBuffer,
                     offset = tail,
-                    size = Math.Min(4096, frameBuffer.Length - tail),
+                    size = Math.Min(4096, rxBuffer.Length - tail),
                     socketFlags = SocketFlags.None,
                     errorCode = &socketError,
                     state = socket,
                     callback = fun asyncResult -> context.Self.Post(PollCompleted asyncResult)
                 )
                 |> ignore
-                
+
                 match socketError with
                 | SocketError.Success -> Ok
-                | _ ->
+                | socketError ->
                     socket.Dispose()
-                    connectionEvents.Trigger(Disconnected(DisconnectReason.Fault (Exception())))
+
+                    connectionEvents.Trigger(
+                        Disconnected(DisconnectReason.Fault(SocketException(errorCode = int socketError)))
+                    )
+
                     Terminate
             | PollCompleted asyncResult ->
-                    let mutable socketError = SocketError.Success
-                    tail <- tail + socket.EndReceive(asyncResult, &socketError)
-                    
-                    match socketError with
-                    | SocketError.Success ->
-                        if tail > 0 then
-                            try
-                                // TODO: Consider moving frameBuffer up to AmqpConnectionAgent...
-                                let remaining, frame =
-                                    Frame.deserialize (ReadOnlyMemory.op_Implicit frameBuffer[..tail])
+                let mutable socketError = SocketError.Success
+                tail <- tail + socket.EndReceive(asyncResult, &socketError)
 
-                                frameEvents.Trigger frame
-                                remaining.CopyTo(frameBuffer)
-                                tail <- remaining.Length - 1
-                            with :? ArgumentOutOfRangeException ->
-                                ()
+                match socketError with
+                | SocketError.Success ->
+                    if tail > 0 then
+                        try
+                            // TODO: Consider moving frameBuffer up to AmqpConnectionAgent...
+                            let remaining, frame =
+                                Frame.deserialize (ReadOnlyMemory.op_Implicit rxBuffer[..tail])
 
-                        context.Self.Post Poll
-                        Ok
-                    | _ ->
-                        socket.Disconnect(false)
-                        socket.Dispose()
-                        connectionEvents.Trigger(Disconnected(DisconnectReason.Fault (Exception())))
-                        Terminate
+                            frameEvents.Trigger frame
+                            remaining.CopyTo(rxBuffer)
+                            tail <- remaining.Length - 1
+                        with :? ArgumentOutOfRangeException ->
+                            ()
+
+                    context.Self.Post Poll
+                    Ok
+                | _ ->
+                    socket.Disconnect(false)
+                    socket.Dispose()
+                    connectionEvents.Trigger(Disconnected(DisconnectReason.Fault(Exception())))
+                    Terminate
             | Transmit serialize ->
-                let writer = ArrayBufferWriter<uint8>()
-                serialize writer |> ignore
-                let payload = writer.WrittenMemory
+                serialize txBuffer |> ignore
+                let payload = txBuffer.WrittenMemory
                 let mutable socketError = SocketError.Success
 
                 socket.Send(payload.Span, SocketFlags.None, &socketError) |> ignore
+
+                txBuffer.ResetWrittenCount()
 
                 match socketError with
                 | SocketError.Success -> Ok

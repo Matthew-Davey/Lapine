@@ -46,10 +46,10 @@ let start version =
     }
 
 let endPoint (container: RabbitMqContainer) =
-        if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
-            IPEndPoint(IPAddress.Loopback, int (container.GetMappedPublicPort 5672))
-        else
-            IPEndPoint(IPAddress.Parse container.IpAddress, ConnectionConfiguration.DefaultPort)
+    if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
+        IPEndPoint(IPAddress.Loopback, int (container.GetMappedPublicPort 5672))
+    else
+        IPEndPoint(IPAddress.Parse container.IpAddress, ConnectionConfiguration.DefaultPort)
 
 let addUser username password (container: RabbitMqContainer) =
     task {

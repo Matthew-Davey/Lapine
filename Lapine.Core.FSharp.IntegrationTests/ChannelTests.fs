@@ -26,7 +26,7 @@ let ``Open a channel`` brokerVersion =
 
         let connectionConfiguration =
             { ConnectionConfiguration.default' with
-                EndPoints = [BrokerContainer.endPoint broker] }
+                EndPoints = [ BrokerContainer.endPoint broker ] }
 
         let client = AmqpClient(connectionConfiguration)
 
