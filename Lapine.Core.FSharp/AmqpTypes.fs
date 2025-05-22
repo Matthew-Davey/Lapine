@@ -21,7 +21,7 @@ type ProtocolHeader =
     { Protocol: uint32
       ProtocolId: uint8
       Version: ProtocolVersion }
-    
+
     static member Default =
         { Protocol = BitConverter.ToUInt32(ASCII.GetBytes("AMQP"))
           ProtocolId = 0uy
@@ -52,6 +52,11 @@ type ClientCapabilities =
     { BasicNack: bool
       PublisherConfirms: bool }
 
+    member this.AsFieldTable =
+        Map
+            [ ("BasicName", box this.BasicNack)
+              ("PublisherConfirms", box this.PublisherConfirms) ]
+
 type BasicProperties =
     { ContentType: string option
       ContentEncoding: string option
@@ -68,6 +73,67 @@ type BasicProperties =
       AppId: string option
       ClusterId: string option }
 
+    static member None =
+        { ContentType = None
+          ContentEncoding = None
+          Headers = None
+          DeliveryMode = None
+          Priority = None
+          CorrelationId = None
+          ReplyTo = None
+          Expiration = None
+          MessageId = None
+          Timestamp = None
+          Type = None
+          UserId = None
+          AppId = None
+          ClusterId = None }
+
+    member self.PropertyFlags =
+        PropertyFlags.None
+        ||| (match self.ContentType with
+             | Some _ -> PropertyFlags.ContentType
+             | None -> PropertyFlags.None)
+        ||| (match self.ContentEncoding with
+             | Some _ -> PropertyFlags.ContentEncoding
+             | None -> PropertyFlags.None)
+        ||| (match self.Headers with
+             | Some _ -> PropertyFlags.Headers
+             | None -> PropertyFlags.None)
+        ||| (match self.DeliveryMode with
+             | Some _ -> PropertyFlags.DeliveryMode
+             | None -> PropertyFlags.None)
+        ||| (match self.Priority with
+             | Some _ -> PropertyFlags.Priority
+             | None -> PropertyFlags.None)
+        ||| (match self.CorrelationId with
+             | Some _ -> PropertyFlags.CorrelationId
+             | None -> PropertyFlags.None)
+        ||| (match self.ReplyTo with
+             | Some _ -> PropertyFlags.ReplyTo
+             | None -> PropertyFlags.None)
+        ||| (match self.Expiration with
+             | Some _ -> PropertyFlags.Expiration
+             | None -> PropertyFlags.None)
+        ||| (match self.MessageId with
+             | Some _ -> PropertyFlags.MessageId
+             | None -> PropertyFlags.None)
+        ||| (match self.Timestamp with
+             | Some _ -> PropertyFlags.Timestamp
+             | None -> PropertyFlags.None)
+        ||| (match self.Type with
+             | Some _ -> PropertyFlags.Type
+             | None -> PropertyFlags.None)
+        ||| (match self.UserId with
+             | Some _ -> PropertyFlags.UserId
+             | None -> PropertyFlags.None)
+        ||| (match self.AppId with
+             | Some _ -> PropertyFlags.AppId
+             | None -> PropertyFlags.None)
+        ||| (match self.ClusterId with
+             | Some _ -> PropertyFlags.ClusterId
+             | None -> PropertyFlags.None)
+
 type PeerProperties =
     { Product: string option
       Version: string option
@@ -76,6 +142,41 @@ type PeerProperties =
       Information: string option
       ClientProvidedName: string option
       Capabilities: ClientCapabilities }
+
+    static member Default =
+        { Product = Some "Lapine"
+          Version = Some "0.1.0"
+          Platform = Some System.Runtime.InteropServices.RuntimeInformation.OSDescription
+          Copyright = Some "© Lapine Contributors 2019-2025"
+          Information = Some "Licensed under the MIT License https://opensource.org/licenses/MIT"
+          ClientProvidedName = Some "Lapine 0.1.0"
+          Capabilities =
+            { BasicNack = true
+              PublisherConfirms = true } }
+
+    member self.AsFieldTable =
+        Map.empty
+        |> match self.Product with
+           | Some product -> Map.add "Product" (box product)
+           | None -> id
+        |> match self.Version with
+           | Some version -> Map.add "Version" (box version)
+           | None -> id
+        |> match self.Platform with
+           | Some platform -> Map.add "Platform" (box platform)
+           | None -> id
+        |> match self.Copyright with
+           | Some copyright -> Map.add "Copyright" (box copyright)
+           | None -> id
+        |> match self.Information with
+           | Some information -> Map.add "Information" (box information)
+           | None -> id
+        |> match self.ClientProvidedName with
+           | Some clientProvidedName -> Map.add "ClientProvidedName" (box clientProvidedName)
+           | None -> id
+        |> match Some self.Capabilities with
+           | Some capabilities -> Map.add "Capabilities" (box capabilities.AsFieldTable)
+           | None -> id
 
 type ContentHeader =
     { ClassId: uint16
@@ -117,9 +218,27 @@ type Frame =
     { Channel: uint16
       Content: FrameContent }
 
+    static member Terminator = 0xCEuy
+
+    member self.Type =
+        match self with
+        | { Content = (Method _) } -> FrameType.Method
+        | { Content = (ContentHeader _) } -> FrameType.Header
+        | { Content = (ContentBody _) } -> FrameType.Body
+        | { Content = (HeartBeat) } -> FrameType.Heartbeat
+
 type EndpointSelectionStrategy = | Random
 
-type AuthenticationStrategy = PlainText of Username: string * Password: string
+type AuthenticationStrategy =
+    | PlainText of Username: string * Password: string
+
+    member self.Mechanism =
+        match self with
+        | PlainText _ -> "PLAIN"
+
+    member self.Authenticate(stage: uint8, challenge: string) =
+        match self with
+        | PlainText(username, password) -> $"\000{username}\000{password}"
 
 [<RequireQualifiedAccess>]
 type ConnectionIntegrityStrategy =
@@ -138,6 +257,38 @@ type ConnectionConfiguration =
       ConnectionIntegrityStrategy: ConnectionIntegrityStrategy
       MaximumFrameSize: uint32
       MaximumChannelCount: uint16 }
+
+    static member DefaultPort = 5672
+    static member DefaultEndpointSelectionStrategy = EndpointSelectionStrategy.Random
+    static member DefaultConnectionTimeout = TimeSpan.FromSeconds(5L)
+
+    static member DefaultAuthenticationStrategy =
+        AuthenticationStrategy.PlainText("guest", "guest")
+
+    static member DefaultLocale = "en_US"
+    static member DefaultVirtualHost = "/"
+
+    static member DefaultConnectionIntegrityStrategy =
+        ConnectionIntegrityStrategy.AmqpHeartbeats <| TimeSpan.FromSeconds(60L)
+
+    static member DefaultMaximumFrameSize = 131072u // From https://github.com/rabbitmq/rabbitmq-server/blob/7af37e5bb8bc4a517a6ab26a6038bef6cfa946e7/priv/schema/rabbit.schema#L564
+    static member DefaultMaximumChannelCount = 2047us
+
+    static member Default =
+        { EndPoints = [ IPEndPoint(IPAddress.Loopback, ConnectionConfiguration.DefaultPort) ]
+          EndPointSelectionStrategy = ConnectionConfiguration.DefaultEndpointSelectionStrategy
+          ConnectTimeout = ConnectionConfiguration.DefaultConnectionTimeout
+          AuthenticationStrategy = ConnectionConfiguration.DefaultAuthenticationStrategy
+          Locale = ConnectionConfiguration.DefaultLocale
+          PeerProperties = PeerProperties.Default
+          VirtualHost = ConnectionConfiguration.DefaultVirtualHost
+          ConnectionIntegrityStrategy = ConnectionConfiguration.DefaultConnectionIntegrityStrategy
+          MaximumFrameSize = ConnectionConfiguration.DefaultMaximumFrameSize
+          MaximumChannelCount = ConnectionConfiguration.DefaultMaximumChannelCount }
+
+    member self.GetConnectionSequence() =
+        match self.EndPointSelectionStrategy with
+        | EndpointSelectionStrategy.Random -> self.EndPoints |> List.randomShuffle
 
 type AmqpConnection =
     { MaxChannelCount: uint16

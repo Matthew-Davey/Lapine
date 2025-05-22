@@ -26,7 +26,7 @@ module ``Channel Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ] }
 
             let client = AmqpClient(connectionConfiguration)

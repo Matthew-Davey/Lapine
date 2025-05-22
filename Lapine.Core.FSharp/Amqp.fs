@@ -57,78 +57,9 @@ module MethodHeader =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
-module ClientCapabilities =
-    let toFieldTable capabilities =
-        Map
-            [ ("BasicNack", box capabilities.BasicNack)
-              ("PublisherConfirms", box capabilities.PublisherConfirms) ]
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
 module BasicProperties =
-    let none =
-        { ContentType = None
-          ContentEncoding = None
-          Headers = None
-          DeliveryMode = None
-          Priority = None
-          CorrelationId = None
-          ReplyTo = None
-          Expiration = None
-          MessageId = None
-          Timestamp = None
-          Type = None
-          UserId = None
-          AppId = None
-          ClusterId = None }
-
-    let flags properties =
-        PropertyFlags.None
-        ||| (match properties.ContentType with
-             | Some _ -> PropertyFlags.ContentType
-             | None -> PropertyFlags.None)
-        ||| (match properties.ContentEncoding with
-             | Some _ -> PropertyFlags.ContentEncoding
-             | None -> PropertyFlags.None)
-        ||| (match properties.Headers with
-             | Some _ -> PropertyFlags.Headers
-             | None -> PropertyFlags.None)
-        ||| (match properties.DeliveryMode with
-             | Some _ -> PropertyFlags.DeliveryMode
-             | None -> PropertyFlags.None)
-        ||| (match properties.Priority with
-             | Some _ -> PropertyFlags.Priority
-             | None -> PropertyFlags.None)
-        ||| (match properties.CorrelationId with
-             | Some _ -> PropertyFlags.CorrelationId
-             | None -> PropertyFlags.None)
-        ||| (match properties.ReplyTo with
-             | Some _ -> PropertyFlags.ReplyTo
-             | None -> PropertyFlags.None)
-        ||| (match properties.Expiration with
-             | Some _ -> PropertyFlags.Expiration
-             | None -> PropertyFlags.None)
-        ||| (match properties.MessageId with
-             | Some _ -> PropertyFlags.MessageId
-             | None -> PropertyFlags.None)
-        ||| (match properties.Timestamp with
-             | Some _ -> PropertyFlags.Timestamp
-             | None -> PropertyFlags.None)
-        ||| (match properties.Type with
-             | Some _ -> PropertyFlags.Type
-             | None -> PropertyFlags.None)
-        ||| (match properties.UserId with
-             | Some _ -> PropertyFlags.UserId
-             | None -> PropertyFlags.None)
-        ||| (match properties.AppId with
-             | Some _ -> PropertyFlags.AppId
-             | None -> PropertyFlags.None)
-        ||| (match properties.ClusterId with
-             | Some _ -> PropertyFlags.ClusterId
-             | None -> PropertyFlags.None)
-
-    let serialize properties =
-        writeUInt16BE (uint16 (flags properties))
+    let serialize (properties: BasicProperties) =
+        writeUInt16BE (uint16 (properties.PropertyFlags))
         >> (match properties.ContentType with
             | Some contentType -> writeShortString contentType
             | None -> id)
@@ -177,7 +108,7 @@ module BasicProperties =
             let! flags' = readUInt16BE
             let flags: PropertyFlags = LanguagePrimitives.EnumOfValue flags'
 
-            let mutable properties = none
+            let mutable properties = BasicProperties.None
 
             if flags.HasFlag PropertyFlags.ContentType then
                 let! contentType = readShortString
@@ -273,33 +204,6 @@ module BasicProperties =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
-module PeerProperties =
-    let toFieldTable peerProperties =
-        Map.empty
-        |> match peerProperties.Product with
-           | Some product -> Map.add "Product" (box product)
-           | None -> id
-        |> match peerProperties.Version with
-           | Some version -> Map.add "Version" (box version)
-           | None -> id
-        |> match peerProperties.Platform with
-           | Some platform -> Map.add "Platform" (box platform)
-           | None -> id
-        |> match peerProperties.Copyright with
-           | Some copyright -> Map.add "Copyright" (box copyright)
-           | None -> id
-        |> match peerProperties.Information with
-           | Some information -> Map.add "Information" (box information)
-           | None -> id
-        |> match peerProperties.ClientProvidedName with
-           | Some clientProvidedName -> Map.add "ClientProvidedName" (box clientProvidedName)
-           | None -> id
-        |> match Some peerProperties.Capabilities with
-           | Some capabilities -> Map.add "Capabilities" (box (ClientCapabilities.toFieldTable capabilities))
-           | None -> id
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
 module ContentHeader =
     let serialize
         { ClassId = classId
@@ -382,7 +286,7 @@ module Method =
         function
         | ConnectionStartOk(peerProperties, mechanism, response, locale) ->
             MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x0Bus }
-            >> writeFieldTable (PeerProperties.toFieldTable peerProperties)
+            >> writeFieldTable peerProperties.AsFieldTable
             >> writeShortString mechanism
             >> writeLongString response
             >> writeShortString locale
@@ -426,8 +330,6 @@ module Method =
 module Frame =
     open System.Buffers
 
-    let terminator = 0xCEuy
-
     let deserialize =
         deserialize {
             let! frameType = readUInt8
@@ -436,7 +338,7 @@ module Frame =
             let! payload = readBytes (uint16 length)
             let! terminator = readUInt8
 
-            if terminator <> terminator then
+            if terminator <> Frame.Terminator then
                 return failwith "framing error"
 
             let content =
@@ -450,13 +352,6 @@ module Frame =
             return { Channel = channel; Content = content }
         }
 
-    let type' =
-        function
-        | { Content = (Method _) } -> FrameType.Method
-        | { Content = (ContentHeader _) } -> FrameType.Header
-        | { Content = (ContentBody _) } -> FrameType.Body
-        | { Content = (HeartBeat) } -> FrameType.Heartbeat
-
     let serialize frame =
         let contentBuffer = ArrayBufferWriter<uint8>()
 
@@ -467,69 +362,8 @@ module Frame =
         | HeartBeat -> contentBuffer
         |> ignore
 
-        writeUInt8 (uint8 (type' frame))
+        writeUInt8 (uint8 frame.Type)
         >> writeUInt16BE frame.Channel
         >> writeUInt32BE (uint32 contentBuffer.WrittenMemory.Length)
         >> writeBytes contentBuffer.WrittenMemory
-        >> writeUInt8 terminator
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module ConnectionConfiguration =
-    open System
-    open System.Net
-
-    let DefaultPort = 5672
-    let DefaultEndpointSelectionStrategy = EndpointSelectionStrategy.Random
-    let DefaultConnectionTimeout = TimeSpan.FromSeconds(5L)
-
-    let DefaultAuthenticationStrategy =
-        AuthenticationStrategy.PlainText("guest", "guest")
-
-    let DefaultLocale = "en_US"
-
-    let DefaultPeerProperties =
-        { Product = Some "Lapine"
-          Version = Some "0.1.0"
-          Platform = Some System.Runtime.InteropServices.RuntimeInformation.OSDescription
-          Copyright = Some "© Lapine Contributors 2019-2025"
-          Information = Some "Licensed under the MIT License https://opensource.org/licenses/MIT"
-          ClientProvidedName = Some "Lapine 0.1.0"
-          Capabilities =
-            { BasicNack = true
-              PublisherConfirms = true } }
-
-    let DefaultVirtualHost = "/"
-
-    let DefaultConnectionIntegrityStrategy =
-        ConnectionIntegrityStrategy.AmqpHeartbeats <| TimeSpan.FromSeconds(60L)
-
-    let DefaultMaximumFrameSize = 131072u // From https://github.com/rabbitmq/rabbitmq-server/blob/7af37e5bb8bc4a517a6ab26a6038bef6cfa946e7/priv/schema/rabbit.schema#L564
-    let DefaultMaximumChannelCount = 2047us
-
-    let default' =
-        { EndPoints = [ IPEndPoint(IPAddress.Loopback, DefaultPort) ]
-          EndPointSelectionStrategy = DefaultEndpointSelectionStrategy
-          ConnectTimeout = DefaultConnectionTimeout
-          AuthenticationStrategy = DefaultAuthenticationStrategy
-          Locale = DefaultLocale
-          PeerProperties = DefaultPeerProperties
-          VirtualHost = DefaultVirtualHost
-          ConnectionIntegrityStrategy = DefaultConnectionIntegrityStrategy
-          MaximumFrameSize = DefaultMaximumFrameSize
-          MaximumChannelCount = DefaultMaximumChannelCount }
-
-    let getConnectionSequence (connectionConfiguration: ConnectionConfiguration) =
-        match connectionConfiguration.EndPointSelectionStrategy with
-        | EndpointSelectionStrategy.Random -> connectionConfiguration.EndPoints |> List.randomShuffle
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module AuthenticationStrategy =
-    let mechanism =
-        function
-        | PlainText _ -> "PLAIN"
-
-    let authenticate (stage: uint8) (challenge: string) =
-        function
-        | PlainText(username, password) -> $"\000{username}\000{password}"
+        >> writeUInt8 Frame.Terminator

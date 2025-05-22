@@ -29,7 +29,7 @@ module ``Connection Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ] }
 
             let client = AmqpClient(connectionConfiguration)
@@ -61,7 +61,7 @@ module ``Connection Tests`` =
             do! BrokerContainer.setPermissions "/" username ".*" ".*" ".*" broker
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ]
                     AuthenticationStrategy = PlainText(username, password) }
 
@@ -91,7 +91,7 @@ module ``Connection Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ]
                     AuthenticationStrategy = PlainText(username, password) }
 
@@ -107,7 +107,7 @@ module ``Connection Tests`` =
     let ``Remote connection refused`` () =
         task {
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ IPEndPoint(IPAddress.Parse("127.0.0.1"), 1) ] }
 
             let client = AmqpClient(connectionConfiguration)
@@ -124,7 +124,7 @@ module ``Connection Tests`` =
     let ``Connection timeout`` () =
         task {
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ IPEndPoint(IPAddress.Parse("10.0.0.0"), 5672) ]
                     ConnectTimeout = TimeSpan.FromSeconds(1L) }
 
@@ -145,7 +145,7 @@ module ``Connection Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ] }
 
             let client = AmqpClient(connectionConfiguration)
@@ -177,7 +177,7 @@ module ``Connection Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ] }
 
             let client = AmqpClient(connectionConfiguration)
@@ -220,7 +220,7 @@ module ``Connection Tests`` =
             use! broker = BrokerContainer.start brokerVersion
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ] }
 
             let client1 = AmqpClient(connectionConfiguration)
@@ -242,7 +242,7 @@ module ``Connection Tests`` =
             do! BrokerContainer.setPermissions "my-host" "guest" ".*" ".*" ".*" broker
 
             let connectionConfiguration =
-                { ConnectionConfiguration.default' with
+                { ConnectionConfiguration.Default with
                     EndPoints = [ BrokerContainer.endPoint broker ]
                     VirtualHost = "my-host" }
 

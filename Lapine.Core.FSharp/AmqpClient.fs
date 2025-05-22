@@ -42,8 +42,7 @@ module private AmqpClientBehaviour =
 
                 cancellationTokenSource.CancelAfter(connectionConfiguration.ConnectTimeout)
 
-                let endpoints =
-                    ConnectionConfiguration.getConnectionSequence connectionConfiguration
+                let endpoints = connectionConfiguration.GetConnectionSequence()
 
                 if endpoints.Length = 0 then
                     replyChannel.Reply InvalidConnectionConfiguration

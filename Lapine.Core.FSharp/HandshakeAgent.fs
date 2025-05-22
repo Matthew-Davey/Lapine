@@ -23,7 +23,7 @@ module private HandshakeAgentBehaviour =
                 // Subscribe to inbound method frames on channel zero...
                 frameStream
                 |> Event.filter (fun frame -> frame.Channel = 0us)
-                |> Event.filter (fun frame -> Frame.type' frame = FrameType.Method)
+                |> Event.filter (fun frame -> frame.Type = FrameType.Method)
                 |> Event.add (fun frame -> context.Self.Post(HandleFrame frame.Content))
 
                 // Subscribe to connection state events...
@@ -37,8 +37,7 @@ module private HandshakeAgentBehaviour =
             | _ -> Unhandled
 
     and awaitingConnectionStart connectionConfiguration (connectionAgent: AmqpConnectionAgent) replyChannel =
-        let mechanism =
-            AuthenticationStrategy.mechanism connectionConfiguration.AuthenticationStrategy
+        let mechanism = connectionConfiguration.AuthenticationStrategy.Mechanism
 
         let locale = connectionConfiguration.Locale
 
@@ -64,12 +63,11 @@ module private HandshakeAgentBehaviour =
             | HandleFrame(Method(ConnectionStart(_, serverProperties, _, _))) ->
                 // Build stage 0 authentication response...
                 let authenticationResponse =
-                    AuthenticationStrategy.authenticate 0uy null connectionConfiguration.AuthenticationStrategy
+                    connectionConfiguration.AuthenticationStrategy.Authenticate(0uy, null)
 
                 let peerProperties = connectionConfiguration.PeerProperties
 
-                let authenticationMechanism =
-                    AuthenticationStrategy.mechanism connectionConfiguration.AuthenticationStrategy
+                let mechanism = connectionConfiguration.AuthenticationStrategy.Mechanism
 
                 connectionAgent.Transmit
                     { Channel = 0us
@@ -77,7 +75,7 @@ module private HandshakeAgentBehaviour =
                         Method(
                             ConnectionStartOk(
                                 peerProperties,
-                                authenticationMechanism,
+                                mechanism,
                                 authenticationResponse,
                                 connectionConfiguration.Locale
                             )
@@ -112,7 +110,7 @@ module private HandshakeAgentBehaviour =
             | HandleFrame(Method(ConnectionSecure(challenge))) ->
                 // Build stage x authentication response...
                 let authenticationResponse =
-                    AuthenticationStrategy.authenticate stage challenge connectionConfiguration.AuthenticationStrategy
+                    connectionConfiguration.AuthenticationStrategy.Authenticate(stage, challenge)
 
                 connectionAgent.Transmit
                     { Channel = 0us
