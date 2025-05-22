@@ -5,18 +5,6 @@ open Buffer
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ProtocolVersion =
-    let deserialize =
-        deserialize {
-            let! major = readUInt8
-            let! minor = readUInt8
-            let! revision = readUInt8
-
-            return
-                { Major = major
-                  Minor = minor
-                  Revision = revision }
-        }
-
     let serialize
         { Major = major
           Minor = minor
