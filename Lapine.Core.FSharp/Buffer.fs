@@ -1,4 +1,4 @@
-module Buffer
+module private Buffer
 
 open System
 open System.Buffers
