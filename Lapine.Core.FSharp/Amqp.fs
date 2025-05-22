@@ -1,15 +1,10 @@
-module Amqp
+namespace Lapine.AmqpClient
 
-open AmqpTypes
 open Buffer
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ProtocolVersion =
-    let default' =
-        { Major = 0uy
-          Minor = 9uy
-          Revision = 1uy }
-
     let deserialize =
         deserialize {
             let! major = readUInt8
@@ -29,21 +24,9 @@ module ProtocolVersion =
         =
         writeUInt8 major >> writeUInt8 minor >> writeUInt8 revision
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ProtocolHeader =
-    open System
-    open System.Text
-
-    let create protocol protocolId version =
-        match String.length protocol with
-        | 4 ->
-            { Protocol = BitConverter.ToUInt32(Encoding.ASCII.GetBytes(protocol))
-              ProtocolId = protocolId
-              Version = version }
-        | _ -> failwith "value must be exactly four characters long"
-
-    let default' = create "AMQP" 0uy ProtocolVersion.default'
-
     let serialize
         { Protocol = protocol
           ProtocolId = protocolId
@@ -53,6 +36,7 @@ module ProtocolHeader =
         >> writeUInt8 protocolId
         >> ProtocolVersion.serialize version
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module MethodHeader =
     let deserialize =
@@ -71,6 +55,7 @@ module MethodHeader =
         =
         writeUInt16BE classId >> writeUInt16BE methodId
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ClientCapabilities =
     let toFieldTable capabilities =
@@ -78,6 +63,7 @@ module ClientCapabilities =
             [ ("BasicNack", box capabilities.BasicNack)
               ("PublisherConfirms", box capabilities.PublisherConfirms) ]
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module BasicProperties =
     let none =
@@ -285,6 +271,7 @@ module BasicProperties =
             return properties
         }
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module PeerProperties =
     let toFieldTable peerProperties =
@@ -311,6 +298,7 @@ module PeerProperties =
            | Some capabilities -> Map.add "Capabilities" (box (ClientCapabilities.toFieldTable capabilities))
            | None -> id
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ContentHeader =
     let serialize
@@ -334,6 +322,7 @@ module ContentHeader =
                   Properties = properties }
         }
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module Method =
     open System
@@ -432,6 +421,7 @@ module Method =
         | ChannelOpenOk -> raise (NotSupportedException())
         | ChannelCloseOk -> raise (NotSupportedException())
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module Frame =
     open System.Buffers
@@ -483,6 +473,7 @@ module Frame =
         >> writeBytes contentBuffer.WrittenMemory
         >> writeUInt8 terminator
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module ConnectionConfiguration =
     open System
@@ -532,6 +523,7 @@ module ConnectionConfiguration =
         match connectionConfiguration.EndPointSelectionStrategy with
         | EndpointSelectionStrategy.Random -> connectionConfiguration.EndPoints |> List.randomShuffle
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module AuthenticationStrategy =
     let mechanism =

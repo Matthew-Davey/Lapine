@@ -1,37 +1,37 @@
-module AgentMessages
+namespace Lapine.AmqpClient
 
-open System
-open AmqpTypes
+module AgentMessages =
+    open System
 
-type DisconnectReason =
-    | RemoteDisconnected
-    | TimedOut
-    | ClientTerminated
-    | Fault of Exception
+    type DisconnectReason =
+        | RemoteDisconnected
+        | TimedOut
+        | ClientTerminated
+        | Fault of Exception
 
-type NegotiationFailureReason =
-    | AuthenticationMechanismNotSupported
-    | LocaleNotSupported
-    | ConnectionInterrupted of DisconnectReason
-    | NegotiationTimedOut
+    type NegotiationFailureReason =
+        | AuthenticationMechanismNotSupported
+        | LocaleNotSupported
+        | ConnectionInterrupted of DisconnectReason
+        | NegotiationTimedOut
 
-type ConnectionEvent = Disconnected of DisconnectReason
+    type ConnectionEvent = Disconnected of DisconnectReason
 
-type ConnectionFailureReason =
-    | NoEndpointSpecified
-    | Timeout
-    | ConnectionRefused
-    | NegotiationFailed of NegotiationFailureReason
-    | Fault of Exception
+    type ConnectionFailureReason =
+        | NoEndpointSpecified
+        | Timeout
+        | ConnectionRefused
+        | NegotiationFailed of NegotiationFailureReason
+        | Fault of Exception
 
-type ConnectResult =
-    | Connected of ConnectionEvents: IEvent<ConnectionEvent> * FrameStream: IEvent<Frame>
-    | ConnectionFailed of ConnectionFailureReason
+    type ConnectResult =
+        | Connected of ConnectionEvents: IEvent<ConnectionEvent> * FrameStream: IEvent<Frame>
+        | ConnectionFailed of ConnectionFailureReason
 
-type NegotiationOutcome =
-    | NegotiationFailed of NegotiationFailureReason
-    | ConnectionAgreed of AmqpConnection
+    type NegotiationOutcome =
+        | NegotiationFailed of NegotiationFailureReason
+        | ConnectionAgreed of AmqpConnection
 
-type RemoteFlatline = | RemoteFlatline
-type OpenResponse = | Opened
-type CloseResponse = | Closed
+    type RemoteFlatline = | RemoteFlatline
+    type OpenResponse = | Opened
+    type CloseResponse = | Closed

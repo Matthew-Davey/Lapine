@@ -1,9 +1,6 @@
-module AmqpClient
+namespace Lapine.AmqpClient
 
 open System.Threading
-open AmqpTypes
-open Amqp
-open Agent
 open AgentMessages
 
 type ConnectionResult =
@@ -11,21 +8,20 @@ type ConnectionResult =
     | InvalidConnectionConfiguration
     | ConnectionFailed of Map<string, ConnectResult>
 
-type private Command =
+type private AmqpClientProtocol =
     | EstablishConnection of
         ConnectionConfiguration: ConnectionConfiguration *
         CancellationToken: CancellationToken *
         ReplyChannel: AsyncReplyChannel<ConnectionResult>
-    | OpenChannel of CancellationToken: CancellationToken * ReplyChannel: AsyncReplyChannel<ChannelAgent.ChannelAgent>
+    | OpenChannel of CancellationToken: CancellationToken * ReplyChannel: AsyncReplyChannel<ChannelAgent>
     | Disconnect
 
-module private Behaviour =
+module private AmqpClientBehaviour =
     let rec private tryConnect connectionConfiguration cancellationToken failures endpoints =
         match endpoints with
         | [] -> Result.Error failures
         | endpoint :: remainingEndpoints ->
-            let connectionSupervisor =
-                ConnectionSupervisor.ConnectionSupervisor(connectionConfiguration)
+            let connectionSupervisor = ConnectionSupervisor(connectionConfiguration)
 
             match connectionSupervisor.Connect endpoint cancellationToken with
             | ConnectResult.ConnectionFailed _ as result ->
@@ -70,7 +66,7 @@ module private Behaviour =
                 Become disconnected
             | OpenChannel(cancellationToken, replyChannel) ->
                 // TODO: choose a channel number...
-                let channelAgent = ChannelAgent.ChannelAgent(1us, connectionSupervisor, frameStream)
+                let channelAgent = ChannelAgent(1us, connectionSupervisor, frameStream)
 
                 match channelAgent.Open() with
                 | Opened ->
@@ -78,8 +74,8 @@ module private Behaviour =
                     Ok
             | _ -> Unhandled
 
-type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
-    let agent = Agent.startNew Behaviour.disconnected
+type public AmqpClient(connectionConfiguration: ConnectionConfiguration) =
+    let agent = Agent.startNew AmqpClientBehaviour.disconnected
 
     member _.Connect(?cancellationToken0: CancellationToken) =
         let cancellationToken = defaultArg cancellationToken0 CancellationToken.None
@@ -104,5 +100,5 @@ type AmqpClient(connectionConfiguration: ConnectionConfiguration) =
             return ChannelClient(channelAgent)
         }
 
-and ChannelClient(agent: ChannelAgent.ChannelAgent) =
+and public ChannelClient internal (agent: ChannelAgent) =
     member _.Close() = agent.Close()

@@ -1,13 +1,10 @@
-/// AmqpConnectionAgent wraps and manages an underlying TcpConnectionAgent and exposes an interface in terms of AMQP
-/// frames, rather than the byte-stream-centric interface of the tcp connection...
-module AmqpConnectionAgent
+namespace Lapine.AmqpClient
 
 open System.Net
 open System.Threading
-open AmqpTypes
 open AgentMessages
 
-type private Command =
+type private AmqpConnectionAgentProtocol =
     | Connect of
         EndPoint: IPEndPoint *
         CancellationToken: CancellationToken *
@@ -17,11 +14,7 @@ type private Command =
     | TransmitFrame of Frame
     | TransmitProtocolHeader of ProtocolHeader
 
-module private Behaviour =
-    open Amqp
-    open Agent
-    open TcpConnectionAgent
-
+module private AmqpConnectionAgentBehaviour =
     let rec disconnected =
         fun context ->
             match context.Message with
@@ -63,8 +56,10 @@ module private Behaviour =
                 Ok
             | _ -> Unhandled
 
-type AmqpConnectionAgent() =
-    let agent = Agent.startNew Behaviour.disconnected
+/// AmqpConnectionAgent wraps and manages an underlying TcpConnectionAgent and exposes an interface in terms of AMQP
+/// frames, rather than the byte-stream-centric interface of the tcp connection...
+type private AmqpConnectionAgent() =
+    let agent = Agent.startNew AmqpConnectionAgentBehaviour.disconnected
 
     member _.Connect endpoint cancellationToken =
         agent.PostAndReply(fun replyChannel -> Connect(endpoint, cancellationToken, replyChannel))

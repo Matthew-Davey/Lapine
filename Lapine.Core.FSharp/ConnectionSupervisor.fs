@@ -1,11 +1,10 @@
-module ConnectionSupervisor
+namespace Lapine.AmqpClient
 
 open System.Net
 open System.Threading
-open AmqpTypes
 open AgentMessages
 
-type private Command =
+type private ConnectionSupervisorProtocol =
     | Connect of
         EndPoint: IPEndPoint *
         CancellationToken: CancellationToken *
@@ -13,9 +12,7 @@ type private Command =
     | Disconnect
     | Transmit of Frame
 
-module private Behaviour =
-    open Agent
-
+module private ConnectionSupervisorBehaviour =
     let rec disconnected connectionConfiguration =
         fun context ->
             match context.Message with
@@ -25,7 +22,7 @@ module private Behaviour =
                 let cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                 cts.CancelAfter connectionConfiguration.ConnectTimeout
 
-                let amqpConnectionAgent = AmqpConnectionAgent.AmqpConnectionAgent()
+                let amqpConnectionAgent = AmqpConnectionAgent()
 
                 match amqpConnectionAgent.Connect endpoint cts.Token with
                 | ConnectionFailed _ as result ->
@@ -34,7 +31,7 @@ module private Behaviour =
                 | Connected(connectionEvents, frameStream) ->
                     // Spawn a handshake agent to negotiate the connection...
                     let handshakeAgent =
-                        HandshakeAgent.HandshakeAgent(amqpConnectionAgent, frameStream, connectionEvents)
+                        HandshakeAgent(amqpConnectionAgent, frameStream, connectionEvents)
 
                     match handshakeAgent.NegotiateConnection(connectionConfiguration, cancellationToken) with
                     // The handshake process failed...
@@ -45,7 +42,7 @@ module private Behaviour =
                     // The handshake process completed successfully...
                     | ConnectionAgreed connection ->
                         // Spawn a heartbeat agent to manage AMQP heartbeats...
-                        let heartbeatAgent = HeartbeatAgent.HeartbeatAgent(amqpConnectionAgent, frameStream)
+                        let heartbeatAgent = HeartbeatAgent(amqpConnectionAgent, frameStream)
                         let remoteFlatlineEvents = heartbeatAgent.Start connection.HeartbeatFrequency
 
                         // In the event of a remote flatline, disconnect from the server...
@@ -67,10 +64,9 @@ module private Behaviour =
                 Ok
             | _ -> Unhandled
 
-open Behaviour
-
-type ConnectionSupervisor(connectionConfiguration: ConnectionConfiguration) =
-    let agent = Agent.startNew (disconnected connectionConfiguration)
+type internal ConnectionSupervisor(connectionConfiguration: ConnectionConfiguration) =
+    let agent =
+        Agent.startNew (ConnectionSupervisorBehaviour.disconnected connectionConfiguration)
 
     member _.Connect (endPoint: IPEndPoint) (cancellationToken: CancellationToken) =
         agent.PostAndReply(fun replyChannel -> Connect(endPoint, cancellationToken, replyChannel))

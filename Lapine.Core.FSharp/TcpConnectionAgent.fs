@@ -1,17 +1,13 @@
-module TcpConnectionAgent
+namespace Lapine.AmqpClient
 
 open System
 open System.Buffers
 open System.Net
-open System.Net.Sockets
 open System.Threading
 
-open AmqpTypes
-open Amqp
-open Agent
 open AgentMessages
 
-type private Command =
+type private TcpConnectionAgentProtocol =
     | Connect of
         Endpoint: IPEndPoint *
         CancellationToken: CancellationToken *
@@ -22,7 +18,9 @@ type private Command =
     | Transmit of (IBufferWriter<uint8> -> IBufferWriter<uint8>)
     | Disconnect
 
-module private Behaviour =
+module private TcpConnectionAgentBehaviour =
+    open System.Net.Sockets
+
     let rec disconnected context =
         match context.Message with
         | Connect(endpoint, cancellationToken, replyChannel) ->
@@ -153,8 +151,8 @@ module private Behaviour =
                 Terminate
             | _ -> Unhandled
 
-type TcpConnectionAgent() =
-    let agent = Agent.startNew Behaviour.disconnected
+type private TcpConnectionAgent() =
+    let agent = Agent.startNew TcpConnectionAgentBehaviour.disconnected
 
     member _.Connect endpoint cancellationToken =
         agent.PostAndReply(fun replyChannel -> Connect(endpoint, cancellationToken, replyChannel))

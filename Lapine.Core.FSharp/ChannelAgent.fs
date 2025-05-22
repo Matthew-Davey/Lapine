@@ -1,17 +1,15 @@
-module ChannelAgent
+namespace Lapine.AmqpClient
 
-open AmqpTypes
-open Agent
 open AgentMessages
 
-type private Command =
+type private ChannelAgentProtocol =
     | Open of AsyncReplyChannel<OpenResponse>
     | Transmit of FrameContent
     | HandleFrame of FrameContent
     | Close of AsyncReplyChannel<CloseResponse>
 
-module private Behaviour =
-    let rec closed channelId (connectionSupervisor: ConnectionSupervisor.ConnectionSupervisor) frameEvents =
+module private ChannelAgentBehaviour =
+    let rec closed channelId (connectionSupervisor: ConnectionSupervisor) frameEvents =
         fun context ->
             match context.Message with
             | Open replyChannel ->
@@ -59,11 +57,9 @@ module private Behaviour =
                 Terminate
             | _ -> Unhandled
 
-open Behaviour
-
-type ChannelAgent
-    (channelId: uint16, connectionSupervisor: ConnectionSupervisor.ConnectionSupervisor, frameEvents: IEvent<Frame>) =
-    let agent = Agent.startNew (closed channelId connectionSupervisor frameEvents)
+type internal ChannelAgent(channelId: uint16, connectionSupervisor: ConnectionSupervisor, frameEvents: IEvent<Frame>) =
+    let agent =
+        Agent.startNew (ChannelAgentBehaviour.closed channelId connectionSupervisor frameEvents)
 
     member _.Open() = agent.PostAndReply Open
 

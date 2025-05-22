@@ -1,13 +1,9 @@
-/// Manages the process of negotiating a connection with a remote AMQP server
-module HandshakeAgent
+namespace Lapine.AmqpClient
 
 open System.Threading
-open AmqpTypes
-open Amqp
-open Agent
 open AgentMessages
 
-type private Command =
+type private HandshakeAgentProtocol =
     | NegotiateConnection of
         ConnectionConfiguration: ConnectionConfiguration *
         CancellationToken: CancellationToken *
@@ -16,8 +12,8 @@ type private Command =
     | Timeout
     | HandleConnectionEvent of ConnectionEvent
 
-module private Behaviour =
-    let rec unstarted (connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent) frameStream connectionEvents =
+module private HandshakeAgentBehaviour =
+    let rec unstarted (connectionAgent: AmqpConnectionAgent) frameStream connectionEvents =
         fun context ->
             match context.Message with
             | NegotiateConnection(connectionConfiguration, cancellationToken, replyChannel) ->
@@ -34,17 +30,13 @@ module private Behaviour =
                 connectionEvents |> Event.add (context.Self.Post << HandleConnectionEvent)
 
                 // Start the handshake process by transmitting an AMQP protocol header to the remote server...
-                connectionAgent.Transmit ProtocolHeader.default'
+                connectionAgent.Transmit ProtocolHeader.Default
 
                 // We now expect to see a ConnectionStart message from the remote server...
                 Become(awaitingConnectionStart connectionConfiguration connectionAgent replyChannel)
             | _ -> Unhandled
 
-    and awaitingConnectionStart
-        connectionConfiguration
-        (connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent)
-        replyChannel
-        =
+    and awaitingConnectionStart connectionConfiguration (connectionAgent: AmqpConnectionAgent) replyChannel =
         let mechanism =
             AuthenticationStrategy.mechanism connectionConfiguration.AuthenticationStrategy
 
@@ -103,7 +95,7 @@ module private Behaviour =
 
     and awaitingConnectionSecureOrTune
         connectionConfiguration
-        (connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent)
+        (connectionAgent: AmqpConnectionAgent)
         replyChannel
         serverProperties
         stage
@@ -177,14 +169,11 @@ module private Behaviour =
                 Terminate
             | _ -> Unhandled
 
-type HandshakeAgent
-    (
-        connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent,
-        frameStream: IEvent<Frame>,
-        connectionEvents: IEvent<ConnectionEvent>
-    ) =
+/// Manages the process of negotiating a connection with a remote AMQP server
+type private HandshakeAgent
+    (connectionAgent: AmqpConnectionAgent, frameStream: IEvent<Frame>, connectionEvents: IEvent<ConnectionEvent>) =
     let agent =
-        Agent.startNew (Behaviour.unstarted connectionAgent frameStream connectionEvents)
+        Agent.startNew (HandshakeAgentBehaviour.unstarted connectionAgent frameStream connectionEvents)
 
     member _.NegotiateConnection
         (

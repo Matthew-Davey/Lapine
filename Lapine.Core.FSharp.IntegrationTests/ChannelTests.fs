@@ -1,39 +1,40 @@
-module ``Channel Tests``
+namespace Lapine.AmqpClient
 
-open FsUnit
-open Xunit
-open Amqp
-open AmqpClient
+module ``Channel Tests`` =
 
-let allSupportedVersions () =
-    seq {
-        [| "4.1" |]
-        [| "4.0" |]
-        [| "3.13" |]
-        [| "3.12" |]
-        [| "3.11" |]
-        [| "3.10" |]
-        [| "3.9" |]
-        [| "3.8" |]
-        [| "3.7" |]
-    }
+    open FsUnit
+    open Xunit
+    open Lapine.AmqpClient
 
-[<Theory>]
-[<MemberData(nameof allSupportedVersions)>]
-let ``Open a channel`` brokerVersion =
-    task {
-        use! broker = BrokerContainer.start brokerVersion
+    let allSupportedVersions () =
+        seq {
+            [| "4.1" |]
+            [| "4.0" |]
+            [| "3.13" |]
+            [| "3.12" |]
+            [| "3.11" |]
+            [| "3.10" |]
+            [| "3.9" |]
+            [| "3.8" |]
+            [| "3.7" |]
+        }
 
-        let connectionConfiguration =
-            { ConnectionConfiguration.default' with
-                EndPoints = [ BrokerContainer.endPoint broker ] }
+    [<Theory>]
+    [<MemberData(nameof allSupportedVersions)>]
+    let ``Open a channel`` brokerVersion =
+        task {
+            use! broker = BrokerContainer.start brokerVersion
 
-        let client = AmqpClient(connectionConfiguration)
+            let connectionConfiguration =
+                { ConnectionConfiguration.default' with
+                    EndPoints = [ BrokerContainer.endPoint broker ] }
 
-        let! _ = client.Connect()
+            let client = AmqpClient(connectionConfiguration)
 
-        let! channel = client.OpenChannel()
+            let! _ = client.Connect()
 
-        let! channels = BrokerContainer.getChannels broker
-        channels |> List.ofSeq |> should haveLength 1
-    }
+            let! channel = client.OpenChannel()
+
+            let! channels = BrokerContainer.getChannels broker
+            channels |> List.ofSeq |> should haveLength 1
+        }

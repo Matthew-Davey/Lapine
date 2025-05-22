@@ -1,7 +1,9 @@
-namespace AmqpTypes
+namespace Lapine.AmqpClient
 
 open System
 open System.Net
+
+open type System.Text.Encoding
 
 [<Struct>]
 type ProtocolVersion =
@@ -9,11 +11,21 @@ type ProtocolVersion =
       Minor: uint8
       Revision: uint8 }
 
+    static member Default =
+        { Major = 0uy
+          Minor = 9uy
+          Revision = 1uy }
+
 [<Struct>]
 type ProtocolHeader =
     { Protocol: uint32
       ProtocolId: uint8
       Version: ProtocolVersion }
+    
+    static member Default =
+        { Protocol = BitConverter.ToUInt32(ASCII.GetBytes("AMQP"))
+          ProtocolId = 0uy
+          Version = ProtocolVersion.Default }
 
 [<Struct>]
 type MethodHeader = { ClassId: uint16; MethodId: uint16 }

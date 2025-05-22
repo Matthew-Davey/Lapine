@@ -1,19 +1,16 @@
-// Transmits heartbeat frames to the remote server periodically, and detects remote flatlines...
-module HeartbeatAgent
+namespace Lapine.AmqpClient
 
 open System.Threading
-open AmqpTypes
-open Agent
 open AgentMessages
 
-type private Command =
+type private HeartbeatAgentProtocol =
     | Start of HeartbeatFrequency: uint16 * AsyncReplyChannel<IEvent<RemoteFlatline>>
     | Beat
     | ResetRemoteTimeout
     | TriggerRemoteFlatline
     | Stop
 
-module private Behaviour =
+module private HeartbeatAgentBehaviour =
     let rec unstarted connectionAgent frameStream context =
         match context.Message with
         | Start(frequency, replyChannel) ->
@@ -29,13 +26,7 @@ module private Behaviour =
             Become(beating connectionAgent frequency heartbeatTimer remoteTimeoutTimer flatlineEvent)
         | _ -> Unhandled
 
-    and beating
-        (connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent)
-        frequency
-        heartbeatTimer
-        remoteTimeoutTimer
-        flatlineEvent
-        =
+    and beating (connectionAgent: AmqpConnectionAgent) frequency heartbeatTimer remoteTimeoutTimer flatlineEvent =
         heartbeatTimer.Change(dueTime = int32 frequency * 1000, period = int32 frequency * 1000)
         |> ignore
 
@@ -67,8 +58,10 @@ module private Behaviour =
                 Terminate
             | _ -> Unhandled
 
-type HeartbeatAgent(connectionAgent: AmqpConnectionAgent.AmqpConnectionAgent, frameStream: IEvent<Frame>) =
-    let agent = Agent.startNew (Behaviour.unstarted connectionAgent frameStream)
+// Transmits heartbeat frames to the remote server periodically, and detects remote flatlines...
+type private HeartbeatAgent(connectionAgent: AmqpConnectionAgent, frameStream: IEvent<Frame>) =
+    let agent =
+        Agent.startNew (HeartbeatAgentBehaviour.unstarted connectionAgent frameStream)
 
     member _.Start frequency =
         agent.PostAndReply(fun replyChannel -> Start(frequency, replyChannel))
