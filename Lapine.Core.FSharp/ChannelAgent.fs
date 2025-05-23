@@ -52,6 +52,10 @@ module private ChannelAgentBehaviour =
                       Content = content }
 
                 Ok
+            | Open replyChannel ->
+                // Already open, nothing to do here...
+                replyChannel.Reply Opened
+                Ok
             | _ -> Unhandled
 
     and awaitingChannelCloseOk state replyChannel =

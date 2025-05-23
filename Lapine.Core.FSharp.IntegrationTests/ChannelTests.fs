@@ -3,8 +3,10 @@ namespace Lapine.AmqpClient
 module ``Channel Tests`` =
 
     open FsUnit
-    open Xunit
+    open FsUnit.CustomMatchers
     open Lapine.AmqpClient
+    open Lapine.AmqpClient.AgentMessages
+    open Xunit
 
     let allSupportedVersions () =
         seq {
@@ -92,4 +94,25 @@ module ``Channel Tests`` =
             
             let! channels = BrokerContainer.getChannels broker
             channels |> List.ofSeq |> should haveLength 1
+        }
+
+    [<Theory>]
+    [<MemberData(nameof allSupportedVersions)>]
+    let ``Open a channel that is already open`` brokerVersion =
+        task {
+            use! broker = BrokerContainer.start brokerVersion
+            
+            let connectionConfiguration =
+                { ConnectionConfiguration.Default with
+                    EndPoints = [ BrokerContainer.endPoint broker ] }
+                
+            let client = AmqpClient(connectionConfiguration)
+            
+            let! _ = client.Connect()
+            
+            let! channel = client.OpenChannel()
+            
+            let result = channel.Open()
+            
+            result |> should be (ofCase <@ OpenResponse.Opened @> )
         }
