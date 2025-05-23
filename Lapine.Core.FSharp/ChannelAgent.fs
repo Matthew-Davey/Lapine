@@ -8,58 +8,63 @@ type private ChannelAgentProtocol =
     | HandleFrame of FrameContent
     | Close of AsyncReplyChannel<CloseResponse>
 
+type private State =
+    { ChannelId: uint16
+      ConnectionSupervisor: ConnectionSupervisor
+      FrameEvents: IEvent<Frame> }
+
 module private ChannelAgentBehaviour =
-    let rec closed channelId (connectionSupervisor: ConnectionSupervisor) frameEvents =
+    let rec closed state =
         fun context ->
             match context.Message with
             | Open replyChannel ->
-                frameEvents
-                |> Event.filter (fun { Channel = channel } -> channel = channelId)
+                state.FrameEvents
+                |> Event.filter (fun { Channel = channel } -> channel = state.ChannelId)
                 |> Event.add (fun { Content = content } -> context.Self.Post(HandleFrame content))
 
-                connectionSupervisor.Transmit
-                    { Channel = channelId
+                state.ConnectionSupervisor.Transmit
+                    { Channel = state.ChannelId
                       Content = Method ChannelOpen }
 
-                Become(awaitingChannelOpenOK channelId connectionSupervisor replyChannel)
+                Become(awaitingChannelOpenOK state replyChannel)
             | _ -> Unhandled
 
-    and awaitingChannelOpenOK channelId amqpConnectionAgent replyChannel context =
+    and awaitingChannelOpenOK state replyChannel context =
         match context.Message with
         | HandleFrame(Method ChannelOpenOk) ->
             replyChannel.Reply OpenResponse.Opened
-            Become(open' channelId amqpConnectionAgent)
+            Become(open' state)
         | _ -> Unhandled
 
-    and open' channelId amqpConnectionAgent =
+    and open' state =
         fun context ->
             match context.Message with
             | Close replyChannel ->
-                amqpConnectionAgent.Transmit
-                    { Channel = channelId
+                state.ConnectionSupervisor.Transmit
+                    { Channel = state.ChannelId
                       Content = Method(ChannelClose(0us, "", { ClassId = 0us; MethodId = 0us })) }
 
                 replyChannel.Reply Closed
-                Become(awaitingChannelCloseOk replyChannel)
+                Become(awaitingChannelCloseOk state replyChannel)
             | Transmit content ->
-                amqpConnectionAgent.Transmit
-                    { Channel = channelId
+                state.ConnectionSupervisor.Transmit
+                    { Channel = state.ChannelId
                       Content = content }
 
                 Ok
             | _ -> Unhandled
 
-    and awaitingChannelCloseOk replyChannel =
+    and awaitingChannelCloseOk state replyChannel =
         fun context ->
             match context.Message with
             | HandleFrame(Method ChannelCloseOk) ->
                 replyChannel.Reply Closed
-                Terminate
+                Become(closed state)
             | _ -> Unhandled
 
 type internal ChannelAgent(channelId: uint16, connectionSupervisor: ConnectionSupervisor, frameEvents: IEvent<Frame>) =
     let agent =
-        Agent.startNew (ChannelAgentBehaviour.closed channelId connectionSupervisor frameEvents)
+        Agent.startNew (ChannelAgentBehaviour.closed { ChannelId = channelId; ConnectionSupervisor = connectionSupervisor; FrameEvents = frameEvents })
 
     member _.Open() = agent.PostAndReply Open
 

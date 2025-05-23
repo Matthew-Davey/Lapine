@@ -101,3 +101,4 @@ type public AmqpClient(connectionConfiguration: ConnectionConfiguration) =
 
 and public ChannelClient internal (agent: ChannelAgent) =
     member _.Close() = agent.Close()
+    member _.Open() = agent.Open()
