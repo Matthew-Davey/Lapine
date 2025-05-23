@@ -105,7 +105,8 @@ module private rec Serialize =
             >> writeShortString String.Empty // Deprecated 'capabilities' field...
             >> writeBoolean false // Deprecated 'insist' field...
         | ConnectionClose(replyCode, replyText, methodHeader) ->
-            writeUInt16BE replyCode
+            Serialize.methodHeader { ClassId = 0x0Aus; MethodId = 0x32us }
+            >> writeUInt16BE replyCode
             >> writeShortString replyText
             >> writeUInt16BE methodHeader.ClassId
             >> writeUInt16BE methodHeader.MethodId
