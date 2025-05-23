@@ -110,7 +110,7 @@ module private TcpConnectionAgentBehaviour =
                         try
                             // TODO: Consider moving frameBuffer up to AmqpConnectionAgent...
                             let remaining, frame =
-                                Frame.deserialize (ReadOnlyMemory.op_Implicit rxBuffer[..tail])
+                                Deserialize.frame (ReadOnlyMemory.op_Implicit rxBuffer[..tail])
 
                             frameEvents.Trigger frame
                             remaining.CopyTo(rxBuffer)

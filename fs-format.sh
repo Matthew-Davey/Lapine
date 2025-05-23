@@ -2,7 +2,7 @@
 
 dotnet fantomas ./Lapine.Core.FSharp/Buffer.fs
 dotnet fantomas ./Lapine.Core.FSharp/AmqpTypes.fs
-dotnet fantomas ./Lapine.Core.FSharp/Amqp.fs
+dotnet fantomas ./Lapine.Core.FSharp/Serialization.fs
 dotnet fantomas ./Lapine.Core.FSharp/Agent.fs
 dotnet fantomas ./Lapine.Core.FSharp/AgentMessages.fs
 dotnet fantomas ./Lapine.Core.FSharp/TcpConnectionAgent.fs

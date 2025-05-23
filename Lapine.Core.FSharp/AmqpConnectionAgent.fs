@@ -37,7 +37,7 @@ module private AmqpConnectionAgentBehaviour =
             match context.Message with
             | Disconnect ->
                 tcpConnectionAgent.Transmit(
-                    Frame.serialize
+                    Serialize.frame
                         { Channel = 0us
                           Content = Method(ConnectionClose(0us, "", { ClassId = 0us; MethodId = 0us })) }
                 )
@@ -49,10 +49,10 @@ module private AmqpConnectionAgentBehaviour =
                 Ok
             | HandleConnectionEvent(Disconnected _) -> Terminate
             | TransmitFrame frame ->
-                tcpConnectionAgent.Transmit(Frame.serialize frame)
+                tcpConnectionAgent.Transmit(Serialize.frame frame)
                 Ok
             | TransmitProtocolHeader protocolHeader ->
-                tcpConnectionAgent.Transmit(ProtocolHeader.serialize protocolHeader)
+                tcpConnectionAgent.Transmit(Serialize.protocolHeader protocolHeader)
                 Ok
             | _ -> Unhandled
 

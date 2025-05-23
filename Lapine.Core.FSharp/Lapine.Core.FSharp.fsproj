@@ -6,7 +6,7 @@
   <ItemGroup>
     <Compile Include="Buffer.fs" />
     <Compile Include="AmqpTypes.fs" />
-    <Compile Include="Amqp.fs" />
+    <Compile Include="Serialization.fs" />
     <Compile Include="Agent.fs" />
     <Compile Include="AgentMessages.fs" />
     <Compile Include="TcpConnectionAgent.fs" />

@@ -1,53 +1,36 @@
 namespace Lapine.AmqpClient
 
+open System
+open System.Buffers
 open Buffer
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
-module ProtocolVersion =
-    let serialize
+module private rec Serialize =
+    let protocolVersion
         { Major = major
           Minor = minor
           Revision = revision }
         =
         writeUInt8 major >> writeUInt8 minor >> writeUInt8 revision
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module ProtocolHeader =
-    let serialize
+    let protocolHeader
         { Protocol = protocol
           ProtocolId = protocolId
           Version = version }
         =
         writeUInt32LE protocol
         >> writeUInt8 protocolId
-        >> ProtocolVersion.serialize version
+        >> Serialize.protocolVersion version
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module MethodHeader =
-    let deserialize =
-        deserialize {
-            let! classId = readUInt16BE
-            let! methodId = readUInt16BE
-
-            return
-                { ClassId = classId
-                  MethodId = methodId }
-        }
-
-    let serialize
+    let methodHeader
         { ClassId = classId
           MethodId = methodId }
         =
         writeUInt16BE classId >> writeUInt16BE methodId
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module BasicProperties =
-    let serialize (properties: BasicProperties) =
-        writeUInt16BE (uint16 (properties.PropertyFlags))
+    let basicProperties (properties: BasicProperties) =
+        writeUInt16BE (uint16 properties.PropertyFlags)
         >> (match properties.ContentType with
             | Some contentType -> writeShortString contentType
             | None -> id)
@@ -91,7 +74,88 @@ module BasicProperties =
             | Some clusterId -> writeLongString clusterId
             | None -> id)
 
-    let deserialize =
+    let contentHeader
+        { ClassId = classId
+          BodySize = bodySize
+          Properties = properties }
+        =
+        writeUInt16BE classId
+        >> writeUInt64BE bodySize
+        >> Serialize.basicProperties properties
+
+    let method =
+        function
+        | ConnectionStartOk(peerProperties, mechanism, response, locale) ->
+            Serialize.methodHeader { ClassId = 0x0Aus; MethodId = 0x0Bus }
+            >> writeFieldTable peerProperties.AsFieldTable
+            >> writeShortString mechanism
+            >> writeLongString response
+            >> writeShortString locale
+        | ConnectionSecureOk(response) ->
+            Serialize.methodHeader { ClassId = 0x0Aus; MethodId = 0x15us }
+            >> writeLongString response
+        | ConnectionTuneOk(channelMax, frameMax, heartbeatFrequency) ->
+            Serialize.methodHeader { ClassId = 0x0Aus; MethodId = 0x1Fus }
+            >> writeUInt16BE channelMax
+            >> writeUInt32BE frameMax
+            >> writeUInt16BE heartbeatFrequency
+        | ConnectionOpen(virtualHost) ->
+            Serialize.methodHeader { ClassId = 0x0Aus; MethodId = 0x28us }
+            >> writeShortString virtualHost
+            >> writeShortString String.Empty // Deprecated 'capabilities' field...
+            >> writeBoolean false // Deprecated 'insist' field...
+        | ConnectionClose(replyCode, replyText, methodHeader) ->
+            writeUInt16BE replyCode
+            >> writeShortString replyText
+            >> writeUInt16BE methodHeader.ClassId
+            >> writeUInt16BE methodHeader.MethodId
+        | ChannelOpen ->
+            Serialize.methodHeader { ClassId = 0x14us; MethodId = 0x0Aus }
+            >> writeShortString String.Empty // reserved_1
+        | ChannelClose(replyCode, replyText, methodHeader) ->
+            writeUInt16BE replyCode
+            >> writeShortString replyText
+            >> writeUInt16BE methodHeader.ClassId
+            >> writeUInt16BE methodHeader.MethodId
+
+        // These messages are only ever received from the remote server, they should never need to be serialized...
+        | ConnectionStart _ -> raise (NotSupportedException())
+        | ConnectionSecure _ -> raise (NotSupportedException())
+        | ConnectionTune _ -> raise (NotSupportedException())
+        | ConnectionOpenOk -> raise (NotSupportedException())
+        | ChannelOpenOk -> raise (NotSupportedException())
+        | ChannelCloseOk -> raise (NotSupportedException())
+
+    let frame (frame: Frame) =
+        let contentBuffer = ArrayBufferWriter<uint8>()
+
+        match frame.Content with
+        | Method method -> Serialize.method method contentBuffer
+        | ContentHeader header -> Serialize.contentHeader header contentBuffer
+        | ContentBody body -> writeBytes body contentBuffer
+        | HeartBeat -> contentBuffer
+        |> ignore
+
+        writeUInt8 (uint8 frame.Type)
+        >> writeUInt16BE frame.Channel
+        >> writeUInt32BE (uint32 contentBuffer.WrittenMemory.Length)
+        >> writeBytes contentBuffer.WrittenMemory
+        >> writeUInt8 Frame.Terminator
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module private rec Deserialize =
+    let methodHeader =
+        deserialize {
+            let! classId = readUInt16BE
+            let! methodId = readUInt16BE
+
+            return
+                { ClassId = classId
+                  MethodId = methodId }
+        }
+
+    let basicProperties =
         deserialize {
             let! flags' = readUInt16BE
             let flags: PropertyFlags = LanguagePrimitives.EnumOfValue flags'
@@ -190,23 +254,11 @@ module BasicProperties =
             return properties
         }
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module ContentHeader =
-    let serialize
-        { ClassId = classId
-          BodySize = bodySize
-          Properties = properties }
-        =
-        writeUInt16BE classId
-        >> writeUInt64BE bodySize
-        >> BasicProperties.serialize properties
-
-    let deserialize =
+    let contentHeader =
         deserialize {
             let! classId = readUInt16BE
             let! bodySize = readUInt64BE
-            let! properties = BasicProperties.deserialize
+            let! properties = Deserialize.basicProperties
 
             return
                 { ClassId = classId
@@ -214,14 +266,9 @@ module ContentHeader =
                   Properties = properties }
         }
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module Method =
-    open System
-
-    let deserialize =
+    let method =
         deserialize {
-            match! MethodHeader.deserialize with
+            match! Deserialize.methodHeader with
             // ConnectionStart
             | { ClassId = 0x0Aus; MethodId = 0x0Aus } ->
                 let! major = readUInt8
@@ -255,7 +302,7 @@ module Method =
             | { ClassId = 0x0Aus; MethodId = 0x32us } ->
                 let! replyCode = readUInt16BE
                 let! replyText = readShortString
-                let! failingMethodHeader = MethodHeader.deserialize
+                let! failingMethodHeader = Deserialize.methodHeader
 
                 return
                     ConnectionClose(ReplyCode = replyCode, ReplyText = replyText, FailingMethod = failingMethodHeader)
@@ -270,55 +317,7 @@ module Method =
             | _ -> return raise (NotImplementedException())
         }
 
-    let serialize =
-        function
-        | ConnectionStartOk(peerProperties, mechanism, response, locale) ->
-            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x0Bus }
-            >> writeFieldTable peerProperties.AsFieldTable
-            >> writeShortString mechanism
-            >> writeLongString response
-            >> writeShortString locale
-        | ConnectionSecureOk(response) ->
-            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x15us }
-            >> writeLongString response
-        | ConnectionTuneOk(channelMax, frameMax, heartbeatFrequency) ->
-            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x1Fus }
-            >> writeUInt16BE channelMax
-            >> writeUInt32BE frameMax
-            >> writeUInt16BE heartbeatFrequency
-        | ConnectionOpen(virtualHost) ->
-            MethodHeader.serialize { ClassId = 0x0Aus; MethodId = 0x28us }
-            >> writeShortString virtualHost
-            >> writeShortString String.Empty // Deprecated 'capabilities' field...
-            >> writeBoolean false // Deprecated 'insist' field...
-        | ConnectionClose(replyCode, replyText, methodHeader) ->
-            writeUInt16BE replyCode
-            >> writeShortString replyText
-            >> writeUInt16BE methodHeader.ClassId
-            >> writeUInt16BE methodHeader.MethodId
-        | ChannelOpen ->
-            MethodHeader.serialize { ClassId = 0x14us; MethodId = 0x0Aus }
-            >> writeShortString String.Empty // reserved_1
-        | ChannelClose(replyCode, replyText, methodHeader) ->
-            writeUInt16BE replyCode
-            >> writeShortString replyText
-            >> writeUInt16BE methodHeader.ClassId
-            >> writeUInt16BE methodHeader.MethodId
-
-        // These messages are only ever received from the remote server, they should never need to be serialized...
-        | ConnectionStart _ -> raise (NotSupportedException())
-        | ConnectionSecure _ -> raise (NotSupportedException())
-        | ConnectionTune _ -> raise (NotSupportedException())
-        | ConnectionOpenOk -> raise (NotSupportedException())
-        | ChannelOpenOk -> raise (NotSupportedException())
-        | ChannelCloseOk -> raise (NotSupportedException())
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module Frame =
-    open System.Buffers
-
-    let deserialize =
+    let frame =
         deserialize {
             let! frameType = readUInt8
             let! channel = readUInt16BE
@@ -331,27 +330,11 @@ module Frame =
 
             let content =
                 match LanguagePrimitives.EnumOfValue frameType with
-                | FrameType.Method -> Method(Method.deserialize payload |> snd)
-                | FrameType.Header -> ContentHeader(ContentHeader.deserialize payload |> snd)
+                | FrameType.Method -> Method(Deserialize.method payload |> snd)
+                | FrameType.Header -> ContentHeader(Deserialize.contentHeader payload |> snd)
                 | FrameType.Body -> ContentBody(readBytes (uint16 length) payload |> snd)
                 | FrameType.Heartbeat -> HeartBeat
                 | _ -> failwith "unknown frame type"
 
             return { Channel = channel; Content = content }
         }
-
-    let serialize frame =
-        let contentBuffer = ArrayBufferWriter<uint8>()
-
-        match frame.Content with
-        | Method method -> Method.serialize method contentBuffer
-        | ContentHeader header -> ContentHeader.serialize header contentBuffer
-        | ContentBody body -> writeBytes body contentBuffer
-        | HeartBeat -> contentBuffer
-        |> ignore
-
-        writeUInt8 (uint8 frame.Type)
-        >> writeUInt16BE frame.Channel
-        >> writeUInt32BE (uint32 contentBuffer.WrittenMemory.Length)
-        >> writeBytes contentBuffer.WrittenMemory
-        >> writeUInt8 Frame.Terminator
