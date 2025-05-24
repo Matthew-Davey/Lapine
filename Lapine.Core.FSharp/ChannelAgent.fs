@@ -68,7 +68,12 @@ module private ChannelAgentBehaviour =
 
 type internal ChannelAgent(channelId: uint16, connectionSupervisor: ConnectionSupervisor, frameEvents: IEvent<Frame>) =
     let agent =
-        Agent.startNew (ChannelAgentBehaviour.closed { ChannelId = channelId; ConnectionSupervisor = connectionSupervisor; FrameEvents = frameEvents })
+        Agent.startNew (
+            ChannelAgentBehaviour.closed
+                { ChannelId = channelId
+                  ConnectionSupervisor = connectionSupervisor
+                  FrameEvents = frameEvents }
+        )
 
     member _.Open() = agent.PostAndReply Open
 

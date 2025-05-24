@@ -54,10 +54,10 @@ module private AmqpClientBehaviour =
                         Terminate
                     | Result.Ok(connectionSupervisor, connectionEvents, frameStream) ->
                         replyChannel.Reply Connected
-                        Become(connected connectionSupervisor connectionEvents frameStream [])
+                        Become(connected connectionSupervisor connectionEvents frameStream 1us)
             | _ -> Unhandled
 
-    and connected connectionSupervisor connectionEvents frameStream channels =
+    and connected connectionSupervisor connectionEvents frameStream nextChannelId =
         fun context ->
             match context.Message with
             | Disconnect ->
@@ -65,12 +65,12 @@ module private AmqpClientBehaviour =
                 Become disconnected
             | OpenChannel(cancellationToken, replyChannel) ->
                 // TODO: choose a channel number...
-                let channelAgent = ChannelAgent(1us, connectionSupervisor, frameStream)
+                let channelAgent = ChannelAgent(nextChannelId, connectionSupervisor, frameStream)
 
                 match channelAgent.Open() with
                 | Opened ->
                     replyChannel.Reply channelAgent
-                    Ok
+                    Become(connected connectionSupervisor connectionEvents frameStream (nextChannelId + 1us))
             | _ -> Unhandled
 
 type public AmqpClient(connectionConfiguration: ConnectionConfiguration) =

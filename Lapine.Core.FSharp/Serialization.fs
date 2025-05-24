@@ -114,7 +114,7 @@ module private rec Serialize =
             Serialize.methodHeader { ClassId = 0x14us; MethodId = 0x0Aus }
             >> writeShortString String.Empty // reserved_1
         | ChannelClose(replyCode, replyText, methodHeader) ->
-            Serialize.methodHeader { ClassId = 0x14us; MethodId = 0x28us  }
+            Serialize.methodHeader { ClassId = 0x14us; MethodId = 0x28us }
             >> writeUInt16BE replyCode
             >> writeShortString replyText
             >> writeUInt16BE methodHeader.ClassId
